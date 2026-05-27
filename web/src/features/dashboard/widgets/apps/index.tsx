@@ -3,41 +3,19 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import type { AppDef, GroupDef, StatusMap } from "../../../../api/types";
 import { SimpleIcon } from "../../SimpleIcon";
-import type { AppsConfig, AppsDensity, WidgetDefinition, WidgetProps } from "../types";
+import type {
+  AppsConfig,
+  WidgetConfigProps,
+  WidgetDefinition,
+  WidgetProps,
+} from "../types";
 import { ServicesEditor } from "./ServicesEditor";
 
-function AppsIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="w-4 h-4"
-    >
-      <rect x="3" y="3" width="7" height="7" rx="1" />
-      <rect x="14" y="3" width="7" height="7" rx="1" />
-      <rect x="3" y="14" width="7" height="7" rx="1" />
-      <rect x="14" y="14" width="7" height="7" rx="1" />
-    </svg>
-  );
-}
-
-function statusClasses(s: string | undefined): string {
-  switch (s) {
-    case "healthy":
-      return "bg-emerald-400 status-pulse";
-    case "degraded":
-      return "bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.22)]";
-    case "down":
-      return "bg-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.22)]";
-    case "unknown":
-    default:
-      return "bg-text-muted/60";
-  }
-}
+// ---------------------------------------------------------------------------
+// Apps grid widget — Shortcut-style. Each instance shows a hand-picked
+// subset of services from config.yaml, in a 2-per-grid-unit icon grid.
+// User adds multiple instances (one per category, or however they want).
+// ---------------------------------------------------------------------------
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -48,272 +26,348 @@ function initials(name: string): string {
 function hashColor(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  const hue = h % 360;
-  return `hsl(${hue}, 35%, 25%)`;
+  return `hsl(${h % 360}, 35%, 25%)`;
 }
 
-function IconChip({ app, size }: { app: AppDef; size: number }) {
+function statusClasses(s: string | undefined): string {
+  switch (s) {
+    case "healthy":
+      return "bg-emerald-400 status-pulse";
+    case "degraded":
+      return "bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.22)]";
+    case "down":
+      return "bg-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.22)]";
+    default:
+      return "bg-text-muted/60";
+  }
+}
+
+function Icon({ app, sizePortion }: { app: AppDef; sizePortion?: string }) {
   if (!app.icon) {
     return (
       <div
-        className="rounded-md flex items-center justify-center text-text text-[11px] font-semibold shrink-0"
-        style={{ width: size, height: size, background: hashColor(app.name) }}
+        className="rounded-md flex items-center justify-center text-text font-semibold leading-none"
+        style={{
+          width: sizePortion ?? "100%",
+          height: sizePortion ?? "100%",
+          background: hashColor(app.name),
+          fontSize: "clamp(8px, 28%, 16px)",
+        }}
       >
         {initials(app.name)}
       </div>
     );
   }
   return (
-    <div className="shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
+    <div
+      className="flex items-center justify-center"
+      style={{ width: sizePortion ?? "100%", height: sizePortion ?? "100%" }}
+    >
       <SimpleIcon slug={app.icon} fill />
     </div>
   );
 }
 
-function StatusDot({
+function Tile({
+  app,
   status,
-  lastChecked,
-  responseMs,
-  error,
+  showName,
 }: {
-  status: string | undefined;
-  lastChecked?: string;
-  responseMs?: number;
-  error?: string;
-}) {
-  const title = [
-    status ? `status: ${status}` : "no health check",
-    lastChecked ? `checked: ${new Date(lastChecked).toLocaleTimeString()}` : "",
-    responseMs != null ? `${responseMs} ms` : "",
-    error ? `error: ${error}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-  return (
-    <span
-      className={`inline-block w-2 h-2 rounded-full shrink-0 ${statusClasses(status)}`}
-      title={title}
-    />
-  );
-}
-
-type CardProps = {
   app: AppDef;
   status?: StatusMap[string];
-  density: AppsDensity;
-};
-
-function AppCard({ app, status, density }: CardProps) {
-  const showStatus = density !== "compact" && app.health && app.health.type !== "none";
-  const iconSize = density === "compact" ? 24 : 32;
+  showName: boolean;
+}) {
+  const showStatus = !!app.health && app.health.type !== "none";
   return (
     <a
       href={app.url}
       target="_blank"
       rel="noreferrer noopener"
-      className="group/card relative flex items-center gap-2.5 rounded-md border border-border-subtle bg-bg-card/70 px-2 py-1.5 hover:border-accent/40 hover:bg-bg-elevated hover:-translate-y-px hover:shadow-md hover:shadow-black/20 transition-all min-w-0"
+      className="group/tile relative flex flex-col items-center justify-center min-w-0 min-h-0 rounded-md hover:bg-bg-hover transition-colors p-1 gap-1"
       title={app.description || app.name}
     >
-      <IconChip app={app} size={iconSize} />
-      <div className="min-w-0 flex-1 flex items-center gap-1.5">
-        <span className="text-[12px] text-text font-medium truncate leading-tight">{app.name}</span>
-        {showStatus && (
-          <StatusDot
-            status={status?.status}
-            lastChecked={status?.last_checked}
-            responseMs={status?.response_ms}
-            error={status?.error}
-          />
-        )}
+      <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+        <Icon app={app} sizePortion="70%" />
       </div>
+      {showName && (
+        <div className="flex items-center gap-1 min-w-0 max-w-full">
+          <span className="text-[10px] text-text-secondary truncate leading-tight">
+            {app.name}
+          </span>
+          {showStatus && (
+            <span
+              className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${statusClasses(status?.status)}`}
+            />
+          )}
+        </div>
+      )}
+      {!showName && showStatus && (
+        <span
+          className={`absolute top-1 right-1 inline-block w-1.5 h-1.5 rounded-full ${statusClasses(status?.status)}`}
+        />
+      )}
     </a>
   );
 }
 
-function GroupSection({
-  group,
-  apps,
-  statuses,
-  density,
-}: {
-  group?: GroupDef;
-  apps: AppDef[];
-  statuses: StatusMap;
-  density: AppsDensity;
-}) {
-  if (apps.length === 0) return null;
-  // Minimum card width scales with density so the grid roughly tracks the
-  // dashboard cell size — compact packs more per row, default gives names
-  // room to breathe.
-  const minCard = density === "compact" ? 130 : 170;
-  return (
-    // h-full + min-h-0 so the parent flex layout can shrink this section
-    // when total content exceeds the widget height.
-    <div className="flex flex-col min-h-0 h-full">
-      {group && (
-        <div className="flex items-center gap-2 px-0.5 mb-1.5 shrink-0">
-          {group.color && (
-            <span
-              className="inline-block w-1 h-3.5 rounded-sm shrink-0"
-              style={{ background: group.color }}
-            />
-          )}
-          <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold">
-            {group.name}
-          </span>
-          <span className="text-[10px] text-text-muted/60 tabular-nums">{apps.length}</span>
-          <span className="flex-1 h-px bg-border-subtle ml-1" />
-        </div>
-      )}
-      <div
-        className="grid gap-1.5 flex-1 min-h-0 overflow-hidden content-start"
-        style={{ gridTemplateColumns: `repeat(auto-fill,minmax(${minCard}px,1fr))` }}
-      >
-        {apps.map((app) => (
-          <AppCard key={app.id} app={app} status={statuses[app.id]} density={density} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AppsWidget({ config }: WidgetProps<AppsConfig>) {
+function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
   const qc = useQueryClient();
-  const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
-  const apps = cfg?.apps ?? [];
-  const groupsList = cfg?.groups ?? [];
-  const groupFilter = config?.groups;
-  const density = (config?.density ?? "default") as AppsDensity;
+  const cfg = qc.getQueryData<{ apps?: AppDef[] }>(["config"]);
+  const allApps = cfg?.apps ?? [];
 
+  // Resolve selected IDs to actual apps, preserving the user's chosen order.
+  // Empty selection = nothing (the widget asks you to pick).
+  //
+  // Legacy fallback: if appIds is undefined but the old `groups` filter is
+  // present, derive appIds from those groups. Lets v0.1 layouts keep working
+  // without manual reconfiguration.
+  const legacyGroups = (config as AppsConfig & { groups?: string[] })?.groups;
+  const ids = useMemo(() => {
+    if (config?.appIds) return config.appIds;
+    if (legacyGroups && legacyGroups.length > 0) {
+      const set = new Set(legacyGroups);
+      return allApps.filter((a) => a.group && set.has(a.group)).map((a) => a.id);
+    }
+    return [];
+  }, [config?.appIds, legacyGroups, allApps]);
+  const apps = useMemo(() => {
+    const byId = new Map(allApps.map((a) => [a.id, a] as const));
+    return ids.map((id) => byId.get(id)).filter(Boolean) as AppDef[];
+  }, [allApps, ids]);
+
+  const showNames = config?.showNames ?? false;
+  const anyHealth = apps.some((a) => a.health && a.health.type !== "none");
   const { data: statuses = {} } = useQuery({
     queryKey: ["apps-status"],
     queryFn: api.getStatus,
     refetchInterval: 15_000,
+    enabled: anyHealth,
   });
 
-  const filteredApps = useMemo(() => {
-    if (!groupFilter || groupFilter.length === 0) return apps;
-    const set = new Set(groupFilter);
-    return apps.filter((a) => (a.group ? set.has(a.group) : false));
-  }, [apps, groupFilter]);
+  if (allApps.length === 0) {
+    return (
+      <EmptyMessage
+        title="No services defined"
+        hint="Add some via the Manage services button or directly in config.yaml."
+      />
+    );
+  }
 
-  const ordered = useMemo<{ group?: GroupDef; apps: AppDef[] }[]>(() => {
+  if (apps.length === 0) {
+    return (
+      <EmptyMessage
+        title="No services picked"
+        hint="Open this widget's config and choose which services it should show."
+      />
+    );
+  }
+
+  // Single → big centered tile
+  if (apps.length === 1) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="w-full h-full max-w-full max-h-full">
+          <Tile app={apps[0]} status={statuses[apps[0].id]} showName={showNames || (w * h >= 2)} />
+        </div>
+      </div>
+    );
+  }
+
+  // Grid: 2 icons per grid unit each direction (matches Shortcut widget).
+  // Excess tiles are clipped — no scrollbar. Resize the widget bigger to see
+  // more, or split into multiple Apps widgets.
+  const cols = Math.max(1, w * 2);
+  const rows = Math.max(1, h * 2);
+  const maxSlots = cols * rows;
+  const visible = apps.slice(0, maxSlots);
+
+  return (
+    <div
+      className="grid w-full h-full p-1 gap-0.5"
+      style={{
+        gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+        gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+      }}
+    >
+      {visible.map((app) => (
+        <Tile key={app.id} app={app} status={statuses[app.id]} showName={showNames} />
+      ))}
+    </div>
+  );
+}
+
+function EmptyMessage({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-text-muted/60 gap-1.5 p-2 text-center">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="w-5 h-5"
+      >
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </svg>
+      <span className="text-[11px] font-medium text-text-secondary">{title}</span>
+      <span className="text-[10px] text-text-muted/70 max-w-[200px] leading-snug">{hint}</span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Config panel
+// ---------------------------------------------------------------------------
+
+function AppsConfigPanel({ config, save }: WidgetConfigProps<AppsConfig>) {
+  const qc = useQueryClient();
+  const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
+  const apps = cfg?.apps ?? [];
+  const groups = cfg?.groups ?? [];
+
+  // Group apps by category for the picker.
+  const grouped = useMemo(() => {
     const byGroup = new Map<string | null, AppDef[]>();
-    for (const a of filteredApps) {
-      const key = a.group ?? null;
-      const arr = byGroup.get(key) ?? [];
+    for (const a of apps) {
+      const k = a.group || null;
+      const arr = byGroup.get(k) ?? [];
       arr.push(a);
-      byGroup.set(key, arr);
+      byGroup.set(k, arr);
     }
     const out: { group?: GroupDef; apps: AppDef[] }[] = [];
-    for (const g of groupsList) {
+    for (const g of groups) {
       const arr = byGroup.get(g.id);
       if (arr && arr.length > 0) out.push({ group: g, apps: arr });
     }
     const ungrouped = byGroup.get(null);
     if (ungrouped && ungrouped.length > 0) out.push({ apps: ungrouped });
     return out;
-  }, [filteredApps, groupsList]);
+  }, [apps, groups]);
 
-  if (filteredApps.length === 0) {
-    const isFiltered = (groupFilter?.length ?? 0) > 0;
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-4 gap-2">
-        <div className="w-9 h-9 rounded-lg bg-bg-elevated/60 border border-border-subtle flex items-center justify-center text-text-muted">
-          <AppsIcon />
-        </div>
-        <div className="text-text-secondary text-[12px] font-medium">
-          {isFiltered ? "No apps match" : "No apps configured"}
-        </div>
-        <div className="text-text-muted text-[10.5px] leading-snug max-w-[200px]">
-          {isFiltered
-            ? "Adjust the group filter in the widget config, or add apps to these groups in config.yaml."
-            : "Add apps under the `apps:` key in config.yaml."}
-        </div>
-      </div>
-    );
-  }
+  const selected = new Set(config?.appIds ?? []);
 
-  return (
-    // Groups share the widget's vertical space proportionally to their app
-    // count (flex-grow = apps.length). Bigger groups get more rows of cards
-    // visible; smaller groups get less. Everything stays clipped inside the
-    // widget — no scrollbar.
-    <div className="h-full w-full overflow-hidden p-2 flex flex-col gap-2.5">
-      {ordered.map((section, i) => (
-        <div
-          key={section.group?.id ?? `__nogroup_${i}`}
-          className="min-h-0"
-          style={{ flex: `${Math.max(1, section.apps.length)} 1 0` }}
-        >
-          <GroupSection
-            group={section.group}
-            apps={section.apps}
-            statuses={statuses}
-            density={density}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AppsConfigPanel({
-  config,
-  save,
-}: {
-  config: AppsConfig;
-  save: (patch: Partial<AppsConfig>) => void;
-}) {
-  const qc = useQueryClient();
-  const cfg = qc.getQueryData<{ groups?: GroupDef[] }>(["config"]);
-  const groups = cfg?.groups ?? [];
-  const selected = new Set(config.groups ?? []);
-  const density = config.density ?? "default";
-
-  const toggleGroup = (id: string) => {
-    const next = new Set(selected);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    save({ groups: Array.from(next) });
+  const toggle = (id: string) => {
+    const cur = config?.appIds ?? [];
+    const next = cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id];
+    save({ appIds: next });
   };
 
+  const pickAll = (groupId: string | undefined) => {
+    const cur = config?.appIds ?? [];
+    const inGroup = apps.filter((a) => (a.group || null) === (groupId ?? null));
+    const allSelected = inGroup.every((a) => cur.includes(a.id));
+    if (allSelected) {
+      // Deselect this group.
+      save({ appIds: cur.filter((id) => !inGroup.some((a) => a.id === id)) });
+    } else {
+      // Select all from this group, preserving existing.
+      const set = new Set(cur);
+      for (const a of inGroup) set.add(a.id);
+      save({ appIds: Array.from(set) });
+    }
+  };
+
+  const clearAll = () => save({ appIds: [] });
+
   return (
-    <div className="space-y-5">
-      <ConfigField label="Groups">
-        {groups.length === 0 ? (
-          <div className="text-[11px] text-text-muted italic px-1">
-            No groups defined in config.yaml.
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
+          <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+            Services in this widget
+          </label>
+          <span className="text-[10px] text-text-muted">
+            {(config?.appIds ?? []).length} selected
+          </span>
+        </div>
+
+        {grouped.length === 0 ? (
+          <div className="text-[11px] text-text-muted italic">
+            No services defined. Use Manage services below.
           </div>
         ) : (
-          <div className="flex flex-wrap gap-1.5">
-            <ChipToggle active={selected.size === 0} onClick={() => save({ groups: [] })}>
-              All
-            </ChipToggle>
-            {groups.map((g) => (
-              <ChipToggle
-                key={g.id}
-                active={selected.has(g.id)}
-                onClick={() => toggleGroup(g.id)}
-                accentColor={g.color}
-              >
-                {g.name}
-              </ChipToggle>
+          <div className="max-h-[280px] overflow-auto rounded border border-border-subtle bg-bg-card/40">
+            {grouped.map((section, i) => (
+              <div key={section.group?.id ?? `__none_${i}`} className="border-b border-border-subtle last:border-b-0">
+                <button
+                  onClick={() => pickAll(section.group?.id)}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-bg-hover text-left"
+                  title="Toggle all in group"
+                >
+                  {section.group?.color && (
+                    <span
+                      className="inline-block w-1 h-3 rounded-sm shrink-0"
+                      style={{ background: section.group.color }}
+                    />
+                  )}
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold flex-1 truncate">
+                    {section.group?.name ?? "Ungrouped"}
+                  </span>
+                  <span className="text-[10px] text-text-muted/60 tabular-nums">
+                    {section.apps.filter((a) => selected.has(a.id)).length}/{section.apps.length}
+                  </span>
+                </button>
+                {section.apps.map((app) => {
+                  const isSel = selected.has(app.id);
+                  return (
+                    <label
+                      key={app.id}
+                      className="flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-bg-hover"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSel}
+                        onChange={() => toggle(app.id)}
+                        className="accent-accent"
+                      />
+                      <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                        {app.icon ? (
+                          <SimpleIcon slug={app.icon} fill />
+                        ) : (
+                          <div
+                            className="w-full h-full rounded-sm flex items-center justify-center text-[8px] font-semibold text-text"
+                            style={{ background: hashColor(app.name) }}
+                          >
+                            {initials(app.name)}
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[12px] text-text-secondary truncate flex-1">
+                        {app.name}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
             ))}
           </div>
         )}
-      </ConfigField>
 
-      <ConfigField label="Size">
-        <SegmentedControl
-          value={density === "detailed" ? "default" : density}
-          onChange={(d) => save({ density: d as AppsDensity })}
-          options={[
-            { value: "compact", label: "Small" },
-            { value: "default", label: "Medium" },
-          ]}
-        />
-      </ConfigField>
+        {(config?.appIds ?? []).length > 0 && (
+          <button
+            onClick={clearAll}
+            className="text-[10px] text-text-muted hover:text-text-secondary"
+          >
+            Clear selection
+          </button>
+        )}
+      </div>
+
+      <div>
+        <label className="flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
+          <input
+            type="checkbox"
+            checked={config?.showNames ?? false}
+            onChange={(e) => save({ showNames: e.target.checked })}
+            className="accent-accent"
+          />
+          Show names under icons
+        </label>
+      </div>
 
       <div className="pt-2 border-t border-border-subtle">
         <ManageServicesButton />
@@ -349,90 +403,41 @@ function ManageServicesButton() {
   );
 }
 
-function ConfigField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-        {label}
-      </div>
-      {children}
-    </div>
-  );
-}
+// ---------------------------------------------------------------------------
+// Definition
+// ---------------------------------------------------------------------------
 
-function ChipToggle({
-  active,
-  onClick,
-  accentColor,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  accentColor?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] border transition-colors ${
-        active
-          ? "border-accent/50 bg-accent/15 text-text"
-          : "border-border-subtle bg-bg-card/40 text-text-muted hover:text-text-secondary hover:border-border"
-      }`}
-    >
-      {accentColor && (
-        <span
-          className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
-          style={{ background: accentColor }}
-        />
-      )}
-      {children}
-    </button>
-  );
-}
-
-function SegmentedControl({
-  value,
-  onChange,
-  options,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card/40">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          onClick={() => onChange(o.value)}
-          className={`px-3 py-1 text-[11px] rounded transition-colors ${
-            value === o.value
-              ? "bg-bg-elevated text-text shadow-sm"
-              : "text-text-muted hover:text-text-secondary"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
+const AppsIcon = (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="w-4 h-4"
+  >
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <rect x="14" y="14" width="7" height="7" rx="1" />
+  </svg>
+);
 
 const def: WidgetDefinition<AppsConfig> = {
   type: "apps",
-  title: "Apps",
-  icon: <AppsIcon />,
+  title: "Apps grid",
+  icon: AppsIcon,
   category: "infrastructure",
-  description: "Clickable grid of apps with health pings.",
-  minW: 2,
-  minH: 2,
+  description: "Grid of hand-picked services. 2 icons per grid unit, like Shortcuts.",
+  minW: 1,
+  minH: 1,
   maxW: 12,
   maxH: 12,
-  defaultW: 6,
-  defaultH: 4,
-  defaultConfig: { density: "default" },
-  Component: AppsWidget,
+  defaultW: 2,
+  defaultH: 2,
+  defaultConfig: { appIds: [] },
+  Component: AppsComponent,
   ConfigPanel: AppsConfigPanel,
 };
 

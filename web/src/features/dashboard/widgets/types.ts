@@ -4,7 +4,8 @@ export type WidgetType =
   | "clock"
   | "shortcut"
   | "checklist"
-  | "apps";
+  | "apps"
+  | "app";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -32,12 +33,22 @@ export interface ChecklistConfig {
   checklist?: ChecklistItem[];
 }
 
-export type AppsDensity = "compact" | "default" | "detailed";
-
+/**
+ * Apps grid widget — Shortcut-style. Each instance shows a hand-picked
+ * subset of services from config.yaml, laid out as an icon grid.
+ */
 export interface AppsConfig {
-  /** Filter to a subset of group IDs. Empty/undefined = show all groups. */
-  groups?: string[];
-  density?: AppsDensity;
+  /** Service IDs (from config.yaml apps) to render, in order. Empty = none. */
+  appIds?: string[];
+  /** Show the service name under each icon. Default off. */
+  showNames?: boolean;
+}
+
+/**
+ * Single-app widget — one prominent tile bound to one service.
+ */
+export interface AppConfig {
+  appId?: string;
 }
 
 export type WidgetConfigByType = {
@@ -45,10 +56,11 @@ export type WidgetConfigByType = {
   shortcut: ShortcutConfig;
   checklist: ChecklistConfig;
   apps: AppsConfig;
+  app: AppConfig;
 };
 
 export type AnyWidgetConfig = Partial<
-  ClockConfig & ShortcutConfig & ChecklistConfig & AppsConfig
+  ClockConfig & ShortcutConfig & ChecklistConfig & AppsConfig & AppConfig
 >;
 
 export interface Widget {

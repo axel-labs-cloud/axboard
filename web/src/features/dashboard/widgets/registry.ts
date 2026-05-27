@@ -3,12 +3,14 @@ import clock from "./clock";
 import shortcut from "./shortcut";
 import checklist from "./checklist";
 import apps from "./apps";
+import app from "./app";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
   shortcut,
   checklist,
   apps,
+  app,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {
