@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import type { AppDef, Config, GroupDef } from "../../../../api/types";
@@ -140,19 +141,67 @@ export function ServicesEditor({ open, onClose }: Props) {
     setDirty(true);
   };
 
+  // ---- Group management ----
+
+  const addGroup = () => {
+    const baseId = "group";
+    let i = 1;
+    while (groups.some((g) => g.id === `${baseId}-${i}`)) i++;
+    const fresh: GroupDef = {
+      id: `${baseId}-${i}`,
+      name: `New group ${i}`,
+      color: ["#7c3aed", "#06b6d4", "#22c55e", "#ec4899", "#f59e0b", "#94a3b8"][groups.length % 6],
+    };
+    setGroups((prev) => [...prev, fresh]);
+    setDirty(true);
+  };
+
+  const updateGroup = (id: string, patch: Partial<GroupDef>) => {
+    setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, ...patch } : g)));
+    setDirty(true);
+  };
+
+  const renameGroupId = (oldId: string, newId: string) => {
+    const slug = slugify(newId);
+    if (!slug || slug === oldId) return;
+    if (groups.some((g) => g.id === slug)) {
+      alert(`Group id "${slug}" already exists.`);
+      return;
+    }
+    setGroups((prev) => prev.map((g) => (g.id === oldId ? { ...g, id: slug } : g)));
+    // Repoint apps that referenced the old id.
+    setApps((prev) => prev.map((a) => (a.group === oldId ? { ...a, group: slug } : a)));
+    setDirty(true);
+  };
+
+  const removeGroup = (id: string) => {
+    const inGroup = apps.filter((a) => a.group === id);
+    if (inGroup.length > 0) {
+      const ok = confirm(
+        `Delete group? ${inGroup.length} ${
+          inGroup.length === 1 ? "service" : "services"
+        } will become ungrouped.`,
+      );
+      if (!ok) return;
+    }
+    setGroups((prev) => prev.filter((g) => g.id !== id));
+    setApps((prev) => prev.map((a) => (a.group === id ? { ...a, group: undefined } : a)));
+    setDirty(true);
+  };
+
   const selected = selectedKey !== null ? apps.find((a) => a._key === selectedKey) : null;
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[150] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
+      className="fixed inset-0 z-[150] bg-black/70 backdrop-blur-sm flex items-stretch justify-stretch p-4"
       onClick={() => {
         if (!dirty || confirm("Discard unsaved changes?")) onClose();
       }}
     >
       <div
-        className="bg-bg-elevated border border-border rounded-lg shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col ring-1 ring-white/5"
+        className="bg-bg-elevated border border-border rounded-lg shadow-2xl w-full h-full flex flex-col ring-1 ring-white/5 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -203,32 +252,49 @@ export function ServicesEditor({ open, onClose }: Props) {
         </div>
 
         {/* Body */}
-        <div className="flex-1 grid grid-cols-[minmax(280px,340px)_1fr] min-h-0">
+        <div className="flex-1 grid grid-cols-[minmax(320px,380px)_1fr] min-h-0">
           {/* Sidebar list */}
           <div className="border-r border-border-subtle overflow-auto">
+            <div className="px-3 py-2 border-b border-border-subtle flex items-center justify-between sticky top-0 bg-bg-elevated z-20">
+              <span className="text-[11px] text-text-muted">
+                Drag the grip to reorder · drop on a row in another group to move
+              </span>
+              <button
+                onClick={addGroup}
+                className="px-2 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted whitespace-nowrap flex items-center gap-1"
+                title="Add a new group"
+              >
+                <PlusIcon /> Group
+              </button>
+            </div>
             {groupedView.map((section, sIdx) => (
               <div key={section.group?.id ?? `__none_${sIdx}`} className="border-b border-border-subtle">
-                <div className="flex items-center justify-between px-3 py-2 sticky top-0 bg-bg-elevated z-10">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {section.group?.color && (
-                      <span
-                        className="inline-block w-1.5 h-3.5 rounded-sm shrink-0"
-                        style={{ background: section.group.color }}
-                      />
-                    )}
-                    <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold truncate">
-                      {section.group?.name ?? "Ungrouped"}
-                    </span>
-                    <span className="text-[10px] text-text-muted">{section.apps.length}</span>
+                {section.group ? (
+                  <GroupHeader
+                    group={section.group}
+                    count={section.apps.length}
+                    onAddApp={() => addApp(section.group?.id)}
+                    onPatch={(patch) => updateGroup(section.group!.id, patch)}
+                    onRenameId={(newId) => renameGroupId(section.group!.id, newId)}
+                    onDelete={() => removeGroup(section.group!.id)}
+                  />
+                ) : (
+                  <div className="flex items-center justify-between px-3 py-2 bg-bg-card/30">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold truncate">
+                        Ungrouped
+                      </span>
+                      <span className="text-[10px] text-text-muted">{section.apps.length}</span>
+                    </div>
+                    <button
+                      onClick={() => addApp(undefined)}
+                      title="Add ungrouped service"
+                      className="w-5 h-5 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
+                    >
+                      <PlusIcon />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => addApp(section.group?.id)}
-                    title="Add service to this group"
-                    className="w-5 h-5 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
-                  >
-                    <PlusIcon />
-                  </button>
-                </div>
+                )}
                 {section.apps.map((app) => (
                   <SidebarRow
                     key={app._key}
@@ -275,6 +341,154 @@ export function ServicesEditor({ open, onClose }: Props) {
           if (iconPickerFor !== null) update(iconPickerFor, { icon: slug });
         }}
       />
+    </div>,
+    document.body,
+  );
+}
+
+function GroupHeader({
+  group,
+  count,
+  onAddApp,
+  onPatch,
+  onRenameId,
+  onDelete,
+}: {
+  group: GroupDef;
+  count: number;
+  onAddApp: () => void;
+  onPatch: (patch: Partial<GroupDef>) => void;
+  onRenameId: (newId: string) => void;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [idEdit, setIdEdit] = useState(false);
+  const [colorOpen, setColorOpen] = useState(false);
+
+  const palette = [
+    "#7c3aed",
+    "#a855f7",
+    "#06b6d4",
+    "#0ea5e9",
+    "#22c55e",
+    "#10b981",
+    "#ec4899",
+    "#f43f5e",
+    "#f59e0b",
+    "#eab308",
+    "#94a3b8",
+    "#64748b",
+  ];
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 bg-bg-card/30 border-b border-border-subtle group/gh sticky top-[33px] z-10">
+      <button
+        onClick={() => setColorOpen((o) => !o)}
+        className="relative inline-flex items-center justify-center w-2 h-4 shrink-0"
+        title="Change color"
+      >
+        <span
+          className="inline-block w-1.5 h-4 rounded-sm"
+          style={{ background: group.color ?? "var(--color-border)" }}
+        />
+        {colorOpen && (
+          <div
+            className="absolute top-full left-0 mt-1 z-30 bg-bg-elevated border border-border rounded-lg p-1.5 shadow-2xl ring-1 ring-white/5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="grid grid-cols-6 gap-1">
+              {palette.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => {
+                    onPatch({ color: c });
+                    setColorOpen(false);
+                  }}
+                  className={`w-5 h-5 rounded ${
+                    group.color === c ? "ring-2 ring-offset-1 ring-offset-bg-elevated ring-white" : ""
+                  }`}
+                  style={{ background: c }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => {
+                onPatch({ color: undefined });
+                setColorOpen(false);
+              }}
+              className="block w-full mt-1.5 px-2 py-1 text-[10px] text-text-muted hover:text-text rounded hover:bg-bg-hover"
+            >
+              No color
+            </button>
+          </div>
+        )}
+      </button>
+
+      <div className="min-w-0 flex-1 flex items-center gap-1.5">
+        {editing ? (
+          <input
+            autoFocus
+            defaultValue={group.name}
+            onBlur={(e) => {
+              const v = e.target.value.trim();
+              if (v && v !== group.name) onPatch({ name: v });
+              setEditing(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            className="w-full px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] font-semibold bg-bg-card border border-accent/40 rounded text-text focus:outline-none"
+          />
+        ) : (
+          <button
+            onDoubleClick={() => setEditing(true)}
+            className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold truncate text-left"
+            title="Double-click to rename"
+          >
+            {group.name}
+          </button>
+        )}
+        <span className="text-[10px] text-text-muted shrink-0">{count}</span>
+        {idEdit ? (
+          <input
+            autoFocus
+            defaultValue={group.id}
+            onBlur={(e) => {
+              onRenameId(e.target.value);
+              setIdEdit(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+              if (e.key === "Escape") setIdEdit(false);
+            }}
+            className="px-1.5 py-0.5 text-[10px] font-mono bg-bg-card border border-accent/40 rounded text-text-muted focus:outline-none w-24"
+          />
+        ) : (
+          <button
+            onClick={() => setIdEdit(true)}
+            className="text-[10px] text-text-muted/60 hover:text-text-secondary font-mono truncate"
+            title="Click to edit id"
+          >
+            ({group.id})
+          </button>
+        )}
+      </div>
+
+      <button
+        onClick={onAddApp}
+        title="Add service to this group"
+        className="w-5 h-5 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
+      >
+        <PlusIcon />
+      </button>
+      <button
+        onClick={onDelete}
+        title="Delete group"
+        className="w-5 h-5 flex items-center justify-center rounded text-text-muted/40 hover:text-rose-400 hover:bg-rose-400/10 opacity-0 group-hover/gh:opacity-100"
+      >
+        <TrashIcon />
+      </button>
     </div>
   );
 }

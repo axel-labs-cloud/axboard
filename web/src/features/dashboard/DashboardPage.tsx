@@ -14,6 +14,7 @@ import { createEmptyLayout } from "./layoutMigrations";
 import { getWidgetDefinition } from "./widgets/registry";
 import { downloadDashboardFile } from "./dashboardIO";
 import { WidgetContextMenu } from "./WidgetContextMenu";
+import { AddWidgetModal } from "./AddWidgetModal";
 import type {
   AnyWidgetConfig,
   DashboardLayout,
@@ -100,6 +101,7 @@ export function DashboardPage() {
   const [configPos, setConfigPos] = useState<{ x: number; y: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
+  const [addWidgetOpen, setAddWidgetOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(1200);
   const [containerH, setContainerH] = useState(800);
@@ -407,6 +409,7 @@ export function DashboardPage() {
         onUndo={handleUndo}
         onRedo={handleRedo}
         onExport={handleExport}
+        onAddWidget={() => setAddWidgetOpen(true)}
       />
 
       <div ref={containerRef} className="flex-1 min-h-0 relative">
@@ -493,6 +496,12 @@ export function DashboardPage() {
           onClose={() => setContextMenu(null)}
         />
       )}
+
+      <AddWidgetModal
+        open={addWidgetOpen}
+        dashboardId={activeDashboardId}
+        onClose={() => setAddWidgetOpen(false)}
+      />
     </div>
   );
 }

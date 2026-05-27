@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { SimpleIcon } from "../../SimpleIcon";
 
@@ -70,7 +71,7 @@ export function IconPicker({ open, current, onClose, onSelect }: Props) {
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6"
       onClick={onClose}
@@ -216,7 +217,8 @@ export function IconPicker({ open, current, onClose, onSelect }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
