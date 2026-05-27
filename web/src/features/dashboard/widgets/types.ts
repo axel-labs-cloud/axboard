@@ -5,7 +5,8 @@ export type WidgetType =
   | "shortcut"
   | "checklist"
   | "apps"
-  | "app";
+  | "app"
+  | "weather";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -61,16 +62,29 @@ export interface AppConfig {
   showLastChecked?: boolean;
 }
 
+/**
+ * Weather widget. Pulls current conditions + forecast from Open-Meteo (no
+ * auth required). User picks a city by name; geocoding resolves to lat/lon
+ * which is what the forecast API needs.
+ */
+export interface WeatherConfig {
+  city?: string;
+  lat?: number;
+  lon?: number;
+  units?: "celsius" | "fahrenheit";
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
   checklist: ChecklistConfig;
   apps: AppsConfig;
   app: AppConfig;
+  weather: WeatherConfig;
 };
 
 export type AnyWidgetConfig = Partial<
-  ClockConfig & ShortcutConfig & ChecklistConfig & AppsConfig & AppConfig
+  ClockConfig & ShortcutConfig & ChecklistConfig & AppsConfig & AppConfig & WeatherConfig
 >;
 
 export interface Widget {

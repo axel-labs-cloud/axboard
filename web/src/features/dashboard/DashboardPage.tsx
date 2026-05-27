@@ -362,6 +362,10 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   );
 
   const handleAddDashboard = useCallback(() => {
+    if (dashboards.length >= 5) {
+      alert("Maximum 5 dashboards. Delete one before adding another.");
+      return;
+    }
     const name = window.prompt("New dashboard name:", "New dashboard");
     if (!name || !name.trim()) return;
     const id = `dash-${Date.now()}`;
@@ -373,7 +377,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       ],
     }));
     setActiveDashboardId(id);
-  }, [writeConfigAndRefresh]);
+  }, [dashboards.length, writeConfigAndRefresh]);
 
   const handleRenameDashboard = useCallback(
     (id: string, name: string) => {

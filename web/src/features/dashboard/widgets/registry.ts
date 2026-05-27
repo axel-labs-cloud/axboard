@@ -4,6 +4,7 @@ import shortcut from "./shortcut";
 import checklist from "./checklist";
 import apps from "./apps";
 import app from "./app";
+import weather from "./weather";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -11,6 +12,7 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   checklist,
   apps,
   app,
+  weather,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

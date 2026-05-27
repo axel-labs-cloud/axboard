@@ -1,0 +1,443 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import type {
+  WeatherConfig,
+  WidgetConfigProps,
+  WidgetDefinition,
+  WidgetProps,
+} from "../types";
+import { wmoIcon } from "./icons";
+
+// ---------------------------------------------------------------------------
+// Weather widget — Open-Meteo (no auth, no API key).
+// Layout adapts to widget size:
+//   1x1: icon + temp + condition
+//   2x1: + small details strip (humidity / wind)
+//   1x2 / 1x3: temp + condition + vertical forecast list
+//   2x2: temp/condition + details + horizontal forecast cards
+//   2x3 / 3x3: + larger forecast cards (more days at wider widths)
+// ---------------------------------------------------------------------------
+
+interface OpenMeteoResponse {
+  current?: {
+    temperature_2m: number;
+    relative_humidity_2m: number;
+    apparent_temperature: number;
+    weather_code: number;
+    wind_speed_10m: number;
+    wind_direction_10m: number;
+    is_day: number;
+  };
+  daily?: {
+    time: string[];
+    weather_code: number[];
+    temperature_2m_max: number[];
+    temperature_2m_min: number[];
+  };
+}
+
+interface GeocodingResponse {
+  results?: {
+    name: string;
+    country?: string;
+    latitude: number;
+    longitude: number;
+  }[];
+}
+
+async function fetchWeather(
+  lat: number,
+  lon: number,
+  units: "celsius" | "fahrenheit",
+): Promise<OpenMeteoResponse> {
+  const params = new URLSearchParams({
+    latitude: String(lat),
+    longitude: String(lon),
+    current:
+      "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,is_day",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min",
+    timezone: "auto",
+    forecast_days: "7",
+    temperature_unit: units,
+    wind_speed_unit: units === "fahrenheit" ? "mph" : "kmh",
+  });
+  const r = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`);
+  if (!r.ok) throw new Error(`Weather API: ${r.status}`);
+  return r.json();
+}
+
+function windDir(deg: number): string {
+  const dirs = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+function dayLabel(iso: string, i: number): string {
+  if (i === 0) return "Today";
+  if (i === 1) return "Tmrw";
+  return new Date(iso + "T12:00").toLocaleDateString(undefined, { weekday: "short" });
+}
+
+function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
+  const lat = config?.lat;
+  const lon = config?.lon;
+  const city = config?.city ?? "";
+  const units = (config?.units ?? "celsius") as "celsius" | "fahrenheit";
+  const unitLabel = units === "fahrenheit" ? "°F" : "°C";
+  const windUnit = units === "fahrenheit" ? "mph" : "km/h";
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["weather", lat, lon, units],
+    queryFn: () => fetchWeather(lat!, lon!, units),
+    enabled: lat != null && lon != null,
+    staleTime: 10 * 60_000, // 10 min
+    refetchInterval: 10 * 60_000,
+  });
+
+  if (lat == null || lon == null) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-text-muted/60 gap-2 p-3 text-center">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="w-5 h-5"
+        >
+          <circle cx="12" cy="9" r="3" />
+          <path d="M12 21s-7-7-7-12a7 7 0 0 1 14 0c0 5-7 12-7 12z" />
+        </svg>
+        <span className="text-[11px] text-text-secondary">Pick a city in the widget config</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full text-rose-400 text-[11px] p-3 text-center">
+        Weather fetch failed: {(error as Error).message}
+      </div>
+    );
+  }
+
+  if (isLoading || !data?.current) {
+    return (
+      <div className="flex items-center justify-center h-full text-text-muted text-[11px] animate-pulse">
+        Loading weather…
+      </div>
+    );
+  }
+
+  const current = data.current;
+  const isDay = current.is_day === 1;
+  const wi = wmoIcon(current.weather_code, isDay);
+  const Icon = wi.Icon;
+
+  const wide = w >= 2;
+  const extraWide = w >= 3;
+  const tall = h >= 2;
+  const veryTall = h >= 3;
+  const numForecast = extraWide ? 7 : wide ? 5 : 4;
+
+  const Header = (
+    <div className="flex items-center justify-between gap-2 shrink-0">
+      <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold truncate">
+        {city || "Weather"}
+      </span>
+    </div>
+  );
+
+  const Details = (
+    <div className="grid grid-cols-3 gap-1.5 shrink-0">
+      <Stat label="Feels" value={`${Math.round(current.apparent_temperature)}${unitLabel}`} />
+      <Stat label="Humidity" value={`${current.relative_humidity_2m}%`} />
+      <Stat
+        label="Wind"
+        value={`${Math.round(current.wind_speed_10m)} ${windUnit} ${windDir(current.wind_direction_10m)}`}
+      />
+    </div>
+  );
+
+  const HeroBlock = (size: "sm" | "md" | "lg") => (
+    <div className="flex items-center gap-3 shrink-0">
+      <div
+        className={`text-accent ${
+          size === "lg" ? "w-12 h-12" : size === "md" ? "w-9 h-9" : "w-8 h-8"
+        }`}
+      >
+        <Icon className="w-full h-full" />
+      </div>
+      <div className="min-w-0">
+        <div
+          className={`font-mono font-semibold tabular-nums text-text leading-none ${
+            size === "lg" ? "text-3xl" : size === "md" ? "text-2xl" : "text-xl"
+          }`}
+        >
+          {Math.round(current.temperature_2m)}
+          {unitLabel}
+        </div>
+        <div className="text-[11px] text-text-muted truncate mt-0.5">{wi.label}</div>
+      </div>
+    </div>
+  );
+
+  // 1×1
+  if (!wide && !tall) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-1 p-2">
+        <div className="text-accent w-10 h-10">
+          <Icon className="w-full h-full" />
+        </div>
+        <div className="text-xl font-mono font-semibold tabular-nums text-text leading-none">
+          {Math.round(current.temperature_2m)}
+          {unitLabel}
+        </div>
+        <div className="text-[10px] text-text-muted truncate max-w-full">{wi.label}</div>
+      </div>
+    );
+  }
+
+  // 2×1 — hero + details on one row
+  if (wide && !tall) {
+    return (
+      <div className="h-full flex flex-col gap-1.5 p-3">
+        {Header}
+        <div className="flex-1 flex items-center gap-4 min-h-0">
+          {HeroBlock("md")}
+          <div className="flex-1 min-w-0">{Details}</div>
+        </div>
+      </div>
+    );
+  }
+
+  // 1×2 / 1×3 — vertical: hero on top, forecast list below
+  if (!wide && tall) {
+    return (
+      <div className="h-full flex flex-col gap-2 p-3">
+        {Header}
+        {HeroBlock("md")}
+        <div className="flex-1 flex flex-col min-h-0 gap-0.5 overflow-hidden">
+          {(data.daily?.time ?? []).slice(0, veryTall ? 7 : 4).map((d, i) => {
+            const code = data.daily!.weather_code[i];
+            const max = data.daily!.temperature_2m_max[i];
+            const min = data.daily!.temperature_2m_min[i];
+            const f = wmoIcon(code, true);
+            const F = f.Icon;
+            return (
+              <div
+                key={d}
+                className="flex items-center gap-2 py-0.5 border-t border-border-subtle first:border-0"
+              >
+                <span className="text-[10px] text-text-muted w-10 shrink-0">{dayLabel(d, i)}</span>
+                <div className="text-text-secondary w-4 h-4 shrink-0">
+                  <F className="w-full h-full" />
+                </div>
+                <span className="flex-1" />
+                <span className="text-[11px] font-mono tabular-nums text-text">
+                  {Math.round(max)}°
+                </span>
+                <span className="text-[11px] font-mono tabular-nums text-text-muted">
+                  {Math.round(min)}°
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // 2×2 and bigger — hero + details + forecast cards row
+  return (
+    <div className="h-full flex flex-col gap-2 p-3">
+      {Header}
+      <div className="flex items-center justify-between gap-3 shrink-0">
+        {HeroBlock(veryTall ? "lg" : "md")}
+        {wide && Details}
+      </div>
+      <div className="flex-1 flex gap-1.5 min-h-0">
+        {(data.daily?.time ?? []).slice(0, numForecast).map((d, i) => {
+          const code = data.daily!.weather_code[i];
+          const max = data.daily!.temperature_2m_max[i];
+          const min = data.daily!.temperature_2m_min[i];
+          const f = wmoIcon(code, true);
+          const F = f.Icon;
+          return (
+            <div
+              key={d}
+              className="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 rounded-md bg-bg-card/40 px-1 py-1.5"
+            >
+              <span className="text-[9px] text-text-muted">{dayLabel(d, i)}</span>
+              <div className="text-text-secondary w-5 h-5">
+                <F className="w-full h-full" />
+              </div>
+              <div className="flex items-baseline gap-1">
+                <span className="text-[11px] font-mono font-semibold tabular-nums text-text">
+                  {Math.round(max)}°
+                </span>
+                <span className="text-[10px] font-mono tabular-nums text-text-muted">
+                  {Math.round(min)}°
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-md bg-bg-card/40 px-1.5 py-1 min-w-0">
+      <span className="text-[10px] text-text-muted truncate w-full text-center">{label}</span>
+      <span className="text-[11px] font-mono font-semibold tabular-nums text-text truncate w-full text-center">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Config panel — city search via Open-Meteo geocoding + manual lat/lon
+// ---------------------------------------------------------------------------
+
+function WeatherConfigPanel({ config, save }: WidgetConfigProps<WeatherConfig>) {
+  const [search, setSearch] = useState(config?.city ?? "");
+  const [results, setResults] = useState<GeocodingResponse["results"]>([]);
+  const [searching, setSearching] = useState(false);
+
+  const runSearch = async () => {
+    const q = search.trim();
+    if (!q) return;
+    setSearching(true);
+    try {
+      const r = await fetch(
+        `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5`,
+      );
+      const data = (await r.json()) as GeocodingResponse;
+      setResults(data.results ?? []);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const pick = (city: string, lat: number, lon: number) => {
+    save({ city, lat, lon });
+    setResults([]);
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+          City
+        </label>
+        <div className="flex gap-1.5">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                runSearch();
+              }
+            }}
+            placeholder="e.g. Bogotá"
+            className="flex-1 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text placeholder:text-text-muted focus:outline-none focus:border-accent/50"
+          />
+          <button
+            onClick={runSearch}
+            disabled={searching || !search.trim()}
+            className="px-3 py-1.5 text-[11px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted disabled:opacity-40"
+          >
+            {searching ? "…" : "Search"}
+          </button>
+        </div>
+        {results && results.length > 0 && (
+          <div className="rounded border border-border-subtle bg-bg-card/40 max-h-40 overflow-auto">
+            {results.map((r) => (
+              <button
+                key={`${r.latitude},${r.longitude}`}
+                onClick={() => pick(r.name, r.latitude, r.longitude)}
+                className="w-full text-left px-2 py-1 text-[12px] text-text-secondary hover:text-text hover:bg-bg-hover"
+              >
+                <span className="text-text">{r.name}</span>
+                {r.country && (
+                  <span className="text-text-muted text-[11px] ml-1">· {r.country}</span>
+                )}
+                <span className="text-text-muted/60 text-[10px] font-mono ml-1">
+                  {r.latitude.toFixed(2)}, {r.longitude.toFixed(2)}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {config?.lat != null && config?.lon != null && (
+        <div className="text-[10px] text-text-muted font-mono">
+          Current: {config.lat.toFixed(2)}, {config.lon.toFixed(2)}
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+          Units
+        </label>
+        <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card/40">
+          {(["celsius", "fahrenheit"] as const).map((u) => (
+            <button
+              key={u}
+              onClick={() => save({ units: u })}
+              className={`px-3 py-1 text-[11px] rounded transition-colors ${
+                (config?.units ?? "celsius") === u
+                  ? "bg-bg-elevated text-text shadow-sm"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              {u === "celsius" ? "°C" : "°F"}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+const WeatherIcon = (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className="w-4 h-4"
+  >
+    <path d="M17 18a4 4 0 0 0 0-8 6 6 0 0 0-11.6 1.5A4 4 0 0 0 7 18z" />
+    <line x1="8" y1="20" x2="7" y2="23" />
+    <line x1="12" y1="20" x2="11" y2="23" />
+    <line x1="16" y1="20" x2="15" y2="23" />
+  </svg>
+);
+
+const def: WidgetDefinition<WeatherConfig> = {
+  type: "weather",
+  title: "Weather",
+  icon: WeatherIcon,
+  category: "external",
+  description: "Current conditions + multi-day forecast via Open-Meteo. No auth required.",
+  minW: 1,
+  minH: 1,
+  maxW: 3,
+  maxH: 3,
+  defaultW: 2,
+  defaultH: 2,
+  defaultConfig: { units: "celsius" },
+  Component: WeatherWidget,
+  ConfigPanel: WeatherConfigPanel,
+};
+
+export default def;
