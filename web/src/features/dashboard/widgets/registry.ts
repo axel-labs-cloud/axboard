@@ -5,6 +5,7 @@ import checklist from "./checklist";
 import apps from "./apps";
 import app from "./app";
 import weather from "./weather";
+import iframe from "./iframe";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -13,6 +14,7 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   apps,
   app,
   weather,
+  iframe,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

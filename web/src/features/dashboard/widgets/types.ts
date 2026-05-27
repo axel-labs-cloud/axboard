@@ -6,7 +6,8 @@ export type WidgetType =
   | "checklist"
   | "apps"
   | "app"
-  | "weather";
+  | "weather"
+  | "iframe";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -74,6 +75,20 @@ export interface WeatherConfig {
   units?: "celsius" | "fahrenheit";
 }
 
+/**
+ * Iframe / Embed widget. Drops any URL into the dashboard as an iframe.
+ * Sites that send X-Frame-Options or a CSP frame-ancestors directive will
+ * silently render blank — the widget surfaces an "open in new tab" link
+ * either way.
+ */
+export interface IframeConfig {
+  url?: string;
+  /** Periodic reload interval in seconds. 0 / undefined disables. */
+  refreshSec?: number;
+  /** Hide the title bar on the widget surface (just show the iframe). */
+  hideTitleBar?: boolean;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -81,10 +96,17 @@ export type WidgetConfigByType = {
   apps: AppsConfig;
   app: AppConfig;
   weather: WeatherConfig;
+  iframe: IframeConfig;
 };
 
 export type AnyWidgetConfig = Partial<
-  ClockConfig & ShortcutConfig & ChecklistConfig & AppsConfig & AppConfig & WeatherConfig
+  ClockConfig &
+    ShortcutConfig &
+    ChecklistConfig &
+    AppsConfig &
+    AppConfig &
+    WeatherConfig &
+    IframeConfig
 >;
 
 export interface Widget {
