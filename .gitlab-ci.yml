@@ -68,7 +68,11 @@ build:
   services:
     # Route docker.io pulls through Google's docker.io mirror so the
     # build doesn't hit the Docker Hub anonymous rate limit on every push.
+    # `alias: docker` is required — without it, the runner derives the
+    # service hostname from the fully-qualified image name and DOCKER_HOST
+    # can't resolve `docker:2375`.
     - name: docker.io/library/docker:27-dind
+      alias: docker
       command: ["--registry-mirror=https://mirror.gcr.io"]
   variables:
     DOCKER_TLS_CERTDIR: ""
