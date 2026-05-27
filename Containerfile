@@ -1,0 +1,30 @@
+FROM docker.io/library/node:22-alpine AS web-build
+WORKDIR /src
+COPY web/package.json web/package-lock.json* ./web/
+WORKDIR /src/web
+RUN npm ci
+WORKDIR /src
+RUN mkdir -p internal/web/dist && touch internal/web/dist/.placeholder
+COPY web ./web
+WORKDIR /src/web
+RUN npm run build
+
+FROM docker.io/library/golang:1.26-alpine AS go-build
+WORKDIR /src
+COPY go.mod go.sum* ./
+RUN go mod download
+COPY . .
+COPY --from=web-build /src/internal/web/dist ./internal/web/dist
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/ianua ./cmd/ianua
+
+FROM docker.io/library/alpine:3.20
+RUN apk add --no-cache ca-certificates tzdata \
+    && mkdir -p /etc/ianua /var/lib/ianua \
+    && addgroup -S ianua && adduser -S -G ianua -h /var/lib/ianua ianua \
+    && chown -R ianua:ianua /var/lib/ianua
+COPY --from=go-build /out/ianua /usr/local/bin/ianua
+USER ianua:ianua
+WORKDIR /var/lib/ianua
+EXPOSE 8080
+ENTRYPOINT ["/usr/local/bin/ianua"]
+CMD ["--config", "/etc/ianua/config.yaml", "--state", "/var/lib/ianua/state.yaml", "--addr", ":8080"]

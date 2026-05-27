@@ -1,0 +1,18 @@
+export const TIMEZONES = [
+  "America/New_York", "America/Chicago", "America/Denver", "America/Los_Angeles",
+  "America/Anchorage", "America/Toronto", "America/Vancouver", "America/Mexico_City",
+  "America/Sao_Paulo", "America/Buenos_Aires", "America/Bogota", "America/Lima",
+  "Europe/London", "Europe/Paris", "Europe/Berlin", "Europe/Madrid", "Europe/Rome",
+  "Europe/Amsterdam", "Europe/Brussels", "Europe/Zurich", "Europe/Vienna",
+  "Europe/Stockholm", "Europe/Oslo", "Europe/Copenhagen", "Europe/Helsinki",
+  "Europe/Warsaw", "Europe/Prague", "Europe/Budapest", "Europe/Bucharest",
+  "Europe/Athens", "Europe/Istanbul", "Europe/Moscow", "Europe/Kiev",
+  "Europe/Dublin", "Europe/Lisbon",
+  "Asia/Tokyo", "Asia/Seoul", "Asia/Shanghai", "Asia/Hong_Kong", "Asia/Taipei",
+  "Asia/Singapore", "Asia/Bangkok", "Asia/Jakarta", "Asia/Kolkata", "Asia/Mumbai",
+  "Asia/Dubai", "Asia/Riyadh", "Asia/Tehran", "Asia/Karachi",
+  "Australia/Sydney", "Australia/Melbourne", "Australia/Perth", "Australia/Brisbane",
+  "Pacific/Auckland", "Pacific/Fiji", "Pacific/Honolulu",
+  "Africa/Cairo", "Africa/Lagos", "Africa/Johannesburg", "Africa/Nairobi",
+  "UTC",
+];

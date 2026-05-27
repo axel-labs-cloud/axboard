@@ -1,0 +1,86 @@
+# ianua config.yaml — human source of truth.
+# Edited by hand. The server reads freely and writes only via the UI
+# "edit app" flow, which warns that comments will be lost.
+
+server:
+  bind: "0.0.0.0:8080"
+
+apps:
+  - id: sonarr
+    name: Sonarr
+    url: https://sonarr.lan
+    icon: sonarr                 # resolver: simple-icons -> dashboard-icons -> URL -> initials
+    group: media
+    description: TV automation
+    health:
+      type: http
+      url: https://sonarr.lan/ping
+      expect_status: 200
+      interval: 60s
+      timeout: 5s
+
+  - id: radarr
+    name: Radarr
+    url: https://radarr.lan
+    icon: radarr
+    group: media
+    health:
+      type: http
+      url: https://radarr.lan/ping
+      expect_status: 200
+      interval: 60s
+
+  - id: proxmox
+    name: Proxmox
+    url: https://pve.lan:8006
+    icon: proxmox
+    group: infra
+    description: Hypervisor cluster
+    health:
+      type: tcp
+      host: pve.lan
+      port: 8006
+      interval: 60s
+
+  - id: github
+    name: GitHub
+    url: https://github.com
+    icon: github
+    group: bookmarks
+    health: { type: none }
+
+groups:
+  - id: media
+    name: Media
+    color: "#8b5cf6"
+  - id: infra
+    name: Infrastructure
+    color: "#f59e0b"
+  - id: bookmarks
+    name: Bookmarks
+
+dashboards:
+  - id: home
+    name: Home
+    default: true
+    widgets:
+      - id: apps-main
+        type: apps
+        title: Services
+        config:
+          groups: [media, infra]
+          density: default
+
+      - id: bookmarks
+        type: apps
+        title: Bookmarks
+        config:
+          groups: [bookmarks]
+          density: compact
+
+      - id: clock-1
+        type: clock
+        title: Clock
+        config:
+          use24h: true
+          timezones: [America/Bogota]

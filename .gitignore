@@ -1,0 +1,12 @@
+config/config.yaml
+state.yaml
+state.yaml.tmp
+bin/
+internal/web/dist/*
+!internal/web/dist/.placeholder
+web/node_modules/
+node_modules/
+.env
+.env.local
+*.log
+.DS_Store

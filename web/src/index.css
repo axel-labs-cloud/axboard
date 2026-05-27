@@ -1,0 +1,77 @@
+@import "tailwindcss";
+
+@theme {
+  /* Surface palette — page → card → elevated → hover (each step slightly lighter). */
+  --color-bg: #09090b;
+  --color-bg-card: #111114;
+  --color-bg-elevated: #18181c;
+  --color-bg-hover: #1f1f24;
+
+  /* Borders — base and a softer "subtle" for inner divisions. */
+  --color-border: #27272a;
+  --color-border-subtle: #1f1f23;
+
+  /* Text scale — primary → secondary → muted. */
+  --color-text: #f4f4f5;
+  --color-text-secondary: #d4d4d8;
+  --color-text-muted: #71717a;
+
+  /* Accent (focus / selection / edit-mode highlights). */
+  --color-accent: #818cf8;
+
+  /* Danger / destructive. */
+  --color-danger: #f43f5e;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    background:
+      radial-gradient(1200px 600px at 80% -10%, rgba(129, 140, 248, 0.08), transparent 60%),
+      radial-gradient(900px 500px at 0% 100%, rgba(244, 63, 94, 0.05), transparent 60%),
+      var(--color-bg);
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+  }
+}
+
+/* react-grid-layout polish — softer placeholder, smoother resize handle. */
+.react-grid-item.react-grid-placeholder {
+  background: rgba(129, 140, 248, 0.12) !important;
+  border: 1px dashed rgba(129, 140, 248, 0.45) !important;
+  border-radius: 6px;
+  opacity: 1 !important;
+}
+.react-grid-item > .react-resizable-handle::after {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+}
+
+/* Scrollbar styling — subtler in dark theme. */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 6px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-border-subtle);
+}

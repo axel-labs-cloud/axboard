@@ -1,0 +1,329 @@
+package api
+
+import (
+	"encoding/json"
+	"fmt"
+	"io/fs"
+	"net/http"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/config"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/health"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/state"
+)
+
+// Server holds the runtime references the HTTP handlers need.
+type Server struct {
+	configMu  sync.RWMutex
+	config    *config.Config
+	configErr atomic.Value // *ConfigErrorJS, nil-able
+
+	configPath string
+
+	State     *state.Store
+	Health    *health.Pool
+	Broadcast *Broadcaster
+}
+
+func NewServer(configPath string, st *state.Store, hp *health.Pool, b *Broadcaster) *Server {
+	return &Server{
+		configPath: configPath,
+		State:      st,
+		Health:     hp,
+		Broadcast:  b,
+	}
+}
+
+// SetConfig is called by the config watcher on every successful reload.
+func (s *Server) SetConfig(c *config.Config) {
+	s.configMu.Lock()
+	s.config = c
+	s.configMu.Unlock()
+	s.configErr.Store((*ConfigErrorJS)(nil))
+}
+
+// SetConfigError is called when a YAML save can't be parsed. The last-good
+// config keeps serving from GetConfig().
+func (s *Server) SetConfigError(err error) {
+	if err == nil {
+		s.configErr.Store((*ConfigErrorJS)(nil))
+		return
+	}
+	ce := &ConfigErrorJS{Message: err.Error()}
+	if lerr, ok := err.(*config.LoadError); ok {
+		ce.Message = lerr.Message
+		ce.Line = lerr.Line
+		ce.Column = lerr.Column
+	}
+	s.configErr.Store(ce)
+}
+
+// GetConfigError returns the last parse error if config is in a broken state.
+func (s *Server) GetConfigError() *ConfigErrorJS {
+	v := s.configErr.Load()
+	if v == nil {
+		return nil
+	}
+	return v.(*ConfigErrorJS)
+}
+
+func (s *Server) getConfig() *config.Config {
+	s.configMu.RLock()
+	defer s.configMu.RUnlock()
+	return s.config
+}
+
+// SnapshotConfig returns the currently-loaded config. Returns nil if no
+// successful load has happened yet. Safe for concurrent use.
+func (s *Server) SnapshotConfig() *config.Config {
+	return s.getConfig()
+}
+
+// Router builds the chi mux. spaFS is the embedded built frontend; pass nil
+// in dev (Vite handles the SPA on its own port).
+func (s *Server) Router(spaFS fs.FS) http.Handler {
+	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
+	r.Use(middleware.RequestID)
+	r.Use(loggerMW)
+
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	})
+
+	r.Route("/api", func(r chi.Router) {
+		r.Get("/config", s.handleGetConfig)
+		r.Put("/config", s.handlePutConfig)
+		r.Get("/state", s.handleGetState)
+		r.Put("/state", s.handlePutState)
+		r.Get("/apps/status", s.handleStatus)
+		r.Post("/apps/{id}/check", s.handleForceCheck)
+		r.Get("/events", s.handleSSE)
+	})
+
+	if spaFS != nil {
+		r.NotFound(spaHandler(spaFS))
+	}
+
+	return r
+}
+
+// dashboardOut is the per-dashboard shape the frontend reads: widgets carry
+// their merged (config + state overrides) config so the UI doesn't have to
+// merge client-side.
+type dashboardOut struct {
+	ID      string          `json:"id"`
+	Name    string          `json:"name"`
+	Default bool            `json:"default,omitempty"`
+	Widgets []widgetOut     `json:"widgets,omitempty"`
+}
+
+type widgetOut struct {
+	I      string         `json:"i"`
+	Type   string         `json:"type"`
+	Title  string         `json:"title"`
+	Config map[string]any `json:"config,omitempty"`
+}
+
+type configOut struct {
+	Server     config.ServerConfig `json:"server"`
+	Apps       []config.App        `json:"apps,omitempty"`
+	Groups     []config.Group      `json:"groups,omitempty"`
+	Dashboards []dashboardOut      `json:"dashboards,omitempty"`
+}
+
+func mergeWidgetConfig(base, over map[string]any) map[string]any {
+	if base == nil && over == nil {
+		return nil
+	}
+	out := make(map[string]any, len(base)+len(over))
+	for k, v := range base {
+		out[k] = v
+	}
+	for k, v := range over {
+		out[k] = v
+	}
+	return out
+}
+
+func (s *Server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
+	c := s.getConfig()
+	if c == nil {
+		writeJSON(w, http.StatusOK, configOut{})
+		return
+	}
+	st := s.State.Get()
+	overrides := map[string]map[string]any{}
+	if st != nil {
+		for id, cfg := range st.WidgetConfigs {
+			overrides[id] = cfg
+		}
+	}
+	out := configOut{
+		Server:     c.Server,
+		Apps:       c.Apps,
+		Groups:     c.Groups,
+		Dashboards: make([]dashboardOut, 0, len(c.Dashboards)),
+	}
+	for _, d := range c.Dashboards {
+		do := dashboardOut{
+			ID:      d.ID,
+			Name:    d.Name,
+			Default: d.Default,
+			Widgets: make([]widgetOut, 0, len(d.Widgets)),
+		}
+		for _, w := range d.Widgets {
+			do.Widgets = append(do.Widgets, widgetOut{
+				I:      w.ID,
+				Type:   w.Type,
+				Title:  w.Title,
+				Config: mergeWidgetConfig(w.Config, overrides[w.ID]),
+			})
+		}
+		out.Dashboards = append(out.Dashboards, do)
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// handlePutConfig writes the (incoming) config back to config.yaml. This is
+// the only path that ever mutates the human file; it WILL drop comments and
+// reformat. The frontend warns before calling this.
+func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
+	var next config.Config
+	if err := json.NewDecoder(r.Body).Decode(&next); err != nil {
+		writeErr(w, http.StatusBadRequest, "decode: "+err.Error())
+		return
+	}
+	if err := config.Save(s.configPath, &next); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	// The watcher will re-load and reconcile; respond with what we just wrote.
+	writeJSON(w, http.StatusOK, next)
+}
+
+func (s *Server) handleGetState(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, s.State.Get())
+}
+
+func (s *Server) handlePutState(w http.ResponseWriter, r *http.Request) {
+	var next state.State
+	if err := json.NewDecoder(r.Body).Decode(&next); err != nil {
+		writeErr(w, http.StatusBadRequest, "decode: "+err.Error())
+		return
+	}
+	if err := s.State.Save(&next); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, &next)
+}
+
+func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, s.Health.Snapshot())
+}
+
+func (s *Server) handleForceCheck(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	s.Health.Force(id)
+	// Force is async, so we just acknowledge — the next poll picks up the
+	// updated result.
+	writeJSON(w, http.StatusAccepted, map[string]string{"id": id, "status": "scheduled"})
+}
+
+func (s *Server) handleSSE(w http.ResponseWriter, r *http.Request) {
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("X-Accel-Buffering", "no")
+
+	ch, unsubscribe := s.Broadcast.Subscribe()
+	defer unsubscribe()
+
+	// Emit any pending config error immediately so a refreshed UI gets it.
+	if ce := s.GetConfigError(); ce != nil {
+		payload, _ := json.Marshal(Event{Type: "config_error", Error: ce})
+		fmt.Fprintf(w, "data: %s\n\n", payload)
+		flusher.Flush()
+	}
+
+	// Keepalive ticker so proxies don't time out the long-lived connection.
+	keepalive := time.NewTicker(25 * time.Second)
+	defer keepalive.Stop()
+
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		case payload, ok := <-ch:
+			if !ok {
+				return
+			}
+			fmt.Fprintf(w, "data: %s\n\n", payload)
+			flusher.Flush()
+		case <-keepalive.C:
+			fmt.Fprint(w, ": keepalive\n\n")
+			flusher.Flush()
+		}
+	}
+}
+
+func writeJSON(w http.ResponseWriter, code int, body any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	if body != nil {
+		_ = json.NewEncoder(w).Encode(body)
+	}
+}
+
+func writeErr(w http.ResponseWriter, code int, msg string) {
+	writeJSON(w, code, map[string]string{"error": msg})
+}
+
+func spaHandler(spa fs.FS) http.HandlerFunc {
+	fileServer := http.FileServer(http.FS(spa))
+	return func(w http.ResponseWriter, r *http.Request) {
+		// /api and /healthz are already handled above.
+		if strings.HasPrefix(r.URL.Path, "/api/") || r.URL.Path == "/healthz" {
+			http.NotFound(w, r)
+			return
+		}
+		// Serve the file if it exists; otherwise fall back to index.html so
+		// react-router can take over.
+		path := strings.TrimPrefix(r.URL.Path, "/")
+		if path == "" {
+			path = "index.html"
+		}
+		if _, err := fs.Stat(spa, path); err != nil {
+			r2 := *r
+			r2.URL.Path = "/"
+			fileServer.ServeHTTP(w, &r2)
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	}
+}
+
+func loggerMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+		next.ServeHTTP(ww, r)
+		if !strings.HasPrefix(r.URL.Path, "/api/events") { // SSE is long-lived
+			dur := time.Since(start)
+			httpLog(r.Method, r.URL.Path, ww.Status(), dur)
+		}
+	})
+}
