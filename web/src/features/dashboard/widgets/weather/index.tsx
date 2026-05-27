@@ -132,10 +132,12 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
   const wi = wmoIcon(current.weather_code, isDay);
   const Icon = wi.Icon;
 
-  const wide = w >= 2;
-  const extraWide = w >= 3;
-  const tall = h >= 2;
-  const veryTall = h >= 3;
+  // Breakpoints scaled 2x from the original sketch — the widget now starts
+  // at 2x2 and runs up to 6x4. "wide" kicks in at 3, the bigger hero at 4.
+  const wide = w >= 3;
+  const extraWide = w >= 5;
+  const tall = h >= 3;
+  const veryTall = h >= 4;
   const numForecast = extraWide ? 7 : wide ? 5 : 4;
 
   const Header = (
@@ -158,10 +160,10 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
   );
 
   const HeroBlock = (size: "sm" | "md" | "lg") => (
-    <div className="flex items-center gap-3 shrink-0">
+    <div className="flex items-center gap-4 shrink-0">
       <div
         className={`text-accent ${
-          size === "lg" ? "w-12 h-12" : size === "md" ? "w-9 h-9" : "w-8 h-8"
+          size === "lg" ? "w-20 h-20" : size === "md" ? "w-16 h-16" : "w-14 h-14"
         }`}
       >
         <Icon className="w-full h-full" />
@@ -169,39 +171,50 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
       <div className="min-w-0">
         <div
           className={`font-mono font-semibold tabular-nums text-text leading-none ${
-            size === "lg" ? "text-3xl" : size === "md" ? "text-2xl" : "text-xl"
+            size === "lg" ? "text-5xl" : size === "md" ? "text-4xl" : "text-3xl"
           }`}
         >
           {Math.round(current.temperature_2m)}
           {unitLabel}
         </div>
-        <div className="text-[11px] text-text-muted truncate mt-0.5">{wi.label}</div>
+        <div
+          className={`text-text-muted truncate mt-1 ${
+            size === "lg" ? "text-[14px]" : "text-[12px]"
+          }`}
+        >
+          {wi.label}
+        </div>
       </div>
     </div>
   );
 
-  // 1×1
+  // 2×2 — minimum size, just hero centered
   if (!wide && !tall) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-1 p-2">
-        <div className="text-accent w-10 h-10">
+      <div className="h-full flex flex-col items-center justify-center gap-1.5 p-3">
+        <div className="text-accent w-16 h-16">
           <Icon className="w-full h-full" />
         </div>
-        <div className="text-xl font-mono font-semibold tabular-nums text-text leading-none">
+        <div className="text-3xl font-mono font-semibold tabular-nums text-text leading-none">
           {Math.round(current.temperature_2m)}
           {unitLabel}
         </div>
-        <div className="text-[10px] text-text-muted truncate max-w-full">{wi.label}</div>
+        <div className="text-[12px] text-text-muted truncate max-w-full">{wi.label}</div>
+        {city && (
+          <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted/70 truncate max-w-full">
+            {city}
+          </div>
+        )}
       </div>
     );
   }
 
-  // 2×1 — hero + details on one row
+  // wide & short — hero + details on one row
   if (wide && !tall) {
     return (
-      <div className="h-full flex flex-col gap-1.5 p-3">
+      <div className="h-full flex flex-col gap-2 p-3">
         {Header}
-        <div className="flex-1 flex items-center gap-4 min-h-0">
+        <div className="flex-1 flex items-center gap-5 min-h-0">
           {HeroBlock("md")}
           <div className="flex-1 min-w-0">{Details}</div>
         </div>
@@ -209,14 +222,14 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
     );
   }
 
-  // 1×2 / 1×3 — vertical: hero on top, forecast list below
+  // narrow & tall — vertical: hero on top, forecast list below
   if (!wide && tall) {
     return (
-      <div className="h-full flex flex-col gap-2 p-3">
+      <div className="h-full flex flex-col gap-2.5 p-3">
         {Header}
         {HeroBlock("md")}
         <div className="flex-1 flex flex-col min-h-0 gap-0.5 overflow-hidden">
-          {(data.daily?.time ?? []).slice(0, veryTall ? 7 : 4).map((d, i) => {
+          {(data.daily?.time ?? []).slice(0, veryTall ? 7 : 5).map((d, i) => {
             const code = data.daily!.weather_code[i];
             const max = data.daily!.temperature_2m_max[i];
             const min = data.daily!.temperature_2m_min[i];
@@ -225,17 +238,17 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
             return (
               <div
                 key={d}
-                className="flex items-center gap-2 py-0.5 border-t border-border-subtle first:border-0"
+                className="flex items-center gap-2 py-1 border-t border-border-subtle first:border-0"
               >
-                <span className="text-[10px] text-text-muted w-10 shrink-0">{dayLabel(d, i)}</span>
-                <div className="text-text-secondary w-4 h-4 shrink-0">
+                <span className="text-[11px] text-text-muted w-12 shrink-0">{dayLabel(d, i)}</span>
+                <div className="text-text-secondary w-5 h-5 shrink-0">
                   <F className="w-full h-full" />
                 </div>
                 <span className="flex-1" />
-                <span className="text-[11px] font-mono tabular-nums text-text">
+                <span className="text-[12px] font-mono tabular-nums text-text">
                   {Math.round(max)}°
                 </span>
-                <span className="text-[11px] font-mono tabular-nums text-text-muted">
+                <span className="text-[12px] font-mono tabular-nums text-text-muted">
                   {Math.round(min)}°
                 </span>
               </div>
@@ -246,15 +259,15 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
     );
   }
 
-  // 2×2 and bigger — hero + details + forecast cards row
+  // wide & tall — hero + details + forecast cards row
   return (
-    <div className="h-full flex flex-col gap-2 p-3">
+    <div className="h-full flex flex-col gap-2.5 p-4">
       {Header}
-      <div className="flex items-center justify-between gap-3 shrink-0">
+      <div className="flex items-center justify-between gap-4 shrink-0">
         {HeroBlock(veryTall ? "lg" : "md")}
         {wide && Details}
       </div>
-      <div className="flex-1 flex gap-1.5 min-h-0">
+      <div className="flex-1 flex gap-2 min-h-0">
         {(data.daily?.time ?? []).slice(0, numForecast).map((d, i) => {
           const code = data.daily!.weather_code[i];
           const max = data.daily!.temperature_2m_max[i];
@@ -264,17 +277,17 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
           return (
             <div
               key={d}
-              className="flex-1 min-w-0 flex flex-col items-center justify-center gap-0.5 rounded-md bg-bg-card/40 px-1 py-1.5"
+              className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 rounded-md bg-bg-card/40 px-1.5 py-2"
             >
-              <span className="text-[9px] text-text-muted">{dayLabel(d, i)}</span>
-              <div className="text-text-secondary w-5 h-5">
+              <span className="text-[11px] text-text-muted">{dayLabel(d, i)}</span>
+              <div className="text-text-secondary w-7 h-7">
                 <F className="w-full h-full" />
               </div>
-              <div className="flex items-baseline gap-1">
-                <span className="text-[11px] font-mono font-semibold tabular-nums text-text">
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-[13px] font-mono font-semibold tabular-nums text-text">
                   {Math.round(max)}°
                 </span>
-                <span className="text-[10px] font-mono tabular-nums text-text-muted">
+                <span className="text-[12px] font-mono tabular-nums text-text-muted">
                   {Math.round(min)}°
                 </span>
               </div>
@@ -429,12 +442,12 @@ const def: WidgetDefinition<WeatherConfig> = {
   icon: WeatherIcon,
   category: "external",
   description: "Current conditions + multi-day forecast via Open-Meteo. No auth required.",
-  minW: 1,
-  minH: 1,
-  maxW: 3,
-  maxH: 3,
-  defaultW: 2,
-  defaultH: 2,
+  minW: 2,
+  minH: 2,
+  maxW: 6,
+  maxH: 4,
+  defaultW: 4,
+  defaultH: 4,
   defaultConfig: { units: "celsius" },
   Component: WeatherWidget,
   ConfigPanel: WeatherConfigPanel,
