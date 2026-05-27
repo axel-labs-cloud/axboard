@@ -428,7 +428,10 @@ export function DashboardPage() {
                 linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)
               `,
               backgroundSize: `${cell + gap}px ${cell + gap}px`,
-              backgroundPosition: `${gap}px ${gap}px`,
+              // Offset by half-gap so lines fall in the middle of the gap
+              // between widgets — widgets then sit centered inside each
+              // visual grid cell, with equal margin on all four sides.
+              backgroundPosition: `${gap / 2}px ${gap / 2}px`,
               backgroundRepeat: "repeat",
             }}
           />
