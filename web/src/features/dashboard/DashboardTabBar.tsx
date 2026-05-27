@@ -79,52 +79,11 @@ export function DashboardTabBar({
   }, [menuOpen]);
 
   return (
-    <div className="flex items-center border-b border-border-subtle bg-bg-card/40 backdrop-blur-sm px-6 py-2 gap-3">
-      <div className="flex items-center gap-2 shrink-0 select-none">
-        <div className="w-5 h-5 rounded-md flex items-center justify-center bg-accent/15 ring-1 ring-accent/30">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-3 h-3 text-accent"
-          >
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <path d="M9 22V12h6v10" />
-          </svg>
-        </div>
-        <span className="text-[12px] font-semibold tracking-wide text-text">ianua</span>
-        <span className="w-px h-4 bg-border" />
-      </div>
-
-      {/* Dashboard tabs — shrink to content, scroll if too many */}
-      <div className="flex items-center gap-0.5 shrink min-w-0 overflow-x-auto max-w-[40%]">
-        {dashboards.map((db) => (
-          <DashboardTab
-            key={db.id}
-            db={db}
-            active={activeId === db.id}
-            editing={editing}
-            canDelete={editing && dashboards.length > 1}
-            renaming={renamingId === db.id}
-            onSelect={() => onSelect(db.id)}
-            onStartRename={() => setRenamingId(db.id)}
-            onCommitRename={(name) => {
-              setRenamingId(null);
-              if (name && name !== db.name) onRenameDashboard(db.id, name);
-            }}
-            onCancelRename={() => setRenamingId(null)}
-            onDelete={() => onDeleteDashboard(db.id)}
-          />
-        ))}
-        {editing && (
-          <button
-            onClick={onAddDashboard}
-            title="New dashboard"
-            className="ml-1 w-7 h-7 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
-          >
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-border-subtle bg-bg-card/40 backdrop-blur-sm px-6 py-2 gap-3">
+      {/* LEFT — logo + dashboard tabs */}
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center gap-2 shrink-0 select-none">
+          <div className="w-5 h-5 rounded-md flex items-center justify-center bg-accent/15 ring-1 ring-accent/30">
             <svg
               viewBox="0 0 24 24"
               fill="none"
@@ -132,19 +91,61 @@ export function DashboardTabBar({
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="w-3.5 h-3.5"
+              className="w-3 h-3 text-accent"
             >
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <path d="M9 22V12h6v10" />
             </svg>
-          </button>
-        )}
+          </div>
+          <span className="text-[12px] font-semibold tracking-wide text-text">ianua</span>
+          <span className="w-px h-4 bg-border" />
+        </div>
+        <div className="flex items-center gap-0.5 min-w-0 overflow-x-auto">
+          {dashboards.map((db) => (
+            <DashboardTab
+              key={db.id}
+              db={db}
+              active={activeId === db.id}
+              editing={editing}
+              canDelete={editing && dashboards.length > 1}
+              renaming={renamingId === db.id}
+              onSelect={() => onSelect(db.id)}
+              onStartRename={() => setRenamingId(db.id)}
+              onCommitRename={(name) => {
+                setRenamingId(null);
+                if (name && name !== db.name) onRenameDashboard(db.id, name);
+              }}
+              onCancelRename={() => setRenamingId(null)}
+              onDelete={() => onDeleteDashboard(db.id)}
+            />
+          ))}
+          {editing && (
+            <button
+              onClick={onAddDashboard}
+              title="New dashboard"
+              className="ml-1 w-7 h-7 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-3.5 h-3.5"
+              >
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Inline spotlight trigger — clickable bar styled like an input */}
+      {/* CENTER — dead-center search trigger */}
       <button
         onClick={onOpenSpotlight}
-        className="flex-1 max-w-md min-w-[160px] flex items-center gap-2 px-3 py-1.5 rounded-md border border-border-subtle bg-bg-card/60 text-text-muted hover:text-text-secondary hover:border-border transition-colors"
+        className="w-[min(420px,90vw)] flex items-center gap-2 px-3 py-1.5 rounded-md border border-border-subtle bg-bg-card/60 text-text-muted hover:text-text-secondary hover:border-border transition-colors"
         title="Search apps, bookmarks, the web (⌘K)"
       >
         <svg
@@ -165,7 +166,8 @@ export function DashboardTabBar({
         </kbd>
       </button>
 
-      <div className="flex items-center gap-1 shrink-0">
+      {/* RIGHT — edit-mode actions + Done + menu */}
+      <div className="flex items-center gap-1 justify-end min-w-0">
         {editing && (
           <>
             <IconButton title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
