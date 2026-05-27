@@ -195,13 +195,13 @@ export function ServicesEditor({ open, onClose }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[150] bg-black/70 backdrop-blur-sm flex items-stretch justify-stretch p-4"
+      className="fixed inset-0 z-[150] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6"
       onClick={() => {
         if (!dirty || confirm("Discard unsaved changes?")) onClose();
       }}
     >
       <div
-        className="bg-bg-elevated border border-border rounded-lg shadow-2xl w-full h-full flex flex-col ring-1 ring-white/5 overflow-hidden"
+        className="bg-bg-elevated border border-border rounded-lg shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col ring-1 ring-white/5 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -351,7 +351,6 @@ function GroupHeader({
   count,
   onAddApp,
   onPatch,
-  onRenameId,
   onDelete,
 }: {
   group: GroupDef;
@@ -361,9 +360,11 @@ function GroupHeader({
   onRenameId: (newId: string) => void;
   onDelete: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [idEdit, setIdEdit] = useState(false);
   const [colorOpen, setColorOpen] = useState(false);
+  const [name, setName] = useState(group.name);
+
+  // Keep local input in sync if the prop changes from elsewhere.
+  useEffect(() => setName(group.name), [group.name]);
 
   const palette = [
     "#7c3aed",
@@ -381,16 +382,13 @@ function GroupHeader({
   ];
 
   return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-bg-card/30 border-b border-border-subtle group/gh sticky top-[33px] z-10">
+    <div className="flex items-center gap-2 px-2 py-1.5 bg-bg-card/30 border-b border-border-subtle group/gh sticky top-[33px] z-10">
       <button
         onClick={() => setColorOpen((o) => !o)}
-        className="relative inline-flex items-center justify-center w-2 h-4 shrink-0"
-        title="Change color"
+        className="relative inline-flex items-center justify-center w-4 h-4 shrink-0 rounded ring-1 ring-white/10 hover:ring-white/30 transition-shadow"
+        style={{ background: group.color ?? "var(--color-border)" }}
+        title="Change group color"
       >
-        <span
-          className="inline-block w-1.5 h-4 rounded-sm"
-          style={{ background: group.color ?? "var(--color-border)" }}
-        />
         {colorOpen && (
           <div
             className="absolute top-full left-0 mt-1 z-30 bg-bg-elevated border border-border rounded-lg p-1.5 shadow-2xl ring-1 ring-white/5"
@@ -424,68 +422,37 @@ function GroupHeader({
         )}
       </button>
 
-      <div className="min-w-0 flex-1 flex items-center gap-1.5">
-        {editing ? (
-          <input
-            autoFocus
-            defaultValue={group.name}
-            onBlur={(e) => {
-              const v = e.target.value.trim();
-              if (v && v !== group.name) onPatch({ name: v });
-              setEditing(false);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              if (e.key === "Escape") setEditing(false);
-            }}
-            className="w-full px-1.5 py-0.5 text-[10px] uppercase tracking-[0.08em] font-semibold bg-bg-card border border-accent/40 rounded text-text focus:outline-none"
-          />
-        ) : (
-          <button
-            onDoubleClick={() => setEditing(true)}
-            className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold truncate text-left"
-            title="Double-click to rename"
-          >
-            {group.name}
-          </button>
-        )}
-        <span className="text-[10px] text-text-muted shrink-0">{count}</span>
-        {idEdit ? (
-          <input
-            autoFocus
-            defaultValue={group.id}
-            onBlur={(e) => {
-              onRenameId(e.target.value);
-              setIdEdit(false);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-              if (e.key === "Escape") setIdEdit(false);
-            }}
-            className="px-1.5 py-0.5 text-[10px] font-mono bg-bg-card border border-accent/40 rounded text-text-muted focus:outline-none w-24"
-          />
-        ) : (
-          <button
-            onClick={() => setIdEdit(true)}
-            className="text-[10px] text-text-muted/60 hover:text-text-secondary font-mono truncate"
-            title="Click to edit id"
-          >
-            ({group.id})
-          </button>
-        )}
-      </div>
+      <input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onBlur={() => {
+          const v = name.trim();
+          if (v && v !== group.name) onPatch({ name: v });
+          else if (!v) setName(group.name);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          if (e.key === "Escape") {
+            setName(group.name);
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        className="flex-1 min-w-0 px-1.5 py-1 text-[12px] font-medium bg-transparent border border-transparent hover:border-border-subtle focus:border-accent/40 focus:bg-bg-card rounded text-text focus:outline-none transition-colors"
+      />
+
+      <span className="text-[10px] text-text-muted shrink-0 tabular-nums px-0.5">{count}</span>
 
       <button
         onClick={onAddApp}
         title="Add service to this group"
-        className="w-5 h-5 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
+        className="w-6 h-6 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
       >
         <PlusIcon />
       </button>
       <button
         onClick={onDelete}
         title="Delete group"
-        className="w-5 h-5 flex items-center justify-center rounded text-text-muted/40 hover:text-rose-400 hover:bg-rose-400/10 opacity-0 group-hover/gh:opacity-100"
+        className="w-6 h-6 flex items-center justify-center rounded text-text-muted/50 hover:text-rose-400 hover:bg-rose-400/10"
       >
         <TrashIcon />
       </button>
