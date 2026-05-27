@@ -19,12 +19,15 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/ianua ./cmd/ianua
 
 FROM docker.io/library/alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata \
-    && mkdir -p /etc/ianua /var/lib/ianua \
-    && addgroup -S ianua && adduser -S -G ianua -h /var/lib/ianua ianua \
-    && chown -R ianua:ianua /var/lib/ianua
+    && mkdir -p /etc/ianua /var/lib/ianua
 COPY --from=go-build /out/ianua /usr/local/bin/ianua
-USER ianua:ianua
 WORKDIR /var/lib/ianua
 EXPOSE 8080
+# No USER directive: in rootless podman, container root maps to the host
+# user who started the daemon — that's how the bind-mounted config/ dir
+# stays writable from inside. Switching to a non-root in-container user
+# pushes the uid into the subuid range and breaks PUT /api/config (no
+# write permission on the bind mount). For LAN-bound homelab use, this
+# is the right trade-off.
 ENTRYPOINT ["/usr/local/bin/ianua"]
 CMD ["--config", "/etc/ianua/config.yaml", "--state", "/var/lib/ianua/state.yaml", "--addr", ":8080"]

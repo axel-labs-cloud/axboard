@@ -1,7 +1,9 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -106,4 +108,36 @@ func (d Duration) MarshalYAML() (any, error) {
 
 func (d Duration) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + time.Duration(d).String() + `"`), nil
+}
+
+// UnmarshalJSON accepts either a string like "60s" or a numeric nanoseconds
+// value. Mirrors UnmarshalYAML so PUT /api/config can round-trip the same
+// shape the server emits.
+func (d *Duration) UnmarshalJSON(data []byte) error {
+	if len(data) == 0 || string(data) == "null" {
+		*d = 0
+		return nil
+	}
+	if data[0] == '"' {
+		s, err := strconv.Unquote(string(data))
+		if err != nil {
+			return fmt.Errorf("duration: invalid quoted string: %w", err)
+		}
+		if s == "" {
+			*d = 0
+			return nil
+		}
+		parsed, err := time.ParseDuration(s)
+		if err != nil {
+			return fmt.Errorf("duration %q: %w", s, err)
+		}
+		*d = Duration(parsed)
+		return nil
+	}
+	var n int64
+	if err := json.Unmarshal(data, &n); err != nil {
+		return fmt.Errorf("duration: not a string or number: %w", err)
+	}
+	*d = Duration(n)
+	return nil
 }
