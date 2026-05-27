@@ -24,6 +24,8 @@ interface Props {
   onRenameDashboard: (id: string, name: string) => void;
   onDeleteDashboard: (id: string) => void;
   onOpenSpotlight: () => void;
+  theme: "dark" | "light";
+  setTheme: (t: "dark" | "light") => void;
 }
 
 export function DashboardTabBar({
@@ -43,6 +45,8 @@ export function DashboardTabBar({
   onRenameDashboard,
   onDeleteDashboard,
   onOpenSpotlight,
+  theme,
+  setTheme,
 }: Props) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -52,8 +56,6 @@ export function DashboardTabBar({
   useEffect(() => {
     if (!menuOpen) return;
     const onDown = (e: MouseEvent) => {
-      // The menu portal lives outside this subtree; close on any click that
-      // isn't on the trigger button.
       if (menuButtonRef.current && !menuButtonRef.current.contains(e.target as Node)) {
         const tgt = e.target as HTMLElement;
         if (!tgt.closest("[data-general-menu]")) setMenuOpen(false);
@@ -96,7 +98,9 @@ export function DashboardTabBar({
         <span className="text-[12px] font-semibold tracking-wide text-text">ianua</span>
         <span className="w-px h-4 bg-border" />
       </div>
-      <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto">
+
+      {/* Dashboard tabs — shrink to content, scroll if too many */}
+      <div className="flex items-center gap-0.5 shrink min-w-0 overflow-x-auto max-w-[40%]">
         {dashboards.map((db) => (
           <DashboardTab
             key={db.id}
@@ -136,6 +140,30 @@ export function DashboardTabBar({
           </button>
         )}
       </div>
+
+      {/* Inline spotlight trigger — clickable bar styled like an input */}
+      <button
+        onClick={onOpenSpotlight}
+        className="flex-1 max-w-md min-w-[160px] flex items-center gap-2 px-3 py-1.5 rounded-md border border-border-subtle bg-bg-card/60 text-text-muted hover:text-text-secondary hover:border-border transition-colors"
+        title="Search apps, bookmarks, the web (⌘K)"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-3.5 h-3.5 shrink-0"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <span className="flex-1 text-left text-[12px] truncate">Search…</span>
+        <kbd className="px-1 py-0.5 rounded bg-bg-elevated border border-border-subtle font-mono text-[10px] shrink-0">
+          ⌘K
+        </kbd>
+      </button>
 
       <div className="flex items-center gap-1 shrink-0">
         {editing && (
@@ -183,7 +211,7 @@ export function DashboardTabBar({
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
             </IconButton>
-            <div className="w-px h-4 bg-bg-hover mx-1" />
+            <div className="w-px h-4 bg-border mx-1" />
             <button
               onClick={onManageServices}
               className="px-2.5 py-1 text-[12px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted flex items-center gap-1.5"
@@ -245,12 +273,7 @@ export function DashboardTabBar({
           }`}
           title="Menu"
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="w-3.5 h-3.5"
-            aria-hidden
-          >
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5" aria-hidden>
             <circle cx="12" cy="5" r="1.6" />
             <circle cx="12" cy="12" r="1.6" />
             <circle cx="12" cy="19" r="1.6" />
@@ -261,32 +284,9 @@ export function DashboardTabBar({
           createPortal(
             <div
               data-general-menu
-              className="fixed z-[300] min-w-[200px] bg-bg-elevated border border-border rounded-lg shadow-2xl ring-1 ring-white/5 py-1"
+              className="fixed z-[300] min-w-[220px] bg-bg-elevated border border-border rounded-lg shadow-2xl ring-1 ring-white/5 py-1"
               style={{ top: menuPos.top, right: menuPos.right }}
             >
-              <MenuItem
-                label="Search…"
-                shortcut="⌘K"
-                icon={
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-3.5 h-3.5"
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                }
-                onClick={() => {
-                  setMenuOpen(false);
-                  onOpenSpotlight();
-                }}
-              />
-              <div className="my-1 border-t border-border-subtle" />
               <MenuItem
                 label={editing ? "Done editing" : "Edit dashboard"}
                 icon={
@@ -308,6 +308,50 @@ export function DashboardTabBar({
                   onToggleEdit();
                 }}
               />
+              <div className="my-1 border-t border-border-subtle" />
+              <div className="px-3 py-1.5">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-1.5">
+                  Theme
+                </div>
+                <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card w-full">
+                  <ThemeButton active={theme === "dark"} onClick={() => setTheme("dark")}>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-3 h-3"
+                    >
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
+                    Dark
+                  </ThemeButton>
+                  <ThemeButton active={theme === "light"} onClick={() => setTheme("light")}>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="w-3 h-3"
+                    >
+                      <circle cx="12" cy="12" r="5" />
+                      <line x1="12" y1="1" x2="12" y2="3" />
+                      <line x1="12" y1="21" x2="12" y2="23" />
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                      <line x1="1" y1="12" x2="3" y2="12" />
+                      <line x1="21" y1="12" x2="23" y2="12" />
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </svg>
+                    Light
+                  </ThemeButton>
+                </div>
+              </div>
             </div>,
             document.body,
           )}
@@ -316,27 +360,25 @@ export function DashboardTabBar({
   );
 }
 
-function MenuItem({
-  label,
-  shortcut,
-  icon,
+function ThemeButton({
+  active,
   onClick,
+  children,
 }: {
-  label: string;
-  shortcut?: string;
-  icon?: React.ReactNode;
+  active: boolean;
   onClick: () => void;
+  children: React.ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
-      className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-text-secondary hover:text-text hover:bg-bg-hover transition-colors"
+      className={`flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1 text-[11px] rounded transition-colors ${
+        active
+          ? "bg-bg-elevated text-text shadow-sm"
+          : "text-text-muted hover:text-text-secondary"
+      }`}
     >
-      {icon && <span className="text-text-muted shrink-0">{icon}</span>}
-      <span className="flex-1 text-left">{label}</span>
-      {shortcut && (
-        <kbd className="text-[10px] text-text-muted/70 font-mono">{shortcut}</kbd>
-      )}
+      {children}
     </button>
   );
 }
@@ -421,6 +463,31 @@ function DashboardTab({
         </button>
       )}
     </div>
+  );
+}
+
+function MenuItem({
+  label,
+  shortcut,
+  icon,
+  onClick,
+}: {
+  label: string;
+  shortcut?: string;
+  icon?: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-text-secondary hover:text-text hover:bg-bg-hover transition-colors"
+    >
+      {icon && <span className="text-text-muted shrink-0">{icon}</span>}
+      <span className="flex-1 text-left">{label}</span>
+      {shortcut && (
+        <kbd className="text-[10px] text-text-muted/70 font-mono">{shortcut}</kbd>
+      )}
+    </button>
   );
 }
 

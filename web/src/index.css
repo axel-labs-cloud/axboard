@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Surface palette — page → card → elevated → hover (each step slightly lighter). */
+  /* Dark theme defaults. Surface palette — page → card → elevated → hover. */
   --color-bg: #09090b;
   --color-bg-card: #111114;
   --color-bg-elevated: #18181c;
@@ -23,6 +23,27 @@
   --color-danger: #f43f5e;
 }
 
+/* Light theme overrides — applied when the document root carries
+ * `.theme-light` (toggled from the general menu). The dark theme is the
+ * default and lives on `.theme-dark` (also applied explicitly to keep
+ * specificity predictable). */
+.theme-light {
+  --color-bg: #fafafa;
+  --color-bg-card: #ffffff;
+  --color-bg-elevated: #ffffff;
+  --color-bg-hover: #f4f4f5;
+
+  --color-border: #e4e4e7;
+  --color-border-subtle: #f1f1f4;
+
+  --color-text: #18181b;
+  --color-text-secondary: #3f3f46;
+  --color-text-muted: #71717a;
+
+  --color-accent: #6366f1;
+  --color-danger: #e11d48;
+}
+
 @layer base {
   html,
   body,
@@ -31,8 +52,8 @@
   }
   body {
     background:
-      radial-gradient(1200px 600px at 80% -10%, rgba(129, 140, 248, 0.08), transparent 60%),
-      radial-gradient(900px 500px at 0% 100%, rgba(244, 63, 94, 0.05), transparent 60%),
+      radial-gradient(1200px 600px at 80% -10%, color-mix(in srgb, var(--color-accent) 10%, transparent), transparent 60%),
+      radial-gradient(900px 500px at 0% 100%, color-mix(in srgb, var(--color-danger) 6%, transparent), transparent 60%),
       var(--color-bg);
     color: var(--color-text);
     -webkit-font-smoothing: antialiased;

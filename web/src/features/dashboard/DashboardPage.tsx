@@ -93,7 +93,12 @@ function assembleLayout(
   };
 }
 
-export function DashboardPage() {
+interface DashboardPageProps {
+  theme: "dark" | "light";
+  setTheme: (t: "dark" | "light") => void;
+}
+
+export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const qc = useQueryClient();
   const { dashboards } = useDashboards();
 
@@ -515,6 +520,8 @@ export function DashboardPage() {
         onRenameDashboard={handleRenameDashboard}
         onDeleteDashboard={handleDeleteDashboard}
         onOpenSpotlight={() => setSpotlightOpen(true)}
+        theme={theme}
+        setTheme={setTheme}
       />
 
       <div ref={containerRef} className="flex-1 min-h-0 relative">

@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { api } from "./api/client";
 import { useSSE } from "./hooks/useSSE";
+import { useTheme } from "./hooks/useTheme";
 
 export function App() {
   const { isLoading, isError } = useQuery({
@@ -10,6 +11,7 @@ export function App() {
   });
 
   const { error: configError, clearError } = useSSE();
+  const [theme, setTheme] = useTheme();
 
   return (
     <div className="h-screen flex flex-col">
@@ -67,7 +69,7 @@ export function App() {
           </div>
         </Centered>
       ) : (
-        <DashboardPage />
+        <DashboardPage theme={theme} setTheme={setTheme} />
       )}
     </div>
   );
