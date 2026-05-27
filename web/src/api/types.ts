@@ -64,7 +64,6 @@ export interface AppStatus {
 export type StatusMap = Record<string, AppStatus>;
 
 export interface State {
-  gridVersion?: number;
   layouts?: Record<string, GridItem[]>;
   widgetConfigs?: Record<string, AnyWidgetConfig>;
   lastActive?: string;

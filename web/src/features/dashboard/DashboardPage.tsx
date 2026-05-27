@@ -49,43 +49,9 @@ interface ConfigPayload {
 }
 
 interface StatePayload {
-  gridVersion?: number;
   layouts?: Record<string, GridItem[]>;
   widgetConfigs?: Record<string, AnyWidgetConfig>;
   lastActive?: string;
-}
-
-/** Bump this when the dashboard grid resolution changes. */
-const CURRENT_GRID_VERSION = 2;
-
-/** Multiplier per grid version (number → 1 means no scale, 2 = double, etc).
- *  Going from 12 cols (v0/v1) to 24 cols (v2) doubles x/y/w/h. */
-function migrationScaleTo(target: number, current: number): number {
-  // v0/v1 (no version field, or 1) → v2 = 2x
-  if (target === 2 && current < 2) return 2;
-  return 1;
-}
-
-function migrateLayouts(state: StatePayload): StatePayload {
-  const scale = migrationScaleTo(CURRENT_GRID_VERSION, state.gridVersion ?? 1);
-  if (scale === 1) {
-    return { ...state, gridVersion: CURRENT_GRID_VERSION };
-  }
-  const scaled: Record<string, GridItem[]> = {};
-  for (const [dashId, items] of Object.entries(state.layouts ?? {})) {
-    scaled[dashId] = items.map((it) => ({
-      ...it,
-      x: it.x * scale,
-      y: it.y * scale,
-      w: it.w * scale,
-      h: it.h * scale,
-      ...(it.minW != null ? { minW: it.minW * scale } : {}),
-      ...(it.maxW != null ? { maxW: it.maxW * scale } : {}),
-      ...(it.minH != null ? { minH: it.minH * scale } : {}),
-      ...(it.maxH != null ? { maxH: it.maxH * scale } : {}),
-    }));
-  }
-  return { ...state, gridVersion: CURRENT_GRID_VERSION, layouts: scaled };
 }
 
 function assembleLayout(
@@ -148,26 +114,6 @@ export function DashboardPage() {
       return (await r.json()) as StatePayload;
     },
   });
-
-  // One-shot grid-resolution migration. If the loaded state was written
-  // under an older gridVersion, scale x/y/w/h and persist back so the next
-  // read sees CURRENT_GRID_VERSION and skips this branch.
-  const migratedRef = useRef(false);
-  useEffect(() => {
-    if (!state || migratedRef.current) return;
-    if ((state.gridVersion ?? 1) >= CURRENT_GRID_VERSION) {
-      migratedRef.current = true;
-      return;
-    }
-    migratedRef.current = true;
-    const migrated = migrateLayouts(state);
-    qc.setQueryData(["state"], migrated);
-    void fetch("/api/state", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(migrated),
-    });
-  }, [state, qc]);
 
   useEffect(() => {
     if (activeDashboardId === null && dashboards.length > 0) {
@@ -470,6 +416,21 @@ export function DashboardPage() {
       />
 
       <div ref={containerRef} className="flex-1 min-h-0 relative">
+        {editing && cell > 0 && (
+          <div
+            aria-hidden
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              backgroundImage: `
+                linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)
+              `,
+              backgroundSize: `${cell + gap}px ${cell + gap}px`,
+              backgroundPosition: `${gap}px ${gap}px`,
+              backgroundRepeat: "repeat",
+            }}
+          />
+        )}
         {cell > 0 && (
           <ReactGridLayout
             layout={decoratedGridItems}

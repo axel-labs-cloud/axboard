@@ -28,12 +28,7 @@ type GridItem struct {
 // State is machine-owned. Layouts keyed by dashboard ID. WidgetConfigs is a
 // per-widget-instance override that the server merges into config.yaml's
 // widget config on read. lastActive is the dashboard the user last had open.
-//
-// GridVersion bumps whenever the dashboard grid resolution changes (column
-// count or row sizing). The frontend uses it to detect old layouts and
-// scale them on the fly. Default 0 = pre-versioning (12 cols); 2 = 24 cols.
 type State struct {
-	GridVersion   int                       `yaml:"grid_version,omitempty" json:"gridVersion,omitempty"`
 	Layouts       map[string][]GridItem     `yaml:"layouts,omitempty" json:"layouts,omitempty"`
 	WidgetConfigs map[string]map[string]any `yaml:"widget_configs,omitempty" json:"widgetConfigs,omitempty"`
 	LastActive    string                    `yaml:"last_active,omitempty" json:"lastActive,omitempty"`
