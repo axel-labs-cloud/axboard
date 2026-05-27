@@ -7,7 +7,8 @@ export type WidgetType =
   | "apps"
   | "app"
   | "weather"
-  | "iframe";
+  | "iframe"
+  | "concentus";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -89,6 +90,17 @@ export interface IframeConfig {
   hideTitleBar?: boolean;
 }
 
+/**
+ * Concentus now-playing widget. Polls /api/v1/sessions/active for the
+ * user's active playback session and renders art + title + artist + state.
+ * Credentials live in state.yaml (homelab trust model — plaintext).
+ */
+export interface ConcentusConfig {
+  baseUrl?: string;
+  username?: string;
+  password?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -97,6 +109,7 @@ export type WidgetConfigByType = {
   app: AppConfig;
   weather: WeatherConfig;
   iframe: IframeConfig;
+  concentus: ConcentusConfig;
 };
 
 export type AnyWidgetConfig = Partial<
@@ -106,7 +119,8 @@ export type AnyWidgetConfig = Partial<
     AppsConfig &
     AppConfig &
     WeatherConfig &
-    IframeConfig
+    IframeConfig &
+    ConcentusConfig
 >;
 
 export interface Widget {
