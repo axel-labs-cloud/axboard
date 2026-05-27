@@ -117,6 +117,16 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
 
   if (!app) return <Empty />;
 
+  // Visibility toggles. Default = visible; user unchecks to hide.
+  const showStatus = (config?.showStatus ?? true) && hasHealth;
+  const showResponseTime = (config?.showResponseTime ?? true) && hasHealth;
+  const showLastChecked = (config?.showLastChecked ?? true) && hasHealth;
+  const descText =
+    (config?.descriptionOverride && config.descriptionOverride.trim()) ||
+    app.description ||
+    "";
+  const showDescription = (config?.showDescription ?? true) && !!descText;
+
   const linkClass =
     "group/tile flex w-full h-full hover:bg-bg-hover transition-colors min-w-0 min-h-0";
   const props = {
@@ -151,13 +161,11 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
           <span className="text-text font-medium text-[14px] truncate leading-tight">
             {app.name}
           </span>
-          {w >= 3 && app.description && (
-            <span className="text-text-muted text-[11px] truncate leading-snug">
-              {app.description}
-            </span>
+          {w >= 3 && showDescription && (
+            <span className="text-text-muted text-[11px] truncate leading-snug">{descText}</span>
           )}
         </div>
-        {hasHealth && <StatusDot status={status} size="md" />}
+        {showStatus && <StatusDot status={status} size="md" />}
       </a>
     );
   }
@@ -171,7 +179,7 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
         </div>
         <div className="flex items-center gap-1.5 min-w-0 max-w-full">
           <span className="text-text font-medium text-[12px] truncate">{app.name}</span>
-          {hasHealth && <StatusDot status={status} size="sm" />}
+          {showStatus && <StatusDot status={status} size="sm" />}
         </div>
       </a>
     );
@@ -187,11 +195,11 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
         <div className="flex flex-col items-center gap-0.5 min-w-0 max-w-full">
           <div className="flex items-center gap-2 min-w-0 max-w-full">
             <span className="text-text font-medium text-[15px] truncate">{app.name}</span>
-            {hasHealth && <StatusDot status={status} size="md" />}
+            {showStatus && <StatusDot status={status} size="md" />}
           </div>
-          {app.description && (
+          {showDescription && (
             <span className="text-text-muted text-[11px] truncate leading-snug max-w-full">
-              {app.description}
+              {descText}
             </span>
           )}
         </div>
@@ -208,19 +216,17 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
       <div className="min-w-0 flex-1 flex flex-col gap-1">
         <div className="flex items-center gap-2 min-w-0">
           <span className="text-text font-semibold text-[16px] truncate">{app.name}</span>
-          {hasHealth && <StatusDot status={status} size="lg" />}
+          {showStatus && <StatusDot status={status} size="lg" />}
         </div>
-        {app.description && (
-          <span className="text-text-muted text-[12px] truncate leading-snug">
-            {app.description}
-          </span>
+        {showDescription && (
+          <span className="text-text-muted text-[12px] truncate leading-snug">{descText}</span>
         )}
-        {hasHealth && status && (
+        {hasHealth && status && (showResponseTime || showLastChecked) && (
           <div className="flex items-center gap-3 mt-0.5 text-[11px] text-text-muted/80 font-mono">
-            {status.response_ms != null && (
+            {showResponseTime && status.response_ms != null && (
               <span className="tabular-nums">{status.response_ms} ms</span>
             )}
-            {status.last_checked && (
+            {showLastChecked && status.last_checked && (
               <span className="tabular-nums">
                 {new Date(status.last_checked).toLocaleTimeString()}
               </span>
@@ -238,6 +244,8 @@ function AppConfigPanel({ config, save }: WidgetConfigProps<AppConfig>) {
   const apps = cfg?.apps ?? [];
   const groups = cfg?.groups ?? [];
   const groupById = new Map(groups.map((g) => [g.id, g]));
+  const selectedApp = apps.find((a) => a.id === config?.appId);
+  const hasHealth = !!selectedApp?.health && selectedApp.health.type !== "none";
 
   // Apps grouped by category, for a nicer dropdown.
   const grouped = new Map<string | null, AppDef[]>();
@@ -249,7 +257,7 @@ function AppConfigPanel({ config, save }: WidgetConfigProps<AppConfig>) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="space-y-1.5">
         <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
           Service
@@ -274,12 +282,100 @@ function AppConfigPanel({ config, save }: WidgetConfigProps<AppConfig>) {
           ))}
         </select>
       </div>
+
       {apps.length === 0 && (
         <div className="text-[11px] text-text-muted italic">
-          No apps defined. Add some in config.yaml or via the Apps widget's “Manage services” button.
+          No apps defined. Add some in config.yaml or via Manage services.
         </div>
       )}
+
+      {selectedApp && (
+        <>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+                Description
+              </label>
+              <span className="text-[10px] text-text-muted/70">
+                {selectedApp.description ? "(overrides app default)" : ""}
+              </span>
+            </div>
+            <input
+              value={config?.descriptionOverride ?? ""}
+              onChange={(e) => save({ descriptionOverride: e.target.value })}
+              placeholder={selectedApp.description || "(no default)"}
+              className="w-full px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text placeholder:text-text-muted focus:outline-none focus:border-accent/50"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+              Show
+            </label>
+            <div className="space-y-1.5">
+              <ToggleRow
+                label="Description"
+                checked={config?.showDescription ?? true}
+                onChange={(v) => save({ showDescription: v })}
+              />
+              <ToggleRow
+                label="Status monitor"
+                checked={config?.showStatus ?? true}
+                onChange={(v) => save({ showStatus: v })}
+                disabled={!hasHealth}
+                hint={hasHealth ? undefined : "no health check on this service"}
+              />
+              <ToggleRow
+                label="Response time"
+                checked={config?.showResponseTime ?? true}
+                onChange={(v) => save({ showResponseTime: v })}
+                disabled={!hasHealth}
+                hint={hasHealth ? "shown in 2x3" : "no health check on this service"}
+              />
+              <ToggleRow
+                label="Last checked"
+                checked={config?.showLastChecked ?? true}
+                onChange={(v) => save({ showLastChecked: v })}
+                disabled={!hasHealth}
+                hint={hasHealth ? "shown in 2x3" : "no health check on this service"}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+  disabled,
+  hint,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+  hint?: string;
+}) {
+  return (
+    <label
+      className={`flex items-center gap-2 text-[12px] ${
+        disabled ? "text-text-muted/50 cursor-not-allowed" : "text-text-secondary cursor-pointer"
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        disabled={disabled}
+        className="accent-accent"
+      />
+      <span className="flex-1">{label}</span>
+      {hint && <span className="text-[10px] text-text-muted/70 italic">{hint}</span>}
+    </label>
   );
 }
 

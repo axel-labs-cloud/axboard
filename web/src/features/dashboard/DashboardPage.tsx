@@ -15,6 +15,7 @@ import { getWidgetDefinition } from "./widgets/registry";
 import { downloadDashboardFile } from "./dashboardIO";
 import { WidgetContextMenu } from "./WidgetContextMenu";
 import { AddWidgetModal } from "./AddWidgetModal";
+import { ServicesEditor } from "./widgets/apps/ServicesEditor";
 import type {
   AnyWidgetConfig,
   DashboardLayout,
@@ -102,6 +103,7 @@ export function DashboardPage() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
   const [addWidgetOpen, setAddWidgetOpen] = useState(false);
+  const [manageServicesOpen, setManageServicesOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(1200);
   const [containerH, setContainerH] = useState(800);
@@ -415,6 +417,7 @@ export function DashboardPage() {
         onRedo={handleRedo}
         onExport={handleExport}
         onAddWidget={() => setAddWidgetOpen(true)}
+        onManageServices={() => setManageServicesOpen(true)}
       />
 
       <div ref={containerRef} className="flex-1 min-h-0 relative">
@@ -524,6 +527,10 @@ export function DashboardPage() {
         open={addWidgetOpen}
         dashboardId={activeDashboardId}
         onClose={() => setAddWidgetOpen(false)}
+      />
+      <ServicesEditor
+        open={manageServicesOpen}
+        onClose={() => setManageServicesOpen(false)}
       />
     </div>
   );

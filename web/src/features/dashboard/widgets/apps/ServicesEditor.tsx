@@ -760,13 +760,12 @@ function ServiceForm({
 
             {healthType === "http" && (
               <>
-                <input
-                  value={app.health?.url ?? ""}
-                  onChange={(e) =>
-                    onPatch({ health: { ...app.health!, type: "http", url: e.target.value } })
+                <HealthUrlField
+                  serviceUrl={app.url}
+                  health={app.health!}
+                  onChange={(url) =>
+                    onPatch({ health: { ...app.health!, type: "http", url } })
                   }
-                  placeholder="https://service/health"
-                  className="w-full px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50 font-mono"
                 />
                 <div className="flex gap-2">
                   <input
@@ -823,6 +822,50 @@ function ServiceForm({
         </Field>
       </div>
     </div>
+  );
+}
+
+function HealthUrlField({
+  serviceUrl,
+  health,
+  onChange,
+}: {
+  serviceUrl: string;
+  health: NonNullable<AppDef["health"]>;
+  onChange: (url: string) => void;
+}) {
+  // UI-only "same URL" toggle. The persisted health.url is either the
+  // service URL (when same) or whatever the user typed (when different).
+  // We can't derive "same" from value alone because an empty health.url
+  // also looks "same" — so track it as local state seeded from the data.
+  const [sameURL, setSameURL] = useState<boolean>(
+    !health.url || health.url === serviceUrl,
+  );
+
+  return (
+    <>
+      <label className="flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
+        <input
+          type="checkbox"
+          checked={sameURL}
+          onChange={(e) => {
+            const next = e.target.checked;
+            setSameURL(next);
+            onChange(next ? serviceUrl : health.url || "");
+          }}
+          className="accent-accent"
+        />
+        Use the service URL for the health check
+      </label>
+      {!sameURL && (
+        <input
+          value={health.url ?? ""}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://service:port/health"
+          className="w-full px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50 font-mono"
+        />
+      )}
+    </>
   );
 }
 

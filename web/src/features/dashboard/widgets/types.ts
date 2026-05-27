@@ -46,9 +46,16 @@ export interface AppsConfig {
 
 /**
  * Single-app widget — one prominent tile bound to one service.
+ * The show* fields default to true when undefined; user unchecks to hide.
+ * descriptionOverride wins over the app's own description when non-empty.
  */
 export interface AppConfig {
   appId?: string;
+  showStatus?: boolean;
+  showDescription?: boolean;
+  descriptionOverride?: string;
+  showResponseTime?: boolean;
+  showLastChecked?: boolean;
 }
 
 export type WidgetConfigByType = {

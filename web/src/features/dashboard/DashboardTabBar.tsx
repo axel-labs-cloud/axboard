@@ -16,6 +16,7 @@ interface Props {
   onRedo: () => void;
   onExport: () => void;
   onAddWidget: () => void;
+  onManageServices: () => void;
 }
 
 export function DashboardTabBar({
@@ -30,6 +31,7 @@ export function DashboardTabBar({
   onRedo,
   onExport,
   onAddWidget,
+  onManageServices,
 }: Props) {
   return (
     <div className="flex items-center border-b border-border-subtle bg-bg-card/40 backdrop-blur-sm px-6 py-2 gap-3">
@@ -117,6 +119,27 @@ export function DashboardTabBar({
               </svg>
             </IconButton>
             <div className="w-px h-4 bg-bg-hover mx-1" />
+            <button
+              onClick={onManageServices}
+              className="px-2.5 py-1 text-[12px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted flex items-center gap-1.5"
+              title="Manage services and groups"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-3 h-3"
+              >
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+              Services
+            </button>
             <button
               onClick={onAddWidget}
               className="px-2.5 py-1 text-[12px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted flex items-center gap-1.5"
