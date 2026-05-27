@@ -52,22 +52,19 @@ function hashColor(name: string): string {
   return `hsl(${hue}, 35%, 25%)`;
 }
 
-// IconChip fills its parent (h-full aspect-square) — caller controls size
-// via the container's height. This way the widget can scale icons with the
-// grid cell size without measuring DOM.
-function IconChip({ app, className = "" }: { app: AppDef; className?: string }) {
+function IconChip({ app, size }: { app: AppDef; size: number }) {
   if (!app.icon) {
     return (
       <div
-        className={`rounded-md flex items-center justify-center text-text font-semibold leading-none ${className}`}
-        style={{ background: hashColor(app.name), fontSize: "min(45%, 13px)" }}
+        className="rounded-md flex items-center justify-center text-text text-[11px] font-semibold shrink-0"
+        style={{ width: size, height: size, background: hashColor(app.name) }}
       >
         {initials(app.name)}
       </div>
     );
   }
   return (
-    <div className={`flex items-center justify-center ${className}`}>
+    <div className="shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
       <SimpleIcon slug={app.icon} fill />
     </div>
   );
@@ -100,42 +97,26 @@ function StatusDot({
   );
 }
 
-// CompactIcon — bare icon tile, used in small density.
-// Square: height fills the strip, width matches via aspect-square.
-function CompactIcon({ app }: { app: AppDef }) {
-  return (
-    <a
-      href={app.url}
-      target="_blank"
-      rel="noreferrer noopener"
-      title={app.description ? `${app.name} — ${app.description}` : app.name}
-      className="h-full aspect-square flex-shrink-0 flex items-center justify-center rounded-md border border-transparent hover:border-accent/40 hover:bg-bg-card/40 transition-colors p-1"
-    >
-      <IconChip app={app} className="w-full h-full" />
-    </a>
-  );
-}
+type CardProps = {
+  app: AppDef;
+  status?: StatusMap[string];
+  density: AppsDensity;
+};
 
-// MediumCard — icon + name + status dot in a horizontal pill, used in
-// medium density.
-function MediumCard({ app, status }: { app: AppDef; status?: StatusMap[string] }) {
-  const showStatus = app.health && app.health.type !== "none";
+function AppCard({ app, status, density }: CardProps) {
+  const showStatus = density !== "compact" && app.health && app.health.type !== "none";
+  const iconSize = density === "compact" ? 24 : 32;
   return (
     <a
       href={app.url}
       target="_blank"
       rel="noreferrer noopener"
+      className="group/card relative flex items-center gap-2.5 rounded-md border border-border-subtle bg-bg-card/70 px-2 py-1.5 hover:border-accent/40 hover:bg-bg-elevated hover:-translate-y-px hover:shadow-md hover:shadow-black/20 transition-all min-w-0"
       title={app.description || app.name}
-      className="group/card relative h-full flex items-center gap-2 rounded-md border border-border-subtle bg-bg-card/70 px-2 hover:border-accent/40 hover:bg-bg-elevated transition-colors min-w-0 flex-shrink-0"
-      style={{ minWidth: 130 }}
     >
-      <div className="h-full py-1.5 aspect-square flex-shrink-0">
-        <IconChip app={app} className="w-full h-full" />
-      </div>
+      <IconChip app={app} size={iconSize} />
       <div className="min-w-0 flex-1 flex items-center gap-1.5">
-        <span className="text-[12.5px] text-text font-medium truncate leading-tight">
-          {app.name}
-        </span>
+        <span className="text-[12px] text-text font-medium truncate leading-tight">{app.name}</span>
         {showStatus && (
           <StatusDot
             status={status?.status}
@@ -149,42 +130,7 @@ function MediumCard({ app, status }: { app: AppDef; status?: StatusMap[string] }
   );
 }
 
-function GroupLabelHorizontal({ group, count }: { group?: GroupDef; count: number }) {
-  return (
-    <div className="flex items-center gap-1.5 shrink-0 w-[112px] min-w-0">
-      {group?.color && (
-        <span
-          className="inline-block w-1 h-4 rounded-sm shrink-0"
-          style={{ background: group.color }}
-        />
-      )}
-      <span className="text-[10px] uppercase tracking-[0.06em] text-text-secondary font-semibold truncate">
-        {group?.name ?? "Ungrouped"}
-      </span>
-      <span className="text-[9.5px] text-text-muted/60 tabular-nums shrink-0">{count}</span>
-    </div>
-  );
-}
-
-function GroupLabelInline({ group, count }: { group?: GroupDef; count: number }) {
-  return (
-    <div className="flex items-center gap-1.5 px-0.5 shrink-0">
-      {group?.color && (
-        <span
-          className="inline-block w-1.5 h-3 rounded-sm shrink-0"
-          style={{ background: group.color }}
-        />
-      )}
-      <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold truncate">
-        {group?.name ?? "Ungrouped"}
-      </span>
-      <span className="text-[10px] text-text-muted/60 tabular-nums shrink-0">{count}</span>
-    </div>
-  );
-}
-
-// CategoryStrip — one row representing a group. Layout differs by density.
-function CategoryStrip({
+function GroupSection({
   group,
   apps,
   statuses,
@@ -196,35 +142,40 @@ function CategoryStrip({
   density: AppsDensity;
 }) {
   if (apps.length === 0) return null;
-
-  if (density === "compact") {
-    // Horizontal: [color | label | count]  [icon icon icon icon ...]
-    return (
-      <div className="h-full flex items-center gap-2 px-2 min-w-0">
-        <GroupLabelHorizontal group={group} count={apps.length} />
-        <div className="flex gap-1 flex-1 min-w-0 overflow-hidden h-full items-center py-1">
-          {apps.map((app) => (
-            <CompactIcon key={app.id} app={app} />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // medium / default — label on top, cards below
+  // Minimum card width scales with density so the grid roughly tracks the
+  // dashboard cell size — compact packs more per row, default gives names
+  // room to breathe.
+  const minCard = density === "compact" ? 130 : 170;
   return (
-    <div className="h-full flex flex-col gap-1 px-2 min-w-0 py-1.5">
-      <GroupLabelInline group={group} count={apps.length} />
-      <div className="flex gap-2 flex-1 min-w-0 overflow-hidden">
+    <div>
+      {group && (
+        <div className="flex items-center gap-2 px-0.5 mb-1.5">
+          {group.color && (
+            <span
+              className="inline-block w-1 h-3.5 rounded-sm shrink-0"
+              style={{ background: group.color }}
+            />
+          )}
+          <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold">
+            {group.name}
+          </span>
+          <span className="text-[10px] text-text-muted/60 tabular-nums">{apps.length}</span>
+          <span className="flex-1 h-px bg-border-subtle ml-1" />
+        </div>
+      )}
+      <div
+        className="grid gap-1.5"
+        style={{ gridTemplateColumns: `repeat(auto-fill,minmax(${minCard}px,1fr))` }}
+      >
         {apps.map((app) => (
-          <MediumCard key={app.id} app={app} status={statuses[app.id]} />
+          <AppCard key={app.id} app={app} status={statuses[app.id]} density={density} />
         ))}
       </div>
     </div>
   );
 }
 
-function AppsWidget({ config, h }: WidgetProps<AppsConfig>) {
+function AppsWidget({ config }: WidgetProps<AppsConfig>) {
   const qc = useQueryClient();
   const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
   const apps = cfg?.apps ?? [];
@@ -281,29 +232,16 @@ function AppsWidget({ config, h }: WidgetProps<AppsConfig>) {
     );
   }
 
-  // Each density implies a number of strips per grid-H unit:
-  //   compact (small)  → 2 strips per H, so 2H = 4 categories
-  //   default (medium) → 1 strip per H, so 2H = 2 categories
-  // The widget hides extra sections rather than scrolling.
-  const stripsPerH = density === "compact" ? 2 : 1;
-  const totalStrips = Math.max(1, Math.floor(h * stripsPerH));
-  const visible = ordered.slice(0, totalStrips);
-
   return (
-    <div className="h-full w-full overflow-hidden flex flex-col">
-      {visible.map((section, i) => (
-        <div
+    <div className="h-full w-full overflow-hidden p-2 space-y-2.5">
+      {ordered.map((section, i) => (
+        <GroupSection
           key={section.group?.id ?? `__nogroup_${i}`}
-          className="min-h-0 w-full"
-          style={{ height: `${100 / totalStrips}%` }}
-        >
-          <CategoryStrip
-            group={section.group}
-            apps={section.apps}
-            statuses={statuses}
-            density={density}
-          />
-        </div>
+          group={section.group}
+          apps={section.apps}
+          statuses={statuses}
+          density={density}
+        />
       ))}
     </div>
   );
