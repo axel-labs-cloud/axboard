@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
-import type { AppDef, GroupDef } from "../../../../api/types";
+import type { AppDef, GroupDef, StatusMap } from "../../../../api/types";
 import { SimpleIcon } from "../../SimpleIcon";
 import type {
   AppConfig,
@@ -10,8 +10,10 @@ import type {
 } from "../types";
 
 // ---------------------------------------------------------------------------
-// App widget — single service per instance. Pick one app from config.yaml.
-// Renders as a big tile that scales with widget size.
+// App widget — single service per instance. The layout switches based on
+// the widget's grid size: tiny → big icon only; wide → horizontal row;
+// detailed → icon + name + description + response-time pill.
+// Sizes allowed: 1x1, 1x2, 1x3, 2x1, 2x2, 2x3.
 // ---------------------------------------------------------------------------
 
 function initials(name: string): string {
@@ -39,11 +41,11 @@ function statusClasses(s: string | undefined): string {
   }
 }
 
-function Icon({ app }: { app: AppDef }) {
+function Icon({ app, className = "" }: { app: AppDef; className?: string }) {
   if (!app.icon) {
     return (
       <div
-        className="w-full h-full rounded-md flex items-center justify-center text-text font-semibold leading-none"
+        className={`rounded-md flex items-center justify-center text-text font-semibold leading-none ${className}`}
         style={{ background: hashColor(app.name), fontSize: "clamp(10px, 32%, 28px)" }}
       >
         {initials(app.name)}
@@ -51,8 +53,50 @@ function Icon({ app }: { app: AppDef }) {
     );
   }
   return (
-    <div className="w-full h-full flex items-center justify-center">
+    <div className={`flex items-center justify-center ${className}`}>
       <SimpleIcon slug={app.icon} fill />
+    </div>
+  );
+}
+
+function StatusDot({
+  status,
+  size = "md",
+}: {
+  status?: StatusMap[string];
+  size?: "sm" | "md" | "lg";
+}) {
+  const px = size === "lg" ? "w-2.5 h-2.5" : size === "sm" ? "w-1.5 h-1.5" : "w-2 h-2";
+  const title = status?.status
+    ? `${status.status}${status.response_ms != null ? ` · ${status.response_ms} ms` : ""}${
+        status.last_checked ? ` · ${new Date(status.last_checked).toLocaleTimeString()}` : ""
+      }`
+    : "no health check";
+  return (
+    <span
+      className={`inline-block rounded-full shrink-0 ${px} ${statusClasses(status?.status)}`}
+      title={title}
+    />
+  );
+}
+
+function Empty() {
+  return (
+    <div className="flex flex-col items-center justify-center h-full text-text-muted/50 gap-1.5 p-2 text-center">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="w-5 h-5"
+      >
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <line x1="9" y1="9" x2="15" y2="15" />
+        <line x1="15" y1="9" x2="9" y2="15" />
+      </svg>
+      <span className="text-[10px]">No app selected</span>
     </div>
   );
 }
@@ -62,76 +106,128 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
   const cfg = qc.getQueryData<{ apps?: AppDef[] }>(["config"]);
   const app = cfg?.apps?.find((a) => a.id === config?.appId);
 
+  const hasHealth = !!app?.health && app.health.type !== "none";
   const { data: statuses = {} } = useQuery({
     queryKey: ["apps-status"],
     queryFn: api.getStatus,
     refetchInterval: 15_000,
-    enabled: !!app && app.health?.type !== undefined && app.health?.type !== "none",
+    enabled: hasHealth,
   });
   const status = app ? statuses[app.id] : undefined;
 
-  if (!app) {
+  if (!app) return <Empty />;
+
+  const linkClass =
+    "group/tile flex w-full h-full hover:bg-bg-hover transition-colors min-w-0 min-h-0";
+  const props = {
+    href: app.url,
+    target: "_blank",
+    rel: "noreferrer noopener",
+    title: app.description || app.name,
+  };
+
+  // 1×1 — icon only, centered. Status dot floats in the top-right corner.
+  if (w === 1 && h === 1) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-text-muted/50 gap-1.5 p-2 text-center">
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-5 h-5"
-        >
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <line x1="9" y1="9" x2="15" y2="15" />
-          <line x1="15" y1="9" x2="9" y2="15" />
-        </svg>
-        <span className="text-[10px]">No app selected</span>
-      </div>
+      <a {...props} className={`${linkClass} items-center justify-center p-2 relative`}>
+        <Icon app={app} className="w-3/4 h-3/4 max-w-[64px] max-h-[64px]" />
+        {hasHealth && (
+          <span className="absolute top-1 right-1.5">
+            <StatusDot status={status} size="sm" />
+          </span>
+        )}
+      </a>
     );
   }
 
-  const area = w * h;
-  // Pull the icon size as a portion of the widget's MIN dimension via h-X and
-  // w-X classes — keeps the icon square and proportional to the smaller side.
-  const iconPortion = area >= 4 ? "60%" : area >= 2 ? "55%" : "50%";
-  const showName = !(w === 1 && h === 1);
-  const showStatus = !!app.health && app.health.type !== "none";
-
-  return (
-    <a
-      href={app.url}
-      target="_blank"
-      rel="noreferrer noopener"
-      className="group/tile flex flex-col items-center justify-center w-full h-full gap-2 p-2 hover:bg-bg-hover transition-colors min-w-0 min-h-0"
-      title={app.description || app.name}
-    >
-      <div
-        className="flex items-center justify-center aspect-square shrink-0"
-        style={{ height: iconPortion, maxWidth: iconPortion }}
-      >
-        <Icon app={app} />
-      </div>
-      {showName && (
-        <div className="flex items-center gap-1.5 min-w-0 max-w-full">
-          <span
-            className="text-text font-medium truncate"
-            style={{ fontSize: area >= 4 ? "14px" : area >= 2 ? "13px" : "12px" }}
-          >
+  // 1×2 / 1×3 — horizontal row: icon left, name (and optional description) middle, dot right.
+  if (h === 1) {
+    return (
+      <a {...props} className={`${linkClass} items-center gap-3 px-3`}>
+        <div className="h-3/4 aspect-square shrink-0">
+          <Icon app={app} className="w-full h-full" />
+        </div>
+        <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+          <span className="text-text font-medium text-[14px] truncate leading-tight">
             {app.name}
           </span>
-          {showStatus && (
-            <span
-              className={`inline-block w-2 h-2 rounded-full shrink-0 ${statusClasses(status?.status)}`}
-              title={
-                status?.status
-                  ? `${status.status}${status.response_ms ? ` · ${status.response_ms}ms` : ""}`
-                  : "no health check"
-              }
-            />
+          {w >= 3 && app.description && (
+            <span className="text-text-muted text-[11px] truncate leading-snug">
+              {app.description}
+            </span>
           )}
         </div>
-      )}
+        {hasHealth && <StatusDot status={status} size="md" />}
+      </a>
+    );
+  }
+
+  // 2×1 — vertical column: icon top, name + dot below.
+  if (w === 1) {
+    return (
+      <a {...props} className={`${linkClass} flex-col items-center justify-center p-2 gap-1.5`}>
+        <div className="h-1/2 aspect-square">
+          <Icon app={app} className="w-full h-full" />
+        </div>
+        <div className="flex items-center gap-1.5 min-w-0 max-w-full">
+          <span className="text-text font-medium text-[12px] truncate">{app.name}</span>
+          {hasHealth && <StatusDot status={status} size="sm" />}
+        </div>
+      </a>
+    );
+  }
+
+  // 2×2 — square: big icon centered, name + dot below, optional description.
+  if (w === 2 && h === 2) {
+    return (
+      <a {...props} className={`${linkClass} flex-col items-center justify-center p-3 gap-2`}>
+        <div className="h-1/2 aspect-square">
+          <Icon app={app} className="w-full h-full" />
+        </div>
+        <div className="flex flex-col items-center gap-0.5 min-w-0 max-w-full">
+          <div className="flex items-center gap-2 min-w-0 max-w-full">
+            <span className="text-text font-medium text-[15px] truncate">{app.name}</span>
+            {hasHealth && <StatusDot status={status} size="md" />}
+          </div>
+          {app.description && (
+            <span className="text-text-muted text-[11px] truncate leading-snug max-w-full">
+              {app.description}
+            </span>
+          )}
+        </div>
+      </a>
+    );
+  }
+
+  // 2×3 — detail view: big icon left, name + description + response time on right.
+  return (
+    <a {...props} className={`${linkClass} items-center gap-4 px-4 py-3`}>
+      <div className="h-full max-h-[100px] aspect-square shrink-0 py-1">
+        <Icon app={app} className="w-full h-full" />
+      </div>
+      <div className="min-w-0 flex-1 flex flex-col gap-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-text font-semibold text-[16px] truncate">{app.name}</span>
+          {hasHealth && <StatusDot status={status} size="lg" />}
+        </div>
+        {app.description && (
+          <span className="text-text-muted text-[12px] truncate leading-snug">
+            {app.description}
+          </span>
+        )}
+        {hasHealth && status && (
+          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-text-muted/80 font-mono">
+            {status.response_ms != null && (
+              <span className="tabular-nums">{status.response_ms} ms</span>
+            )}
+            {status.last_checked && (
+              <span className="tabular-nums">
+                {new Date(status.last_checked).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </a>
   );
 }
@@ -208,11 +304,11 @@ const def: WidgetDefinition<AppConfig> = {
   title: "App",
   icon: AppIcon,
   category: "infrastructure",
-  description: "Single service tile. Pick one app to render as a big clickable button.",
+  description: "Single service tile. Layout adapts from 1x1 to 2x3.",
   minW: 1,
   minH: 1,
-  maxW: 12,
-  maxH: 12,
+  maxW: 3,
+  maxH: 2,
   defaultW: 1,
   defaultH: 1,
   defaultConfig: {},
