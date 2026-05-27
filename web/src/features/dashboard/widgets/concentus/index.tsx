@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   ConcentusConfig,
   WidgetConfigProps,
@@ -8,10 +8,9 @@ import type {
 
 // ---------------------------------------------------------------------------
 // Concentus now-playing widget.
-// Polls /api/v1/sessions/active every 5s, displays the session that's
-// currently playing (or the most recent active session if none playing).
-// Tokens are kept in component state; credentials live in state.yaml.
-// Album art is fetched from the public /api/v1/art/{id} endpoint.
+// Polls /api/v1/sessions/active for the displayed state. Opens a WebSocket
+// to /api/v1/sessions/ws so the user can fire transport commands at the
+// currently-playing session.
 // ---------------------------------------------------------------------------
 
 interface NowPlaying {
@@ -45,15 +44,22 @@ function trim(s?: string): string {
   return (s ?? "").replace(/\/$/, "");
 }
 
+function wsUrl(baseUrl: string, token: string): string {
+  // Convert http(s):// → ws(s):// for the WebSocket endpoint.
+  const u = new URL(`${trim(baseUrl)}/api/v1/sessions/ws`);
+  u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+  u.searchParams.set("token", token);
+  return u.toString();
+}
+
 function artUrl(baseUrl: string, albumArtId?: string): string | null {
   if (!albumArtId) return null;
   if (albumArtId.startsWith("http")) return albumArtId;
-  // Some clients send the full path "/api/v1/art/{id}", others just the id.
   if (albumArtId.startsWith("/")) return `${trim(baseUrl)}${albumArtId}`;
   return `${trim(baseUrl)}/api/v1/art/${encodeURIComponent(albumArtId)}`;
 }
 
-function ConcentusComponent({ config, w, h }: WidgetProps<ConcentusConfig>) {
+function ConcentusComponent({ config, w, h, editing }: WidgetProps<ConcentusConfig>) {
   const baseUrl = trim(config?.baseUrl);
   const { username, password } = config ?? {};
 
@@ -62,12 +68,14 @@ function ConcentusComponent({ config, w, h }: WidgetProps<ConcentusConfig>) {
   const [session, setSession] = useState<ConcentusSession | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
   const accessRef = useRef<string | null>(null);
   const refreshRef = useRef<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   accessRef.current = access;
   refreshRef.current = refresh;
 
-  // Initial login. Reruns whenever the URL / credentials change.
+  // -- Login --------------------------------------------------------------
   useEffect(() => {
     if (!baseUrl || !username || !password) {
       setAccess(null);
@@ -103,7 +111,7 @@ function ConcentusComponent({ config, w, h }: WidgetProps<ConcentusConfig>) {
     };
   }, [baseUrl, username, password]);
 
-  // Poll active sessions every 5s while we have a token.
+  // -- Poll /sessions/active ---------------------------------------------
   useEffect(() => {
     if (!baseUrl || !access) return;
     let alive = true;
@@ -138,12 +146,12 @@ function ConcentusComponent({ config, w, h }: WidgetProps<ConcentusConfig>) {
         if (!r.ok) throw new Error(`${r.status}`);
         const data = (await r.json()) as SessionsResponse;
         const sessions = data.data ?? [];
-        // Pick the session that's playing; else any session with now_playing;
-        // else null.
-        const playing = sessions.find((s) => s.now_playing?.is_playing);
-        const withNP = sessions.find((s) => s.now_playing);
+        // Skip ianua's own control session — we don't want to show it as
+        // "what's playing" since it never reports now_playing.
+        const eligible = sessions.filter((s) => s.now_playing);
+        const playing = eligible.find((s) => s.now_playing?.is_playing);
         if (alive) {
-          setSession(playing ?? withNP ?? null);
+          setSession(playing ?? eligible[0] ?? null);
           setError(null);
         }
       } catch (e) {
@@ -158,6 +166,74 @@ function ConcentusComponent({ config, w, h }: WidgetProps<ConcentusConfig>) {
       window.clearInterval(id);
     };
   }, [baseUrl, access]);
+
+  // -- WebSocket for control commands ------------------------------------
+  useEffect(() => {
+    if (!baseUrl || !access) return;
+    let alive = true;
+    let reconnectTimer: number | null = null;
+
+    const connect = () => {
+      if (!alive) return;
+      try {
+        const ws = new WebSocket(wsUrl(baseUrl, access));
+        wsRef.current = ws;
+        ws.onopen = () => {
+          // Register as a passive remote so the hub stops asking us for state.
+          ws.send(
+            JSON.stringify({
+              type: "register",
+              session_name: "ianua dashboard",
+              capabilities: ["remote_control"],
+            }),
+          );
+        };
+        ws.onclose = () => {
+          wsRef.current = null;
+          if (alive) reconnectTimer = window.setTimeout(connect, 3000);
+        };
+        ws.onerror = () => {
+          // onclose will fire too; let it handle reconnect.
+        };
+      } catch {
+        if (alive) reconnectTimer = window.setTimeout(connect, 3000);
+      }
+    };
+    connect();
+    return () => {
+      alive = false;
+      if (reconnectTimer) window.clearTimeout(reconnectTimer);
+      wsRef.current?.close();
+      wsRef.current = null;
+    };
+  }, [baseUrl, access]);
+
+  const sendCommand = useCallback(
+    (cmd: "play" | "pause" | "next_track" | "prev_track") => {
+      const ws = wsRef.current;
+      const target = session?.id;
+      if (!ws || ws.readyState !== WebSocket.OPEN || !target) return;
+      ws.send(
+        JSON.stringify({
+          type: "command",
+          target_session: target,
+          command: cmd,
+        }),
+      );
+      // Optimistic flip — the next poll will overwrite if it didn't take.
+      if (cmd === "play" || cmd === "pause") {
+        setSession((s) =>
+          s?.now_playing
+            ? {
+                ...s,
+                now_playing: { ...s.now_playing, is_playing: cmd === "play" },
+              }
+            : s,
+        );
+      }
+    },
+    [session],
+  );
 
   if (!baseUrl || !username || !password) {
     return <Empty hint="Set Concentus server URL + credentials in the widget config." />;
@@ -176,21 +252,54 @@ function ConcentusComponent({ config, w, h }: WidgetProps<ConcentusConfig>) {
 
   const art = artUrl(baseUrl, np.album_art_id);
   const wide = w >= 4;
-  const big = w >= 6 || (w >= 4 && h >= 3);
+  const big = w >= 6 || h >= 3;
+  const controlsDisabled = editing || !session;
 
-  // 2×2 — square card: art on top, info below
+  const Controls = (
+    <div className="flex items-center gap-2">
+      <ControlButton
+        title="Previous"
+        disabled={controlsDisabled}
+        onClick={() => sendCommand("prev_track")}
+      >
+        <PrevIcon />
+      </ControlButton>
+      <ControlButton
+        title={np.is_playing ? "Pause" : "Play"}
+        primary
+        disabled={controlsDisabled}
+        onClick={() => sendCommand(np.is_playing ? "pause" : "play")}
+      >
+        {np.is_playing ? <PauseIcon /> : <PlayIcon />}
+      </ControlButton>
+      <ControlButton
+        title="Next"
+        disabled={controlsDisabled}
+        onClick={() => sendCommand("next_track")}
+      >
+        <NextIcon />
+      </ControlButton>
+    </div>
+  );
+
+  // -- Square (2x2): art on top, controls overlaid on art bottom --------
   if (!wide) {
     return (
       <div className="h-full w-full flex flex-col gap-2 p-2.5 min-h-0">
-        <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+        <div className="flex-1 min-h-0 w-full relative flex items-center justify-center">
           <Art src={art} />
+          {art && (
+            <div className="absolute bottom-1 left-1 right-1 flex items-center justify-center py-1 rounded-md bg-black/55 backdrop-blur-sm">
+              {Controls}
+            </div>
+          )}
         </div>
         <Info np={np} session={session} compact />
       </div>
     );
   }
 
-  // wide layouts (4×2+) — art left, info right
+  // -- Wide (4xN+): art left, info + controls right --------------------
   return (
     <div className="h-full w-full flex items-center gap-3 p-3 min-h-0">
       <div
@@ -200,10 +309,13 @@ function ConcentusComponent({ config, w, h }: WidgetProps<ConcentusConfig>) {
       </div>
       <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
         <Info np={np} session={session} compact={false} big={big} />
+        <div className="mt-1">{Controls}</div>
       </div>
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
 
 function Art({ src }: { src: string | null }) {
   if (!src) {
@@ -246,16 +358,13 @@ function Info({
 }) {
   return (
     <>
-      <div className="flex items-center gap-1.5 min-w-0">
-        <PlayingDot playing={np.is_playing} />
-        <span
-          className={`font-semibold text-text truncate ${
-            big ? "text-[16px]" : compact ? "text-[12.5px]" : "text-[14px]"
-          }`}
-        >
-          {np.track_title}
-        </span>
-      </div>
+      <span
+        className={`font-semibold text-text truncate ${
+          big ? "text-[16px]" : compact ? "text-[12.5px]" : "text-[14px]"
+        }`}
+      >
+        {np.track_title}
+      </span>
       {np.artist_name && (
         <span
           className={`text-text-secondary truncate ${
@@ -267,15 +376,13 @@ function Info({
       )}
       {np.album_title && (
         <span
-          className={`text-text-muted truncate ${
-            big ? "text-[12px]" : "text-[10.5px]"
-          }`}
+          className={`text-text-muted truncate ${big ? "text-[12px]" : "text-[10.5px]"}`}
         >
           {np.album_title}
         </span>
       )}
       {session?.name && !compact && (
-        <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted/60 mt-1 truncate">
+        <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted/60 mt-0.5 truncate">
           on {session.name}
         </span>
       )}
@@ -283,14 +390,68 @@ function Info({
   );
 }
 
-function PlayingDot({ playing }: { playing: boolean }) {
+function ControlButton({
+  title,
+  onClick,
+  disabled,
+  primary,
+  children,
+}: {
+  title: string;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <span
-      className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${
-        playing ? "bg-emerald-400 status-pulse" : "bg-text-muted/60"
+    <button
+      title={title}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      disabled={disabled}
+      className={`flex items-center justify-center rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+        primary
+          ? "w-8 h-8 bg-text/90 text-bg hover:bg-text"
+          : "w-7 h-7 text-text-secondary hover:text-text hover:bg-bg-hover"
       }`}
-      title={playing ? "Playing" : "Paused"}
-    />
+    >
+      {children}
+    </button>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+      <rect x="6" y="5" width="4" height="14" rx="0.5" />
+      <rect x="14" y="5" width="4" height="14" rx="0.5" />
+    </svg>
+  );
+}
+
+function PrevIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+      <path d="M6 6h2v12H6zM9 12l10 6V6z" />
+    </svg>
+  );
+}
+
+function NextIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+      <path d="M16 6h2v12h-2zM5 6v12l10-6z" />
+    </svg>
   );
 }
 
@@ -315,8 +476,6 @@ function Empty({ hint, variant = "muted" }: { hint: string; variant?: "muted" | 
   );
 }
 
-// ---------------------------------------------------------------------------
-// Config panel — base URL + login credentials.
 // ---------------------------------------------------------------------------
 
 function ConcentusConfigPanel({ config, save }: WidgetConfigProps<ConcentusConfig>) {
@@ -391,7 +550,7 @@ const def: WidgetDefinition<ConcentusConfig> = {
   title: "Concentus",
   icon: ConcentusIcon,
   category: "external",
-  description: "Now playing from your Concentus music server. Polls every 5 s.",
+  description: "Now playing from your Concentus music server, with play/pause + skip controls.",
   minW: 2,
   minH: 2,
   maxW: 6,
