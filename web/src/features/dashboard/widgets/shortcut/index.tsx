@@ -96,12 +96,42 @@ function ShortcutComponent({ config }: WidgetProps<ShortcutConfig>) {
 // Config panel
 // ---------------------------------------------------------------------------
 
+function faviconFor(url: string): string {
+  // DuckDuckGo's icon service handles missing /favicon.ico, weird <link rel> setups,
+  // and SVGs reasonably well. Returns empty string if the URL doesn't have a host yet.
+  try {
+    const u = new URL(url);
+    if (!u.hostname) return "";
+    return `https://icons.duckduckgo.com/ip3/${u.hostname}.ico`;
+  } catch {
+    return "";
+  }
+}
+
+function isFaviconUrl(s: string): boolean {
+  return s.startsWith("https://icons.duckduckgo.com/ip3/");
+}
+
 function ShortcutConfigPanel({ config, save }: WidgetConfigProps<ShortcutConfig>) {
   const sc = config?.shortcuts ?? [];
 
   const update = (i: number, field: keyof ShortcutItem, value: string) => {
     const next = [...sc];
     next[i] = { ...next[i], [field]: value };
+    save({ shortcuts: next });
+  };
+  // When the URL changes, auto-derive the favicon icon if the user hasn't
+  // set a custom icon (or the current icon is an auto-derived one from a
+  // previous URL — that means we own it and should keep it in sync).
+  const updateUrl = (i: number, url: string) => {
+    const next = [...sc];
+    const cur = next[i];
+    const ownIcon = !cur.icon || isFaviconUrl(cur.icon);
+    next[i] = {
+      ...cur,
+      url,
+      icon: ownIcon ? faviconFor(url) : cur.icon,
+    };
     save({ shortcuts: next });
   };
   const remove = (i: number) => save({ shortcuts: sc.filter((_, j) => j !== i) });
@@ -140,7 +170,7 @@ function ShortcutConfigPanel({ config, save }: WidgetConfigProps<ShortcutConfig>
           </div>
           <input
             value={s.url}
-            onChange={(e) => update(i, "url", e.target.value)}
+            onChange={(e) => updateUrl(i, e.target.value)}
             placeholder="https://..."
             className="w-full px-2 py-1 rounded bg-bg-card border border-border text-[11px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
           />

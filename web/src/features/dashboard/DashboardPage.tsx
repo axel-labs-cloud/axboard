@@ -16,6 +16,7 @@ import { downloadDashboardFile } from "./dashboardIO";
 import { WidgetContextMenu } from "./WidgetContextMenu";
 import { AddWidgetModal } from "./AddWidgetModal";
 import { ServicesEditor } from "./widgets/apps/ServicesEditor";
+import { Spotlight } from "./Spotlight";
 import type {
   AnyWidgetConfig,
   DashboardLayout,
@@ -104,6 +105,26 @@ export function DashboardPage() {
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
   const [addWidgetOpen, setAddWidgetOpen] = useState(false);
   const [manageServicesOpen, setManageServicesOpen] = useState(false);
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
+
+  // Cmd/Ctrl+K opens the spotlight from anywhere on the dashboard.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const isCmdK = (e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K");
+      if (!isCmdK) return;
+      // Don't intercept when the user is typing in an input that's not the
+      // spotlight itself — e.g. service editor URL field.
+      const tgt = e.target as HTMLElement | null;
+      const inInput =
+        tgt &&
+        (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable);
+      if (inInput) return;
+      e.preventDefault();
+      setSpotlightOpen(true);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerW, setContainerW] = useState(1200);
   const [containerH, setContainerH] = useState(800);
@@ -493,6 +514,7 @@ export function DashboardPage() {
         onAddDashboard={handleAddDashboard}
         onRenameDashboard={handleRenameDashboard}
         onDeleteDashboard={handleDeleteDashboard}
+        onOpenSpotlight={() => setSpotlightOpen(true)}
       />
 
       <div ref={containerRef} className="flex-1 min-h-0 relative">
@@ -611,6 +633,7 @@ export function DashboardPage() {
         open={manageServicesOpen}
         onClose={() => setManageServicesOpen(false)}
       />
+      <Spotlight open={spotlightOpen} onClose={() => setSpotlightOpen(false)} />
     </div>
   );
 }

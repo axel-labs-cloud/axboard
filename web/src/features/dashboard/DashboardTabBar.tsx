@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 interface Dashboard {
   id: string;
@@ -22,6 +23,7 @@ interface Props {
   onAddDashboard: () => void;
   onRenameDashboard: (id: string, name: string) => void;
   onDeleteDashboard: (id: string) => void;
+  onOpenSpotlight: () => void;
 }
 
 export function DashboardTabBar({
@@ -40,8 +42,39 @@ export function DashboardTabBar({
   onAddDashboard,
   onRenameDashboard,
   onDeleteDashboard,
+  onOpenSpotlight,
 }: Props) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      // The menu portal lives outside this subtree; close on any click that
+      // isn't on the trigger button.
+      if (menuButtonRef.current && !menuButtonRef.current.contains(e.target as Node)) {
+        const tgt = e.target as HTMLElement;
+        if (!tgt.closest("[data-general-menu]")) setMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const rect = menuButtonRef.current?.getBoundingClientRect();
+    if (rect) setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+  }, [menuOpen]);
 
   return (
     <div className="flex items-center border-b border-border-subtle bg-bg-card/40 backdrop-blur-sm px-6 py-2 gap-3">
@@ -193,18 +226,118 @@ export function DashboardTabBar({
             </button>
           </>
         )}
+        {editing && (
+          <button
+            onClick={onToggleEdit}
+            className="px-3 py-1 text-[12px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+            title="Exit edit mode"
+          >
+            Done
+          </button>
+        )}
         <button
-          onClick={onToggleEdit}
-          className={`px-3 py-1 text-[12px] rounded border transition-colors ${
-            editing
-              ? "border-accent/40 bg-accent/10 text-accent hover:bg-accent/20"
-              : "border-border text-text-secondary hover:text-text hover:border-text-muted"
+          ref={menuButtonRef}
+          onClick={() => setMenuOpen((v) => !v)}
+          className={`w-7 h-7 flex items-center justify-center rounded border transition-colors ${
+            menuOpen
+              ? "border-accent/40 bg-accent/10 text-accent"
+              : "border-border text-text-muted hover:text-text hover:border-text-muted"
           }`}
+          title="Menu"
         >
-          {editing ? "Done" : "Edit"}
+          <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="w-3.5 h-3.5"
+            aria-hidden
+          >
+            <circle cx="12" cy="5" r="1.6" />
+            <circle cx="12" cy="12" r="1.6" />
+            <circle cx="12" cy="19" r="1.6" />
+          </svg>
         </button>
+        {menuOpen &&
+          menuPos &&
+          createPortal(
+            <div
+              data-general-menu
+              className="fixed z-[300] min-w-[200px] bg-bg-elevated border border-border rounded-lg shadow-2xl ring-1 ring-white/5 py-1"
+              style={{ top: menuPos.top, right: menuPos.right }}
+            >
+              <MenuItem
+                label="Search…"
+                shortcut="⌘K"
+                icon={
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-3.5 h-3.5"
+                  >
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                }
+                onClick={() => {
+                  setMenuOpen(false);
+                  onOpenSpotlight();
+                }}
+              />
+              <div className="my-1 border-t border-border-subtle" />
+              <MenuItem
+                label={editing ? "Done editing" : "Edit dashboard"}
+                icon={
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-3.5 h-3.5"
+                  >
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+                  </svg>
+                }
+                onClick={() => {
+                  setMenuOpen(false);
+                  onToggleEdit();
+                }}
+              />
+            </div>,
+            document.body,
+          )}
       </div>
     </div>
+  );
+}
+
+function MenuItem({
+  label,
+  shortcut,
+  icon,
+  onClick,
+}: {
+  label: string;
+  shortcut?: string;
+  icon?: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full flex items-center gap-2 px-3 py-1.5 text-[12px] text-text-secondary hover:text-text hover:bg-bg-hover transition-colors"
+    >
+      {icon && <span className="text-text-muted shrink-0">{icon}</span>}
+      <span className="flex-1 text-left">{label}</span>
+      {shortcut && (
+        <kbd className="text-[10px] text-text-muted/70 font-mono">{shortcut}</kbd>
+      )}
+    </button>
   );
 }
 
