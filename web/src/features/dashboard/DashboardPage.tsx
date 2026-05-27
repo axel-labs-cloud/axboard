@@ -146,12 +146,13 @@ export function DashboardPage() {
     }
   }, [editing]);
 
-  // 24-col grid (was 12). Smaller cells = finer placement. Existing layouts
-  // saved at the 12-col resolution are scaled up to the new resolution by
-  // the migration effect below (see CURRENT_GRID_VERSION).
+  // 24-col grid (was 12). Smaller cells = finer placement.
+  // cell uses the precise (non-floored) column width so the edit-mode
+  // grid overlay aligns with RGL's widget positions, which use the
+  // unfloored colWidth internally.
   const cols = 24;
   const gap = 6;
-  const cell = Math.floor((containerW - gap * (cols + 1)) / cols);
+  const cell = (containerW - gap * (cols + 1)) / cols;
 
   const layoutQueryKey = ["dashboard-layout", activeDashboardId] as const;
 

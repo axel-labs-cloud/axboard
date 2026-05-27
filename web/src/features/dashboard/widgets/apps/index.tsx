@@ -173,11 +173,11 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
     );
   }
 
-  // Grid: 2 icons per grid unit each direction (matches Shortcut widget).
-  // Excess tiles are clipped — no scrollbar. Resize the widget bigger to see
-  // more, or split into multiple Apps widgets.
-  const cols = Math.max(1, w * 2);
-  const rows = Math.max(1, h * 2);
+  // Grid: 1 icon per grid unit each direction. Icons stay readable;
+  // resize the widget bigger to fit more apps, or split into multiple
+  // Apps widgets. Excess tiles are clipped — no scrollbar.
+  const cols = Math.max(1, w);
+  const rows = Math.max(1, h);
   const maxSlots = cols * rows;
   const visible = apps.slice(0, maxSlots);
 
