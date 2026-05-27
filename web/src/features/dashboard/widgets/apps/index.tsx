@@ -52,19 +52,22 @@ function hashColor(name: string): string {
   return `hsl(${hue}, 35%, 25%)`;
 }
 
-function IconChip({ app, size }: { app: AppDef; size: number }) {
+// IconChip fills its parent (h-full aspect-square) — caller controls size
+// via the container's height. This way the widget can scale icons with the
+// grid cell size without measuring DOM.
+function IconChip({ app, className = "" }: { app: AppDef; className?: string }) {
   if (!app.icon) {
     return (
       <div
-        className="rounded-md flex items-center justify-center text-text text-[11px] font-semibold shrink-0"
-        style={{ width: size, height: size, background: hashColor(app.name) }}
+        className={`rounded-md flex items-center justify-center text-text font-semibold leading-none ${className}`}
+        style={{ background: hashColor(app.name), fontSize: "min(45%, 13px)" }}
       >
         {initials(app.name)}
       </div>
     );
   }
   return (
-    <div className="shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
+    <div className={`flex items-center justify-center ${className}`}>
       <SimpleIcon slug={app.icon} fill />
     </div>
   );
@@ -97,71 +100,91 @@ function StatusDot({
   );
 }
 
-type CardProps = {
-  app: AppDef;
-  status?: StatusMap[string];
-  density: AppsDensity;
-};
-
-function AppCard({ app, status, density }: CardProps) {
-  const showStatus = density !== "compact" && app.health && app.health.type !== "none";
-  const showDetailed = density === "detailed";
-  const iconSize = density === "compact" ? 28 : density === "detailed" ? 40 : 34;
+// CompactIcon — bare icon tile, used in small density.
+// Square: height fills the strip, width matches via aspect-square.
+function CompactIcon({ app }: { app: AppDef }) {
   return (
     <a
       href={app.url}
       target="_blank"
       rel="noreferrer noopener"
-      className="group/card relative flex items-center gap-3 rounded-md border border-border-subtle bg-bg-card/70 px-2.5 py-2 hover:border-accent/40 hover:bg-bg-elevated hover:-translate-y-px hover:shadow-lg hover:shadow-black/30 transition-all min-w-0"
-      title={app.description || app.name}
+      title={app.description ? `${app.name} — ${app.description}` : app.name}
+      className="h-full aspect-square flex-shrink-0 flex items-center justify-center rounded-md border border-transparent hover:border-accent/40 hover:bg-bg-card/40 transition-colors p-1"
     >
-      <IconChip app={app} size={iconSize} />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[12.5px] text-text font-medium truncate leading-tight">
-            {app.name}
-          </span>
-          {showStatus && (
-            <StatusDot
-              status={status?.status}
-              lastChecked={status?.last_checked}
-              responseMs={status?.response_ms}
-              error={status?.error}
-            />
-          )}
-        </div>
-        {showDetailed && (
-          <div className="flex items-center gap-2 mt-0.5">
-            {app.description && (
-              <span className="text-[10.5px] text-text-muted truncate flex-1 leading-snug">
-                {app.description}
-              </span>
-            )}
-            {status?.response_ms != null && (
-              <span className="text-[10px] text-text-muted/70 tabular-nums shrink-0">
-                {status.response_ms} ms
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="w-3 h-3 text-text-muted/40 group-hover/card:text-accent opacity-0 group-hover/card:opacity-100 transition-opacity shrink-0"
-      >
-        <path d="M7 17L17 7" />
-        <path d="M7 7h10v10" />
-      </svg>
+      <IconChip app={app} className="w-full h-full" />
     </a>
   );
 }
 
-function GroupSection({
+// MediumCard — icon + name + status dot in a horizontal pill, used in
+// medium density.
+function MediumCard({ app, status }: { app: AppDef; status?: StatusMap[string] }) {
+  const showStatus = app.health && app.health.type !== "none";
+  return (
+    <a
+      href={app.url}
+      target="_blank"
+      rel="noreferrer noopener"
+      title={app.description || app.name}
+      className="group/card relative h-full flex items-center gap-2 rounded-md border border-border-subtle bg-bg-card/70 px-2 hover:border-accent/40 hover:bg-bg-elevated transition-colors min-w-0 flex-shrink-0"
+      style={{ minWidth: 130 }}
+    >
+      <div className="h-full py-1.5 aspect-square flex-shrink-0">
+        <IconChip app={app} className="w-full h-full" />
+      </div>
+      <div className="min-w-0 flex-1 flex items-center gap-1.5">
+        <span className="text-[12.5px] text-text font-medium truncate leading-tight">
+          {app.name}
+        </span>
+        {showStatus && (
+          <StatusDot
+            status={status?.status}
+            lastChecked={status?.last_checked}
+            responseMs={status?.response_ms}
+            error={status?.error}
+          />
+        )}
+      </div>
+    </a>
+  );
+}
+
+function GroupLabelHorizontal({ group, count }: { group?: GroupDef; count: number }) {
+  return (
+    <div className="flex items-center gap-1.5 shrink-0 w-[112px] min-w-0">
+      {group?.color && (
+        <span
+          className="inline-block w-1 h-4 rounded-sm shrink-0"
+          style={{ background: group.color }}
+        />
+      )}
+      <span className="text-[10px] uppercase tracking-[0.06em] text-text-secondary font-semibold truncate">
+        {group?.name ?? "Ungrouped"}
+      </span>
+      <span className="text-[9.5px] text-text-muted/60 tabular-nums shrink-0">{count}</span>
+    </div>
+  );
+}
+
+function GroupLabelInline({ group, count }: { group?: GroupDef; count: number }) {
+  return (
+    <div className="flex items-center gap-1.5 px-0.5 shrink-0">
+      {group?.color && (
+        <span
+          className="inline-block w-1.5 h-3 rounded-sm shrink-0"
+          style={{ background: group.color }}
+        />
+      )}
+      <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold truncate">
+        {group?.name ?? "Ungrouped"}
+      </span>
+      <span className="text-[10px] text-text-muted/60 tabular-nums shrink-0">{count}</span>
+    </div>
+  );
+}
+
+// CategoryStrip — one row representing a group. Layout differs by density.
+function CategoryStrip({
   group,
   apps,
   statuses,
@@ -173,41 +196,35 @@ function GroupSection({
   density: AppsDensity;
 }) {
   if (apps.length === 0) return null;
-  return (
-    <div>
-      {group && (
-        <div className="flex items-center gap-2 px-1 mb-2">
-          {group.color && (
-            <span
-              className="inline-block w-1.5 h-4 rounded-sm shrink-0"
-              style={{ background: group.color }}
-            />
-          )}
-          <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold">
-            {group.name}
-          </span>
-          <span className="text-[10px] text-text-muted/60 tabular-nums">{apps.length}</span>
-          <span className="flex-1 h-px bg-border-subtle ml-1" />
+
+  if (density === "compact") {
+    // Horizontal: [color | label | count]  [icon icon icon icon ...]
+    return (
+      <div className="h-full flex items-center gap-2 px-2 min-w-0">
+        <GroupLabelHorizontal group={group} count={apps.length} />
+        <div className="flex gap-1 flex-1 min-w-0 overflow-hidden h-full items-center py-1">
+          {apps.map((app) => (
+            <CompactIcon key={app.id} app={app} />
+          ))}
         </div>
-      )}
-      <div
-        className={
-          density === "compact"
-            ? "grid gap-2 grid-cols-[repeat(auto-fill,minmax(150px,1fr))]"
-            : density === "detailed"
-              ? "grid gap-2.5 grid-cols-[repeat(auto-fill,minmax(220px,1fr))]"
-              : "grid gap-2 grid-cols-[repeat(auto-fill,minmax(180px,1fr))]"
-        }
-      >
+      </div>
+    );
+  }
+
+  // medium / default — label on top, cards below
+  return (
+    <div className="h-full flex flex-col gap-1 px-2 min-w-0 py-1.5">
+      <GroupLabelInline group={group} count={apps.length} />
+      <div className="flex gap-2 flex-1 min-w-0 overflow-hidden">
         {apps.map((app) => (
-          <AppCard key={app.id} app={app} status={statuses[app.id]} density={density} />
+          <MediumCard key={app.id} app={app} status={statuses[app.id]} />
         ))}
       </div>
     </div>
   );
 }
 
-function AppsWidget({ config }: WidgetProps<AppsConfig>) {
+function AppsWidget({ config, h }: WidgetProps<AppsConfig>) {
   const qc = useQueryClient();
   const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
   const apps = cfg?.apps ?? [];
@@ -227,7 +244,7 @@ function AppsWidget({ config }: WidgetProps<AppsConfig>) {
     return apps.filter((a) => (a.group ? set.has(a.group) : false));
   }, [apps, groupFilter]);
 
-  const grouped = useMemo(() => {
+  const ordered = useMemo<{ group?: GroupDef; apps: AppDef[] }[]>(() => {
     const byGroup = new Map<string | null, AppDef[]>();
     for (const a of filteredApps) {
       const key = a.group ?? null;
@@ -235,28 +252,22 @@ function AppsWidget({ config }: WidgetProps<AppsConfig>) {
       arr.push(a);
       byGroup.set(key, arr);
     }
-    return byGroup;
-  }, [filteredApps]);
+    const out: { group?: GroupDef; apps: AppDef[] }[] = [];
+    for (const g of groupsList) {
+      const arr = byGroup.get(g.id);
+      if (arr && arr.length > 0) out.push({ group: g, apps: arr });
+    }
+    const ungrouped = byGroup.get(null);
+    if (ungrouped && ungrouped.length > 0) out.push({ apps: ungrouped });
+    return out;
+  }, [filteredApps, groupsList]);
 
   if (filteredApps.length === 0) {
     const isFiltered = (groupFilter?.length ?? 0) > 0;
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-4 gap-2">
         <div className="w-9 h-9 rounded-lg bg-bg-elevated/60 border border-border-subtle flex items-center justify-center text-text-muted">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="w-4 h-4"
-          >
-            <rect x="3" y="3" width="7" height="7" rx="1" />
-            <rect x="14" y="3" width="7" height="7" rx="1" />
-            <rect x="3" y="14" width="7" height="7" rx="1" />
-            <rect x="14" y="14" width="7" height="7" rx="1" />
-          </svg>
+          <AppsIcon />
         </div>
         <div className="text-text-secondary text-[12px] font-medium">
           {isFiltered ? "No apps match" : "No apps configured"}
@@ -270,25 +281,29 @@ function AppsWidget({ config }: WidgetProps<AppsConfig>) {
     );
   }
 
-  // Render groups in YAML order, then any apps without a group.
-  const ordered: { group?: GroupDef; apps: AppDef[] }[] = [];
-  for (const g of groupsList) {
-    const arr = grouped.get(g.id);
-    if (arr && arr.length > 0) ordered.push({ group: g, apps: arr });
-  }
-  const ungrouped = grouped.get(null);
-  if (ungrouped && ungrouped.length > 0) ordered.push({ apps: ungrouped });
+  // Each density implies a number of strips per grid-H unit:
+  //   compact (small)  → 2 strips per H, so 2H = 4 categories
+  //   default (medium) → 1 strip per H, so 2H = 2 categories
+  // The widget hides extra sections rather than scrolling.
+  const stripsPerH = density === "compact" ? 2 : 1;
+  const totalStrips = Math.max(1, Math.floor(h * stripsPerH));
+  const visible = ordered.slice(0, totalStrips);
 
   return (
-    <div className="h-full overflow-auto p-2.5 space-y-3">
-      {ordered.map((section, i) => (
-        <GroupSection
+    <div className="h-full w-full overflow-hidden flex flex-col">
+      {visible.map((section, i) => (
+        <div
           key={section.group?.id ?? `__nogroup_${i}`}
-          group={section.group}
-          apps={section.apps}
-          statuses={statuses}
-          density={density}
-        />
+          className="min-h-0 w-full"
+          style={{ height: `${100 / totalStrips}%` }}
+        >
+          <CategoryStrip
+            group={section.group}
+            apps={section.apps}
+            statuses={statuses}
+            density={density}
+          />
+        </div>
       ))}
     </div>
   );
@@ -340,14 +355,13 @@ function AppsConfigPanel({
         )}
       </ConfigField>
 
-      <ConfigField label="Density">
+      <ConfigField label="Size">
         <SegmentedControl
-          value={density}
+          value={density === "detailed" ? "default" : density}
           onChange={(d) => save({ density: d as AppsDensity })}
           options={[
-            { value: "compact", label: "Compact" },
-            { value: "default", label: "Default" },
-            { value: "detailed", label: "Detailed" },
+            { value: "compact", label: "Small" },
+            { value: "default", label: "Medium" },
           ]}
         />
       </ConfigField>
