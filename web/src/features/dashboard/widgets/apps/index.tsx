@@ -27,11 +27,11 @@ function AppsIcon() {
 function statusClasses(s: string | undefined): string {
   switch (s) {
     case "healthy":
-      return "bg-emerald-400 shadow-[0_0_0_2px_rgba(52,211,153,0.18)]";
+      return "bg-emerald-400 status-pulse";
     case "degraded":
-      return "bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.18)]";
+      return "bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.22)]";
     case "down":
-      return "bg-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.18)]";
+      return "bg-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.22)]";
     case "unknown":
     default:
       return "bg-text-muted/60";
@@ -249,9 +249,33 @@ function AppsWidget({ config }: WidgetProps<AppsConfig>) {
   }, [filteredApps]);
 
   if (filteredApps.length === 0) {
+    const isFiltered = (groupFilter?.length ?? 0) > 0;
     return (
-      <div className="flex items-center justify-center h-full text-text-muted text-[12px] p-2 text-center">
-        No apps match this widget's filter.
+      <div className="flex flex-col items-center justify-center h-full text-center p-4 gap-2">
+        <div className="w-9 h-9 rounded-lg bg-bg-elevated/60 border border-border-subtle flex items-center justify-center text-text-muted">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-4 h-4"
+          >
+            <rect x="3" y="3" width="7" height="7" rx="1" />
+            <rect x="14" y="3" width="7" height="7" rx="1" />
+            <rect x="3" y="14" width="7" height="7" rx="1" />
+            <rect x="14" y="14" width="7" height="7" rx="1" />
+          </svg>
+        </div>
+        <div className="text-text-secondary text-[12px] font-medium">
+          {isFiltered ? "No apps match" : "No apps configured"}
+        </div>
+        <div className="text-text-muted text-[10.5px] leading-snug max-w-[200px]">
+          {isFiltered
+            ? "Adjust the group filter in the widget config, or add apps to these groups in config.yaml."
+            : "Add apps under the `apps:` key in config.yaml."}
+        </div>
       </div>
     );
   }
@@ -301,68 +325,112 @@ function AppsConfigPanel({
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <div className="text-[10px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">
-          Groups
-        </div>
+    <div className="space-y-5">
+      <ConfigField label="Groups">
         {groups.length === 0 ? (
-          <div className="text-[11px] text-text-muted">No groups defined in config.yaml.</div>
+          <div className="text-[11px] text-text-muted italic px-1">
+            No groups defined in config.yaml.
+          </div>
         ) : (
-          <div className="space-y-1">
-            <label className="flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
-              <input
-                type="checkbox"
-                checked={selected.size === 0}
-                onChange={() => save({ groups: [] })}
-                className="accent-accent"
-              />
-              All groups
-            </label>
+          <div className="flex flex-wrap gap-1.5">
+            <ChipToggle active={selected.size === 0} onClick={() => save({ groups: [] })}>
+              All
+            </ChipToggle>
             {groups.map((g) => (
-              <label
+              <ChipToggle
                 key={g.id}
-                className="flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer"
+                active={selected.has(g.id)}
+                onClick={() => toggleGroup(g.id)}
+                accentColor={g.color}
               >
-                <input
-                  type="checkbox"
-                  checked={selected.has(g.id)}
-                  onChange={() => toggleGroup(g.id)}
-                  className="accent-accent"
-                />
-                {g.color && (
-                  <span
-                    className="inline-block w-2 h-2 rounded-full shrink-0"
-                    style={{ background: g.color }}
-                  />
-                )}
                 {g.name}
-              </label>
+              </ChipToggle>
             ))}
           </div>
         )}
-      </div>
+      </ConfigField>
 
-      <div>
-        <div className="text-[10px] uppercase tracking-wider text-text-muted font-semibold mb-1.5">
-          Density
-        </div>
-        <div className="flex gap-1">
-          {(["compact", "default", "detailed"] as const).map((d) => (
-            <button
-              key={d}
-              onClick={() => save({ density: d })}
-              className={`px-2.5 py-1 text-[11px] rounded border transition-colors ${
-                density === d
-                  ? "border-accent/40 bg-accent/10 text-accent"
-                  : "border-border text-text-muted hover:text-text hover:border-border"
-              }`}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
+      <ConfigField label="Density">
+        <SegmentedControl
+          value={density}
+          onChange={(d) => save({ density: d as AppsDensity })}
+          options={[
+            { value: "compact", label: "Compact" },
+            { value: "default", label: "Default" },
+            { value: "detailed", label: "Detailed" },
+          ]}
+        />
+      </ConfigField>
+    </div>
+  );
+}
+
+function ConfigField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+        {label}
       </div>
+      {children}
+    </div>
+  );
+}
+
+function ChipToggle({
+  active,
+  onClick,
+  accentColor,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  accentColor?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] border transition-colors ${
+        active
+          ? "border-accent/50 bg-accent/15 text-text"
+          : "border-border-subtle bg-bg-card/40 text-text-muted hover:text-text-secondary hover:border-border"
+      }`}
+    >
+      {accentColor && (
+        <span
+          className="inline-block w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ background: accentColor }}
+        />
+      )}
+      {children}
+    </button>
+  );
+}
+
+function SegmentedControl({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card/40">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          onClick={() => onChange(o.value)}
+          className={`px-3 py-1 text-[11px] rounded transition-colors ${
+            value === o.value
+              ? "bg-bg-elevated text-text shadow-sm"
+              : "text-text-muted hover:text-text-secondary"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }

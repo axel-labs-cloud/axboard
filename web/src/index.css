@@ -49,6 +49,20 @@
   }
 }
 
+/* Status-dot pulse for healthy services — very subtle. */
+@keyframes ianua-status-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.32);
+  }
+}
+.status-pulse {
+  animation: ianua-status-pulse 2.4s ease-in-out infinite;
+}
+
 /* react-grid-layout polish — softer placeholder, smoother resize handle. */
 .react-grid-item.react-grid-placeholder {
   background: rgba(129, 140, 248, 0.12) !important;

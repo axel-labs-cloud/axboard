@@ -595,11 +595,17 @@ function ConfigPanelHost({
 }) {
   return (
     <div
-      className="fixed z-50 w-[340px] bg-bg-card border border-border rounded shadow-2xl"
+      className="fixed z-50 w-[340px] bg-bg-elevated/95 backdrop-blur-md border border-border rounded-lg shadow-2xl shadow-black/40 ring-1 ring-white/5"
       style={{ left: pos.x, top: pos.y }}
     >
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border">
-        <span className="text-[13px] font-medium text-text">{title}</span>
+      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border-subtle">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+            Configure
+          </span>
+          <span className="text-text-muted/40">·</span>
+          <span className="text-[12px] font-medium text-text truncate">{title}</span>
+        </div>
         <button
           onClick={onClose}
           className="text-text-muted hover:text-text w-5 h-5 flex items-center justify-center"
@@ -619,7 +625,7 @@ function ConfigPanelHost({
           </svg>
         </button>
       </div>
-      <div className="p-3 max-h-[60vh] overflow-auto">{children}</div>
+      <div className="p-3.5 max-h-[60vh] overflow-auto">{children}</div>
     </div>
   );
 }
