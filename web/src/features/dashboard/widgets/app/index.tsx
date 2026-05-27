@@ -150,11 +150,14 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
     );
   }
 
-  // 1×2 / 1×3 — horizontal row: icon left, name (and optional description) middle, dot right.
+  // 1×2 / 1×3 — horizontal row: icon left, name (and optional description)
+  // middle, response time + dot right. Icon sized to match 1×1 visually
+  // (the 1×1 layout has p-2, so its effective icon size is ~50% of widget
+  // height — using h-1/2 here keeps them consistent).
   if (h === 1) {
     return (
       <a {...props} className={`${linkClass} items-center gap-3 px-3`}>
-        <div className="h-3/4 aspect-square shrink-0">
+        <div className="h-1/2 aspect-square shrink-0 max-h-[44px]">
           <Icon app={app} className="w-full h-full" />
         </div>
         <div className="min-w-0 flex-1 flex flex-col gap-0.5">
@@ -165,6 +168,11 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
             <span className="text-text-muted text-[11px] truncate leading-snug">{descText}</span>
           )}
         </div>
+        {w >= 3 && showResponseTime && status?.response_ms != null && (
+          <span className="text-[10px] text-text-muted/80 font-mono tabular-nums shrink-0">
+            {status.response_ms} ms
+          </span>
+        )}
         {showStatus && <StatusDot status={status} size="md" />}
       </a>
     );
