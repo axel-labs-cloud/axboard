@@ -311,6 +311,78 @@ export function DashboardPage() {
     downloadDashboardFile(dash?.name ?? "dashboard", layout);
   };
 
+  // ---- Dashboard CRUD (writes config.yaml — comments lost on save) ----
+  const writeConfigAndRefresh = useCallback(
+    async (mutate: (cfg: ConfigPayload) => ConfigPayload) => {
+      const cur = qc.getQueryData<ConfigPayload>(["config"]);
+      if (!cur) return;
+      const next = mutate(cur);
+      qc.setQueryData(["config"], next);
+      try {
+        await fetch("/api/config", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(next),
+        });
+        qc.invalidateQueries({ queryKey: ["config"] });
+      } catch (e) {
+        // Roll back optimistic update on failure.
+        qc.setQueryData(["config"], cur);
+        // eslint-disable-next-line no-console
+        console.error("Failed to write config:", e);
+      }
+    },
+    [qc],
+  );
+
+  const handleAddDashboard = useCallback(() => {
+    const name = window.prompt("New dashboard name:", "New dashboard");
+    if (!name || !name.trim()) return;
+    const id = `dash-${Date.now()}`;
+    writeConfigAndRefresh((cfg) => ({
+      ...cfg,
+      dashboards: [
+        ...(cfg.dashboards ?? []),
+        { id, name: name.trim(), default: false, widgets: [] },
+      ],
+    }));
+    setActiveDashboardId(id);
+  }, [writeConfigAndRefresh]);
+
+  const handleRenameDashboard = useCallback(
+    (id: string, name: string) => {
+      if (!name.trim()) return;
+      writeConfigAndRefresh((cfg) => ({
+        ...cfg,
+        dashboards: (cfg.dashboards ?? []).map((d) =>
+          d.id === id ? { ...d, name: name.trim() } : d,
+        ),
+      }));
+    },
+    [writeConfigAndRefresh],
+  );
+
+  const handleDeleteDashboard = useCallback(
+    (id: string) => {
+      const dash = dashboards.find((d) => d.id === id);
+      if (!dash) return;
+      if (dashboards.length <= 1) {
+        alert("Can't delete the last dashboard.");
+        return;
+      }
+      if (!confirm(`Delete dashboard "${dash.name}"? Its layout will be discarded.`)) return;
+      writeConfigAndRefresh((cfg) => ({
+        ...cfg,
+        dashboards: (cfg.dashboards ?? []).filter((d) => d.id !== id),
+      }));
+      if (activeDashboardId === id) {
+        const remaining = dashboards.filter((d) => d.id !== id);
+        setActiveDashboardId(remaining[0]?.id ?? null);
+      }
+    },
+    [dashboards, activeDashboardId, writeConfigAndRefresh],
+  );
+
   useDashboardShortcuts({
     editing,
     selectedWidgetId,
@@ -418,6 +490,9 @@ export function DashboardPage() {
         onExport={handleExport}
         onAddWidget={() => setAddWidgetOpen(true)}
         onManageServices={() => setManageServicesOpen(true)}
+        onAddDashboard={handleAddDashboard}
+        onRenameDashboard={handleRenameDashboard}
+        onDeleteDashboard={handleDeleteDashboard}
       />
 
       <div ref={containerRef} className="flex-1 min-h-0 relative">
@@ -484,7 +559,11 @@ export function DashboardPage() {
                       onConfig={(e) => openConfig(widget.i, e)}
                     />
                   )}
-                  <div className="w-full h-full overflow-hidden">
+                  <div
+                    className={`w-full h-full overflow-hidden ${
+                      editing ? "pointer-events-none" : ""
+                    }`}
+                  >
                     <WidgetSurface
                       widget={widget}
                       def={def}

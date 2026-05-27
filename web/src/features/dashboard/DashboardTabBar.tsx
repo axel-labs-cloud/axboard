@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+
 interface Dashboard {
   id: string;
   name: string;
@@ -17,6 +19,9 @@ interface Props {
   onExport: () => void;
   onAddWidget: () => void;
   onManageServices: () => void;
+  onAddDashboard: () => void;
+  onRenameDashboard: (id: string, name: string) => void;
+  onDeleteDashboard: (id: string) => void;
 }
 
 export function DashboardTabBar({
@@ -32,7 +37,12 @@ export function DashboardTabBar({
   onExport,
   onAddWidget,
   onManageServices,
+  onAddDashboard,
+  onRenameDashboard,
+  onDeleteDashboard,
 }: Props) {
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+
   return (
     <div className="flex items-center border-b border-border-subtle bg-bg-card/40 backdrop-blur-sm px-6 py-2 gap-3">
       <div className="flex items-center gap-2 shrink-0 select-none">
@@ -55,21 +65,43 @@ export function DashboardTabBar({
       </div>
       <div className="flex items-center gap-0.5 flex-1 min-w-0 overflow-x-auto">
         {dashboards.map((db) => (
-          <button
+          <DashboardTab
             key={db.id}
-            onClick={() => onSelect(db.id)}
-            className={`relative px-3 py-1.5 text-[12px] font-medium transition-colors whitespace-nowrap ${
-              activeId === db.id
-                ? "text-text"
-                : "text-text-muted hover:text-text-secondary"
-            }`}
-          >
-            {db.name}
-            {activeId === db.id && (
-              <span className="absolute bottom-0 left-0 right-0 h-px bg-accent" />
-            )}
-          </button>
+            db={db}
+            active={activeId === db.id}
+            editing={editing}
+            canDelete={editing && dashboards.length > 1}
+            renaming={renamingId === db.id}
+            onSelect={() => onSelect(db.id)}
+            onStartRename={() => setRenamingId(db.id)}
+            onCommitRename={(name) => {
+              setRenamingId(null);
+              if (name && name !== db.name) onRenameDashboard(db.id, name);
+            }}
+            onCancelRename={() => setRenamingId(null)}
+            onDelete={() => onDeleteDashboard(db.id)}
+          />
         ))}
+        {editing && (
+          <button
+            onClick={onAddDashboard}
+            title="New dashboard"
+            className="ml-1 w-7 h-7 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-3.5 h-3.5"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-1 shrink-0">
@@ -172,6 +204,89 @@ export function DashboardTabBar({
           {editing ? "Done" : "Edit"}
         </button>
       </div>
+    </div>
+  );
+}
+
+function DashboardTab({
+  db,
+  active,
+  editing,
+  canDelete,
+  renaming,
+  onSelect,
+  onStartRename,
+  onCommitRename,
+  onCancelRename,
+  onDelete,
+}: {
+  db: Dashboard;
+  active: boolean;
+  editing: boolean;
+  canDelete: boolean;
+  renaming: boolean;
+  onSelect: () => void;
+  onStartRename: () => void;
+  onCommitRename: (name: string) => void;
+  onCancelRename: () => void;
+  onDelete: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (renaming) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [renaming]);
+
+  if (renaming) {
+    return (
+      <input
+        ref={inputRef}
+        defaultValue={db.name}
+        onBlur={(e) => onCommitRename(e.target.value.trim())}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          if (e.key === "Escape") onCancelRename();
+        }}
+        className="px-2 py-1 mx-1 text-[12px] font-medium bg-bg-card border border-accent/40 rounded text-text focus:outline-none w-32"
+      />
+    );
+  }
+
+  return (
+    <div className="relative flex items-center group/tab">
+      <button
+        onClick={onSelect}
+        onDoubleClick={() => editing && onStartRename()}
+        title={editing ? "Double-click to rename" : undefined}
+        className={`relative px-3 py-1.5 text-[12px] font-medium transition-colors whitespace-nowrap ${
+          active ? "text-text" : "text-text-muted hover:text-text-secondary"
+        }`}
+      >
+        {db.name}
+        {active && <span className="absolute bottom-0 left-0 right-0 h-px bg-accent" />}
+      </button>
+      {canDelete && (
+        <button
+          onClick={onDelete}
+          title={`Delete "${db.name}"`}
+          className="w-4 h-4 mr-1 flex items-center justify-center rounded text-text-muted/50 hover:text-rose-400 hover:bg-rose-400/10 opacity-0 group-hover/tab:opacity-100"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-3 h-3"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      )}
     </div>
   );
 }

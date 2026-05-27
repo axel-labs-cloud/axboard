@@ -12,6 +12,9 @@ export type WidgetCategory = "system" | "infrastructure" | "productivity" | "ext
 export interface ClockConfig {
   use24h?: boolean;
   timezones?: string[];
+  /** Date string format. Short = "Wed, May 27", long = full weekday + year,
+   *  iso = 2026-05-27, numeric = 5/27/2026. */
+  dateFormat?: "short" | "long" | "iso" | "numeric";
 }
 
 export interface ShortcutItem {

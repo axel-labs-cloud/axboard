@@ -8,17 +8,15 @@ import type {
 import { SimpleIcon } from "../../SimpleIcon";
 
 // ---------------------------------------------------------------------------
-// Shortcut widget
-// Grid of clickable brand-icon links. The icon grid resolution is
-// `(w*2) cols × (h*2) rows`, so 2 icons per grid unit in each direction.
-// 1×1 = 4 slots, 2×2 = 16 slots. A single shortcut renders as a big centered
-// icon regardless of widget size.
+// Bookmarks widget — list of links rendered as small icon + name rows.
+// Single bookmark renders as a big centered icon (favicon-style tile).
+// Multi-bookmark mode is a vertical list — small icons, labels, no grid.
+// (The Apps grid widget is the icons-in-cells layout; this is the list.)
 // ---------------------------------------------------------------------------
 
-function ShortcutComponent({ config, w, h }: WidgetProps<ShortcutConfig>) {
+function ShortcutComponent({ config }: WidgetProps<ShortcutConfig>) {
   const sc = config?.shortcuts ?? [];
 
-  // Empty state — placeholder icon, low opacity
   if (sc.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-text-muted/40 gap-1.5">
@@ -31,63 +29,65 @@ function ShortcutComponent({ config, w, h }: WidgetProps<ShortcutConfig>) {
           strokeLinejoin="round"
           className="w-6 h-6"
         >
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          <line x1="8" y1="6" x2="21" y2="6" />
+          <line x1="8" y1="12" x2="21" y2="12" />
+          <line x1="8" y1="18" x2="21" y2="18" />
+          <line x1="3" y1="6" x2="3.01" y2="6" />
+          <line x1="3" y1="12" x2="3.01" y2="12" />
+          <line x1="3" y1="18" x2="3.01" y2="18" />
         </svg>
-        <span className="text-[10px]">No shortcuts</span>
+        <span className="text-[10px]">No bookmarks</span>
       </div>
     );
   }
 
-  // Single shortcut → one big centered icon
   if (sc.length === 1) {
     const s = sc[0];
-    const size = Math.min(w, h) >= 2 ? 72 : 48;
     return (
-      <div
-        onClick={() => s.url && window.open(s.url, "_blank", "noopener")}
-        className="flex items-center justify-center w-full h-full hover:bg-bg-hover transition-colors cursor-pointer"
+      <a
+        href={s.url || undefined}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="flex flex-col items-center justify-center w-full h-full hover:bg-bg-hover transition-colors p-2 gap-1.5"
         title={s.label}
       >
-        {s.icon ? (
-          <SimpleIcon slug={s.icon} size={size} />
-        ) : (
-          <span className="text-text-muted text-xs">?</span>
+        <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+          {s.icon ? (
+            <SimpleIcon slug={s.icon} fill />
+          ) : (
+            <span className="text-text-muted text-xs">?</span>
+          )}
+        </div>
+        {s.label && (
+          <span className="text-[11px] text-text-secondary truncate max-w-full">{s.label}</span>
         )}
-      </div>
+      </a>
     );
   }
 
-  // Grid: 2 icons per grid unit in each direction. Fixed icon sizes,
-  // tuned so the icons read clearly without overwhelming the slot.
-  const gridCols = w * 2;
-  const gridRows = h * 2;
-  const maxSlots = gridCols * gridRows;
-  const visible = sc.slice(0, maxSlots);
-  const area = w * h;
-  const iconSize = area >= 4 ? 36 : area >= 2 ? 32 : 28;
-
   return (
-    <div
-      className="grid w-full h-full p-1"
-      style={{
-        gridTemplateColumns: `repeat(${gridCols}, minmax(0, 1fr))`,
-        gridTemplateRows: `repeat(${gridRows}, minmax(0, 1fr))`,
-      }}
-    >
-      {Array.from({ length: maxSlots }).map((_, i) => {
-        const s = visible[i];
-        if (!s?.icon) return <div key={i} />;
-        return (
-          <div
-            key={i}
-            onClick={() => s.url && window.open(s.url, "_blank", "noopener")}
-            className="flex items-center justify-center hover:bg-bg-hover rounded transition-colors cursor-pointer min-w-0 min-h-0"
-            title={s.label}
-          >
-            <SimpleIcon slug={s.icon} size={iconSize} />
+    <div className="flex flex-col w-full h-full overflow-hidden p-1.5 gap-0.5">
+      {sc.map((s, i) => (
+        <a
+          key={i}
+          href={s.url || undefined}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-bg-hover transition-colors min-w-0 shrink-0"
+          title={s.label}
+        >
+          <div className="w-4 h-4 shrink-0 flex items-center justify-center">
+            {s.icon ? (
+              <SimpleIcon slug={s.icon} fill />
+            ) : (
+              <span className="text-text-muted text-[10px]">?</span>
+            )}
           </div>
-        );
-      })}
+          <span className="text-[12px] text-text-secondary truncate flex-1">
+            {s.label || s.url}
+          </span>
+        </a>
+      ))}
     </div>
   );
 }
@@ -178,10 +178,10 @@ const ShortcutIcon = (
 
 const definition: WidgetDefinition<ShortcutConfig> = {
   type: "shortcut",
-  title: "Shortcuts",
+  title: "Bookmarks",
   icon: ShortcutIcon,
   category: "productivity",
-  description: "Grid of brand-icon links. Up to 16 in a 2×2 widget.",
+  description: "List of links — small icon + label per row. Single bookmark renders as a big tile.",
   minW: 1,
   minH: 1,
   maxW: 4,

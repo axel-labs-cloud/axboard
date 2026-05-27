@@ -1,6 +1,32 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ClockConfig, WidgetDefinition, WidgetProps, WidgetConfigProps } from "../types";
 import { TIMEZONES } from "../../timezones";
+
+type DateFormat = "short" | "long" | "iso" | "numeric";
+
+function formatDate(now: Date, fmt: DateFormat | undefined): string {
+  switch (fmt) {
+    case "long":
+      return now.toLocaleDateString([], {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+    case "iso":
+      return now.toISOString().slice(0, 10);
+    case "numeric":
+      return now.toLocaleDateString();
+    case "short":
+    default:
+      return now.toLocaleDateString([], {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Clock widget
@@ -16,8 +42,9 @@ function ClockComponent({ config, w, h }: WidgetProps<ClockConfig>) {
   }, []);
 
   const use24h = config?.use24h ?? true;
-  // Cap displayed timezones at 5 — beyond that the bottom of any 1×2 / 2×2
-  // clock becomes too cramped to read.
+  const dateFormat = (config?.dateFormat as DateFormat | undefined) ?? "short";
+  // Cap displayed timezones at 5 — beyond that the bottom of any tall layout
+  // becomes too cramped to read.
   const tzs = (config?.timezones ?? []).slice(0, 5);
 
   const fmt = (tz?: string) =>
@@ -27,27 +54,13 @@ function ClockComponent({ config, w, h }: WidgetProps<ClockConfig>) {
       hour12: !use24h,
       ...(tz && { timeZone: tz }),
     });
-  const dateShort = now.toLocaleDateString([], {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+  const dateStr = formatDate(now, dateFormat);
 
-  // 1×1 — large centered time
-  if (w <= 1 && h <= 1) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <span className="text-3xl font-mono text-text tabular-nums">{fmt()}</span>
-      </div>
-    );
-  }
-
-  // W×1 (wide, short) — time + date inline, vertically centered
+  // h=1 — just time, no date. The widget is too short to fit a date row.
   if (h <= 1) {
     return (
-      <div className="flex items-center justify-center h-full gap-4 px-4">
+      <div className="flex items-center justify-center h-full px-3">
         <span className="text-4xl font-mono text-text tabular-nums">{fmt()}</span>
-        <span className="text-[14px] text-text-muted">{dateShort}</span>
       </div>
     );
   }
@@ -61,7 +74,7 @@ function ClockComponent({ config, w, h }: WidgetProps<ClockConfig>) {
       <div className="flex flex-col h-full">
         <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-2">
           <div className="text-4xl font-mono text-text tabular-nums leading-none">{fmt()}</div>
-          <div className="text-[12px] text-text-muted mt-1.5">{dateShort}</div>
+          <div className="text-[12px] text-text-muted mt-1.5">{dateStr}</div>
         </div>
         {tzs.length > 0 && (
           <>
@@ -91,7 +104,7 @@ function ClockComponent({ config, w, h }: WidgetProps<ClockConfig>) {
         <div className="text-5xl font-mono text-text tabular-nums leading-none">
           {fmt()}
         </div>
-        <div className="text-[14px] text-text-muted mt-2">{dateShort}</div>
+        <div className="text-[14px] text-text-muted mt-2">{dateStr}</div>
       </div>
       {tzs.length > 0 && (
         <div className="shrink-0 space-y-0.5 pt-2">
@@ -179,6 +192,22 @@ function ClockConfigPanel({ config, save }: WidgetConfigProps<ClockConfig>) {
         24-hour format
       </label>
 
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+          Date format
+        </label>
+        <select
+          value={(config?.dateFormat as DateFormat | undefined) ?? "short"}
+          onChange={(e) => save({ dateFormat: e.target.value as DateFormat })}
+          className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent"
+        >
+          <option value="short">Short — Wed, May 27</option>
+          <option value="long">Long — Wednesday, May 27, 2026</option>
+          <option value="iso">ISO — 2026-05-27</option>
+          <option value="numeric">Numeric — 5/27/2026</option>
+        </select>
+      </div>
+
       <div>
         <div className="flex items-center justify-between mb-1.5">
           <span className="text-[11px] text-text-muted">Timezones</span>
@@ -205,27 +234,32 @@ function ClockConfigPanel({ config, save }: WidgetConfigProps<ClockConfig>) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search timezone..."
-              className="w-full px-2 py-1.5 rounded bg-bg border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
+              className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
             />
-            {query && dropdownStyle && filtered.length > 0 && (
-              <div
-                className="bg-bg-elevated border border-border rounded shadow-2xl max-h-64 overflow-auto z-[300]"
-                style={dropdownStyle}
-              >
-                {filtered.slice(0, 20).map((tz) => (
-                  <button
-                    key={tz}
-                    onClick={() => {
-                      save({ timezones: [...tzs, tz] });
-                      setQuery("");
-                    }}
-                    className="w-full text-left px-3 py-1.5 text-[12px] text-text-secondary hover:bg-bg-hover hover:text-text font-mono whitespace-nowrap"
-                  >
-                    {tz}
-                  </button>
-                ))}
-              </div>
-            )}
+            {query &&
+              dropdownStyle &&
+              filtered.length > 0 &&
+              createPortal(
+                <div
+                  className="bg-bg-elevated border border-border rounded shadow-2xl max-h-64 overflow-auto z-[300]"
+                  style={dropdownStyle}
+                >
+                  {filtered.slice(0, 20).map((tz) => (
+                    <button
+                      key={tz}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        save({ timezones: [...tzs, tz] });
+                        setQuery("");
+                      }}
+                      className="w-full text-left px-3 py-1.5 text-[12px] text-text-secondary hover:bg-bg-hover hover:text-text font-mono whitespace-nowrap"
+                    >
+                      {tz}
+                    </button>
+                  ))}
+                </div>,
+                document.body,
+              )}
           </div>
         ) : (
           <div className="mt-1.5 px-2 py-1.5 rounded border border-dashed border-border-subtle text-[11px] text-text-muted text-center">
@@ -262,7 +296,7 @@ const definition: WidgetDefinition<ClockConfig> = {
   icon: ClockIcon,
   category: "system",
   description: "Live clock with optional secondary timezones. 12/24h format.",
-  minW: 1,
+  minW: 2,
   minH: 1,
   maxW: 4,
   maxH: 4,
