@@ -65,6 +65,11 @@ func (p *Pool) Reconcile(apps []config.App) {
 		if ok {
 			existing.cancel()
 			delete(p.workers, app.ID)
+			// If the app is still configured but no longer has a health
+			// check, the cached result becomes meaningless — purge it.
+			// (When the hash changed but a worker IS still needed, the
+			// first run of the new worker will overwrite this anyway.)
+			p.results.Delete(app.ID)
 		}
 		if !needsWorker {
 			continue
