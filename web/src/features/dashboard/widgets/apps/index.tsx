@@ -147,9 +147,11 @@ function GroupSection({
   // room to breathe.
   const minCard = density === "compact" ? 130 : 170;
   return (
-    <div>
+    // h-full + min-h-0 so the parent flex layout can shrink this section
+    // when total content exceeds the widget height.
+    <div className="flex flex-col min-h-0 h-full">
       {group && (
-        <div className="flex items-center gap-2 px-0.5 mb-1.5">
+        <div className="flex items-center gap-2 px-0.5 mb-1.5 shrink-0">
           {group.color && (
             <span
               className="inline-block w-1 h-3.5 rounded-sm shrink-0"
@@ -164,7 +166,7 @@ function GroupSection({
         </div>
       )}
       <div
-        className="grid gap-1.5"
+        className="grid gap-1.5 flex-1 min-h-0 overflow-hidden content-start"
         style={{ gridTemplateColumns: `repeat(auto-fill,minmax(${minCard}px,1fr))` }}
       >
         {apps.map((app) => (
@@ -233,15 +235,24 @@ function AppsWidget({ config }: WidgetProps<AppsConfig>) {
   }
 
   return (
-    <div className="h-full w-full overflow-hidden p-2 space-y-2.5">
+    // Groups share the widget's vertical space proportionally to their app
+    // count (flex-grow = apps.length). Bigger groups get more rows of cards
+    // visible; smaller groups get less. Everything stays clipped inside the
+    // widget — no scrollbar.
+    <div className="h-full w-full overflow-hidden p-2 flex flex-col gap-2.5">
       {ordered.map((section, i) => (
-        <GroupSection
+        <div
           key={section.group?.id ?? `__nogroup_${i}`}
-          group={section.group}
-          apps={section.apps}
-          statuses={statuses}
-          density={density}
-        />
+          className="min-h-0"
+          style={{ flex: `${Math.max(1, section.apps.length)} 1 0` }}
+        >
+          <GroupSection
+            group={section.group}
+            apps={section.apps}
+            statuses={statuses}
+            density={density}
+          />
+        </div>
       ))}
     </div>
   );
