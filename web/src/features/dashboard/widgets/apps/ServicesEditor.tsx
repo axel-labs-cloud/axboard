@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
@@ -37,6 +37,8 @@ export function ServicesEditor({ open, onClose }: Props) {
   const [dragKey, setDragKey] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [pendingFocus, setPendingFocus] = useState<string | null>(null);
 
   // Seed local state when the modal opens.
   useEffect(() => {
@@ -47,6 +49,8 @@ export function ServicesEditor({ open, onClose }: Props) {
     setSelectedKey(seedApps[0]?._key ?? null);
     setError(null);
     setDirty(false);
+    setCollapsed(new Set());
+    setPendingFocus(null);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = useMutation({
@@ -153,7 +157,19 @@ export function ServicesEditor({ open, onClose }: Props) {
       color: ["#7c3aed", "#06b6d4", "#22c55e", "#ec4899", "#f59e0b", "#94a3b8"][groups.length % 6],
     };
     setGroups((prev) => [...prev, fresh]);
+    // Collapse every existing group so the new one is the only thing in view.
+    setCollapsed(new Set(groups.map((g) => g.id)));
+    setPendingFocus(fresh.id);
     setDirty(true);
+  };
+
+  const toggleCollapsed = (id: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const updateGroup = (id: string, patch: Partial<GroupDef>) => {
@@ -267,52 +283,61 @@ export function ServicesEditor({ open, onClose }: Props) {
                 <PlusIcon /> Group
               </button>
             </div>
-            {groupedView.map((section, sIdx) => (
-              <div key={section.group?.id ?? `__none_${sIdx}`} className="border-b border-border-subtle">
-                {section.group ? (
-                  <GroupHeader
-                    group={section.group}
-                    count={section.apps.length}
-                    onAddApp={() => addApp(section.group?.id)}
-                    onPatch={(patch) => updateGroup(section.group!.id, patch)}
-                    onRenameId={(newId) => renameGroupId(section.group!.id, newId)}
-                    onDelete={() => removeGroup(section.group!.id)}
-                  />
-                ) : (
-                  <div className="flex items-center justify-between px-3 py-2 bg-bg-card/30">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold truncate">
-                        Ungrouped
-                      </span>
-                      <span className="text-[10px] text-text-muted">{section.apps.length}</span>
+            {groupedView.map((section, sIdx) => {
+              const sectionKey = section.group?.id ?? `__none_${sIdx}`;
+              const isCollapsed = section.group ? collapsed.has(section.group.id) : false;
+              return (
+                <div key={sectionKey} className="border-b border-border-subtle">
+                  {section.group ? (
+                    <GroupHeader
+                      group={section.group}
+                      count={section.apps.length}
+                      collapsed={isCollapsed}
+                      onToggleCollapsed={() => toggleCollapsed(section.group!.id)}
+                      autoFocus={pendingFocus === section.group.id}
+                      onAutoFocused={() => setPendingFocus(null)}
+                      onAddApp={() => addApp(section.group?.id)}
+                      onPatch={(patch) => updateGroup(section.group!.id, patch)}
+                      onRenameId={(newId) => renameGroupId(section.group!.id, newId)}
+                      onDelete={() => removeGroup(section.group!.id)}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-between px-3 py-2 bg-bg-card/30">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold truncate">
+                          Ungrouped
+                        </span>
+                        <span className="text-[10px] text-text-muted">{section.apps.length}</span>
+                      </div>
+                      <button
+                        onClick={() => addApp(undefined)}
+                        title="Add ungrouped service"
+                        className="w-5 h-5 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
+                      >
+                        <PlusIcon />
+                      </button>
                     </div>
-                    <button
-                      onClick={() => addApp(undefined)}
-                      title="Add ungrouped service"
-                      className="w-5 h-5 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
-                    >
-                      <PlusIcon />
-                    </button>
-                  </div>
-                )}
-                {section.apps.map((app) => (
-                  <SidebarRow
-                    key={app._key}
-                    app={app}
-                    selected={selectedKey === app._key}
-                    onSelect={() => setSelectedKey(app._key)}
-                    onRemove={() => removeApp(app._key)}
-                    onDragStart={() => setDragKey(app._key)}
-                    onDragEnd={() => setDragKey(null)}
-                    onDrop={() => {
-                      if (dragKey !== null && dragKey !== app._key) moveTo(dragKey, app._key);
-                      setDragKey(null);
-                    }}
-                    isDragging={dragKey === app._key}
-                  />
-                ))}
-              </div>
-            ))}
+                  )}
+                  {!isCollapsed &&
+                    section.apps.map((app) => (
+                      <SidebarRow
+                        key={app._key}
+                        app={app}
+                        selected={selectedKey === app._key}
+                        onSelect={() => setSelectedKey(app._key)}
+                        onRemove={() => removeApp(app._key)}
+                        onDragStart={() => setDragKey(app._key)}
+                        onDragEnd={() => setDragKey(null)}
+                        onDrop={() => {
+                          if (dragKey !== null && dragKey !== app._key) moveTo(dragKey, app._key);
+                          setDragKey(null);
+                        }}
+                        isDragging={dragKey === app._key}
+                      />
+                    ))}
+                </div>
+              );
+            })}
           </div>
 
           {/* Form */}
@@ -349,12 +374,20 @@ export function ServicesEditor({ open, onClose }: Props) {
 function GroupHeader({
   group,
   count,
+  collapsed,
+  autoFocus,
+  onToggleCollapsed,
+  onAutoFocused,
   onAddApp,
   onPatch,
   onDelete,
 }: {
   group: GroupDef;
   count: number;
+  collapsed: boolean;
+  autoFocus: boolean;
+  onToggleCollapsed: () => void;
+  onAutoFocused: () => void;
   onAddApp: () => void;
   onPatch: (patch: Partial<GroupDef>) => void;
   onRenameId: (newId: string) => void;
@@ -362,28 +395,60 @@ function GroupHeader({
 }) {
   const [colorOpen, setColorOpen] = useState(false);
   const [name, setName] = useState(group.name);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const colorBtnRef = useRef<HTMLButtonElement>(null);
 
   // Keep local input in sync if the prop changes from elsewhere.
   useEffect(() => setName(group.name), [group.name]);
 
+  // Auto-focus + select the name when this group was just created.
+  useEffect(() => {
+    if (autoFocus && nameRef.current) {
+      nameRef.current.focus();
+      nameRef.current.select();
+      onAutoFocused();
+    }
+  }, [autoFocus, onAutoFocused]);
+
+  // Close the color popover on outside click.
+  useEffect(() => {
+    if (!colorOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (colorBtnRef.current && !colorBtnRef.current.contains(e.target as Node)) {
+        setColorOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [colorOpen]);
+
   const palette = [
     "#7c3aed",
     "#a855f7",
+    "#3b82f6",
     "#06b6d4",
-    "#0ea5e9",
-    "#22c55e",
     "#10b981",
-    "#ec4899",
-    "#f43f5e",
-    "#f59e0b",
+    "#22c55e",
     "#eab308",
+    "#f59e0b",
+    "#ef4444",
+    "#ec4899",
     "#94a3b8",
     "#64748b",
   ];
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 bg-bg-card/30 border-b border-border-subtle group/gh sticky top-[33px] z-10">
+    <div className="flex items-center gap-1.5 px-2 py-1.5 bg-bg-card/30 border-b border-border-subtle sticky top-[33px] z-10">
       <button
+        onClick={onToggleCollapsed}
+        className="w-5 h-5 flex items-center justify-center text-text-muted hover:text-text shrink-0"
+        title={collapsed ? "Expand" : "Collapse"}
+      >
+        <ChevronIcon open={!collapsed} />
+      </button>
+
+      <button
+        ref={colorBtnRef}
         onClick={() => setColorOpen((o) => !o)}
         className="relative inline-flex items-center justify-center w-4 h-4 shrink-0 rounded ring-1 ring-white/10 hover:ring-white/30 transition-shadow"
         style={{ background: group.color ?? "var(--color-border)" }}
@@ -391,10 +456,13 @@ function GroupHeader({
       >
         {colorOpen && (
           <div
-            className="absolute top-full left-0 mt-1 z-30 bg-bg-elevated border border-border rounded-lg p-1.5 shadow-2xl ring-1 ring-white/5"
+            className="absolute top-full left-0 mt-2 z-30 bg-bg-elevated border border-border rounded-lg p-3 shadow-2xl ring-1 ring-white/5 w-[200px]"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="grid grid-cols-6 gap-1">
+            <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-2">
+              Color
+            </div>
+            <div className="grid grid-cols-4 gap-2">
               {palette.map((c) => (
                 <button
                   key={c}
@@ -402,10 +470,11 @@ function GroupHeader({
                     onPatch({ color: c });
                     setColorOpen(false);
                   }}
-                  className={`w-5 h-5 rounded ${
-                    group.color === c ? "ring-2 ring-offset-1 ring-offset-bg-elevated ring-white" : ""
+                  className={`w-9 h-9 rounded-md transition-transform hover:scale-105 ${
+                    group.color === c ? "ring-2 ring-offset-2 ring-offset-bg-elevated ring-white" : ""
                   }`}
                   style={{ background: c }}
+                  title={c}
                 />
               ))}
             </div>
@@ -414,7 +483,7 @@ function GroupHeader({
                 onPatch({ color: undefined });
                 setColorOpen(false);
               }}
-              className="block w-full mt-1.5 px-2 py-1 text-[10px] text-text-muted hover:text-text rounded hover:bg-bg-hover"
+              className="block w-full mt-3 px-2 py-1.5 text-[11px] text-text-secondary hover:text-text rounded border border-border-subtle hover:border-text-muted/70 hover:bg-bg-hover transition-colors"
             >
               No color
             </button>
@@ -423,6 +492,7 @@ function GroupHeader({
       </button>
 
       <input
+        ref={nameRef}
         value={name}
         onChange={(e) => setName(e.target.value)}
         onBlur={() => {
@@ -457,6 +527,22 @@ function GroupHeader({
         <TrashIcon />
       </button>
     </div>
+  );
+}
+
+function ChevronIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`w-3 h-3 transition-transform ${open ? "" : "-rotate-90"}`}
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
   );
 }
 
