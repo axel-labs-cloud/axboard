@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import type { AppDef, GroupDef, StatusMap } from "../../../../api/types";
 import { SimpleIcon } from "../../SimpleIcon";
 import type { AppsConfig, AppsDensity, WidgetDefinition, WidgetProps } from "../types";
+import { ServicesEditor } from "./ServicesEditor";
 
 function AppsIcon() {
   return (
@@ -55,7 +56,7 @@ function IconChip({ app, size }: { app: AppDef; size: number }) {
   if (!app.icon) {
     return (
       <div
-        className="rounded-md flex items-center justify-center text-text text-[11px] font-semibold shrink-0 ring-1 ring-white/5"
+        className="rounded-md flex items-center justify-center text-text text-[11px] font-semibold shrink-0"
         style={{ width: size, height: size, background: hashColor(app.name) }}
       >
         {initials(app.name)}
@@ -63,10 +64,7 @@ function IconChip({ app, size }: { app: AppDef; size: number }) {
     );
   }
   return (
-    <div
-      className="shrink-0 flex items-center justify-center rounded-md bg-bg-elevated/40 ring-1 ring-white/5 p-1"
-      style={{ width: size, height: size }}
-    >
+    <div className="shrink-0 flex items-center justify-center" style={{ width: size, height: size }}>
       <SimpleIcon slug={app.icon} fill />
     </div>
   );
@@ -103,10 +101,9 @@ type CardProps = {
   app: AppDef;
   status?: StatusMap[string];
   density: AppsDensity;
-  groupColor?: string;
 };
 
-function AppCard({ app, status, density, groupColor }: CardProps) {
+function AppCard({ app, status, density }: CardProps) {
   const showStatus = density !== "compact" && app.health && app.health.type !== "none";
   const showDetailed = density === "detailed";
   const iconSize = density === "compact" ? 28 : density === "detailed" ? 40 : 34;
@@ -116,7 +113,6 @@ function AppCard({ app, status, density, groupColor }: CardProps) {
       target="_blank"
       rel="noreferrer noopener"
       className="group/card relative flex items-center gap-3 rounded-md border border-border-subtle bg-bg-card/70 px-2.5 py-2 hover:border-accent/40 hover:bg-bg-elevated hover:-translate-y-px hover:shadow-lg hover:shadow-black/30 transition-all min-w-0"
-      style={groupColor ? { borderLeftColor: groupColor, borderLeftWidth: 2 } : undefined}
       title={app.description || app.name}
     >
       <IconChip app={app} size={iconSize} />
@@ -204,13 +200,7 @@ function GroupSection({
         }
       >
         {apps.map((app) => (
-          <AppCard
-            key={app.id}
-            app={app}
-            status={statuses[app.id]}
-            density={density}
-            groupColor={group?.color}
-          />
+          <AppCard key={app.id} app={app} status={statuses[app.id]} density={density} />
         ))}
       </div>
     </div>
@@ -361,7 +351,38 @@ function AppsConfigPanel({
           ]}
         />
       </ConfigField>
+
+      <div className="pt-2 border-t border-border-subtle">
+        <ManageServicesButton />
+      </div>
     </div>
+  );
+}
+
+function ManageServicesButton() {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="w-full px-3 py-2 text-[12px] rounded border border-border-subtle bg-bg-card/40 text-text-secondary hover:text-text hover:border-accent/40 hover:bg-bg-card transition-colors flex items-center justify-center gap-2"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-3.5 h-3.5"
+        >
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+        </svg>
+        Manage services…
+      </button>
+      <ServicesEditor open={open} onClose={() => setOpen(false)} />
+    </>
   );
 }
 
