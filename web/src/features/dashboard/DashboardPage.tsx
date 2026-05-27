@@ -146,12 +146,13 @@ export function DashboardPage() {
     }
   }, [editing]);
 
-  // 24-col grid (was 12). Smaller cells = finer placement.
-  // cell uses the precise (non-floored) column width so the edit-mode
-  // grid overlay aligns with RGL's widget positions, which use the
-  // unfloored colWidth internally.
+  // 24-col grid. Cells track a precise (non-floored) column width so the
+  // edit-mode grid overlay aligns with RGL's widget positions.
+  // gap is the visible margin around every widget on all sides (RGL applies
+  // it both between widgets and around the outer edge). Bumped from 6 so
+  // widgets sit visibly inside their grid cells.
   const cols = 24;
-  const gap = 6;
+  const gap = 12;
   const cell = (containerW - gap * (cols + 1)) / cols;
 
   const layoutQueryKey = ["dashboard-layout", activeDashboardId] as const;
