@@ -54,3 +54,41 @@ func Save(path string, cfg *Config) error {
 	}
 	return nil
 }
+
+// SaveRaw validates raw YAML bytes and, if valid, atomically writes them to
+// path VERBATIM — preserving the author's comments and formatting (unlike
+// Save, which re-marshals a Config). Used by the in-app config editor so a
+// hand-edit keeps its structure. Returns the validation error unchanged on
+// failure, leaving the existing file untouched.
+func SaveRaw(path string, raw []byte) error {
+	if err := ValidateBytes(raw); err != nil {
+		return err
+	}
+	dir := filepath.Dir(path)
+	tmp, err := os.CreateTemp(dir, ".axboard-config-*.yaml")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer func() {
+		if tmp != nil {
+			_ = tmp.Close()
+			_ = os.Remove(tmpPath)
+		}
+	}()
+	if _, err := tmp.Write(raw); err != nil {
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	tmp = nil
+	if err := os.Rename(tmpPath, path); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("rename %s -> %s: %w", tmpPath, path, err)
+	}
+	return nil
+}

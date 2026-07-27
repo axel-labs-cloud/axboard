@@ -25,6 +25,23 @@ export const api = {
       body: JSON.stringify(s),
     }).then(jsonOk<State>),
 
+  getRawConfig: async (): Promise<string> => {
+    const r = await fetch("/api/config/raw");
+    if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+    return r.text();
+  },
+  putRawConfig: async (text: string): Promise<void> => {
+    const r = await fetch("/api/config/raw", {
+      method: "PUT",
+      headers: { "Content-Type": "text/plain" },
+      body: text,
+    });
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}) as { error?: string });
+      throw new Error(body.error || `${r.status} ${r.statusText}`);
+    }
+  },
+
   getStatus: () => fetch("/api/apps/status").then(jsonOk<StatusMap>),
   getHistory: () => fetch("/api/apps/history").then(jsonOk<HistoryMap>),
   forceCheck: (id: string) =>

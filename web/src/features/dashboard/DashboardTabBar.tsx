@@ -24,6 +24,7 @@ interface Props {
   activeAccent?: string;
   onSetAccent: (color: string) => void;
   onReorderDashboards: (fromId: string, toId: string) => void;
+  onEditConfig: () => void;
   onAddWidget: () => void;
   onManageServices: () => void;
   onAddDashboard: () => void;
@@ -51,6 +52,7 @@ export function DashboardTabBar({
   activeAccent,
   onSetAccent,
   onReorderDashboards,
+  onEditConfig,
   onAddWidget,
   onManageServices,
   onAddDashboard,
@@ -396,6 +398,13 @@ export function DashboardTabBar({
                 }}
               />
               <div className="my-1 border-t border-border-subtle" />
+              <MenuItem
+                label="Edit config.yaml…"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEditConfig();
+                }}
+              />
               <MenuItem
                 label="Back up everything"
                 onClick={() => {

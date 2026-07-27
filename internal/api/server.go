@@ -3,8 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -111,6 +113,8 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/config", s.handleGetConfig)
 		r.Put("/config", s.handlePutConfig)
+		r.Get("/config/raw", s.handleGetRawConfig)
+		r.Put("/config/raw", s.handlePutRawConfig)
 		r.Get("/state", s.handleGetState)
 		r.Put("/state", s.handlePutState)
 		r.Get("/apps/status", s.handleStatus)
@@ -212,6 +216,35 @@ func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 	}
 	// The watcher will re-load and reconcile; respond with what we just wrote.
 	writeJSON(w, http.StatusOK, next)
+}
+
+// handleGetRawConfig returns the config.yaml file verbatim so the in-app editor
+// can show (and preserve) the actual YAML including comments.
+func (s *Server) handleGetRawConfig(w http.ResponseWriter, _ *http.Request) {
+	raw, err := os.ReadFile(s.configPath)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(raw)
+}
+
+// handlePutRawConfig validates raw YAML and writes it verbatim (comments kept),
+// returning 400 with the parse/validation message on failure.
+func (s *Server) handlePutRawConfig(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := config.SaveRaw(s.configPath, raw); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleGetState(w http.ResponseWriter, _ *http.Request) {

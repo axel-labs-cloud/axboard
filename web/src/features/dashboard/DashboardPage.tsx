@@ -18,6 +18,7 @@ import { WidgetContextMenu } from "./WidgetContextMenu";
 import { AddWidgetModal } from "./AddWidgetModal";
 import { ServicesEditor } from "./widgets/apps/ServicesEditor";
 import { Spotlight } from "./Spotlight";
+import { ConfigEditorModal } from "./ConfigEditorModal";
 import type {
   AnyWidgetConfig,
   DashboardLayout,
@@ -137,6 +138,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const [addWidgetOpen, setAddWidgetOpen] = useState(false);
   const [manageServicesOpen, setManageServicesOpen] = useState(false);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const [configEditorOpen, setConfigEditorOpen] = useState(false);
 
   // Cmd/Ctrl+K opens the spotlight from anywhere on the dashboard.
   useEffect(() => {
@@ -910,6 +912,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         activeAccent={activeAccent}
         onSetAccent={handleSetAccent}
         onReorderDashboards={handleReorderDashboards}
+        onEditConfig={() => setConfigEditorOpen(true)}
         onAddWidget={() => setAddWidgetOpen(true)}
         onManageServices={() => setManageServicesOpen(true)}
         onAddDashboard={handleAddDashboard}
@@ -1049,6 +1052,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onClose={() => setManageServicesOpen(false)}
       />
       <Spotlight open={spotlightOpen} onClose={() => setSpotlightOpen(false)} />
+      <ConfigEditorModal open={configEditorOpen} onClose={() => setConfigEditorOpen(false)} />
 
       {deletedStash && (
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-2.5 rounded-lg bg-bg-elevated border border-border shadow-2xl ring-1 ring-white/5">

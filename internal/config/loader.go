@@ -89,6 +89,20 @@ func applyDefaults(cfg *Config) {
 // they're written to disk. Load() calls it too, after unmarshalling.
 func Validate(cfg *Config) error { return validate(cfg) }
 
+// ValidateBytes parses raw YAML and validates it without touching disk. Used by
+// the in-app config editor to check an edit before writing it verbatim.
+func ValidateBytes(raw []byte) error {
+	var cfg Config
+	if err := yaml.Unmarshal(raw, &cfg); err != nil {
+		var typeErr *yaml.TypeError
+		if errors.As(err, &typeErr) && len(typeErr.Errors) > 0 {
+			return errors.New(typeErr.Errors[0])
+		}
+		return err
+	}
+	return validate(&cfg)
+}
+
 func validate(cfg *Config) error {
 	appIDs := make(map[string]bool, len(cfg.Apps))
 	for i, app := range cfg.Apps {
