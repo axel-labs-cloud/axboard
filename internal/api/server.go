@@ -16,6 +16,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/config"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/discover"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/health"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/state"
 )
@@ -119,6 +120,7 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Put("/state", s.handlePutState)
 		r.Get("/apps/status", s.handleStatus)
 		r.Get("/apps/history", s.handleHistory)
+		r.Get("/discover", s.handleDiscover)
 		r.Post("/apps/{id}/check", s.handleForceCheck)
 		r.Get("/events", s.handleSSE)
 	})
@@ -271,6 +273,34 @@ func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {
 
 func (s *Server) handleHistory(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, s.Health.HistorySnapshot())
+}
+
+// handleDiscover returns candidate services from the Docker/Podman socket,
+// excluding any URL already present in config.yaml.
+func (s *Server) handleDiscover(w http.ResponseWriter, r *http.Request) {
+	socket := "/var/run/docker.sock"
+	known := map[string]bool{}
+	if c := s.getConfig(); c != nil {
+		if c.Discovery.DockerSocket != "" {
+			socket = c.Discovery.DockerSocket
+		}
+		for _, a := range c.Apps {
+			known[strings.TrimRight(a.URL, "/")] = true
+		}
+	}
+	found, err := discover.FromDockerSocket(r.Context(), socket)
+	if err != nil {
+		// Not fatal — the UI shows the message so the user can fix the socket.
+		writeJSON(w, http.StatusOK, map[string]any{"services": []discover.Service{}, "error": err.Error()})
+		return
+	}
+	fresh := make([]discover.Service, 0, len(found))
+	for _, svc := range found {
+		if !known[strings.TrimRight(svc.URL, "/")] {
+			fresh = append(fresh, svc)
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"services": fresh})
 }
 
 // handleMetrics renders app liveness in Prometheus text exposition format.

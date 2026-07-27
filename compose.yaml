@@ -16,6 +16,9 @@ services:
       # single-file bind mounts don't propagate from the host.
       - ./config:/etc/axboard:Z
       - axboard-state:/var/lib/axboard:Z
+      # Read-only Podman socket for auto-discovery (Docker-API compatible).
+      # Comment out to disable discovery.
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/podman/podman.sock:/var/run/docker.sock:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/healthz || exit 1"]

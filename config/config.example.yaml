@@ -11,6 +11,13 @@ server:
 # alerts:
 #   webhook_url: "https://ntfy.sh/my-axboard-topic"
 
+# Optional: auto-discover services from a mounted Docker/Podman socket. The
+# services editor's "Discover" button suggests containers that carry an
+# `axboard.url` label or a Traefik `Host()` router rule. Defaults to
+# /var/run/docker.sock (mount it in compose to enable).
+# discovery:
+#   docker_socket: "/var/run/docker.sock"
+
 apps:
   - id: sonarr
     name: Sonarr

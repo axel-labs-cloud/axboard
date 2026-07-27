@@ -67,6 +67,14 @@ export interface AppStatus {
 
 export type StatusMap = Record<string, AppStatus>;
 
+export interface DiscoveredService {
+  name: string;
+  url: string;
+  icon?: string;
+  group?: string;
+  source: string;
+}
+
 export interface HistoryPoint {
   status: AppStatusValue;
   response_ms: number;

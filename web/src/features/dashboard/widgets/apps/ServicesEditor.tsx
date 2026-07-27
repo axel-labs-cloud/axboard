@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
-import type { AppDef, Config, GroupDef, HealthType } from "../../../../api/types";
+import type { AppDef, Config, GroupDef, HealthType, DiscoveredService } from "../../../../api/types";
 import { SimpleIcon } from "../../SimpleIcon";
 import { IconPicker } from "./IconPicker";
 import { hashColor } from "./appVisual";
@@ -88,6 +88,10 @@ export function ServicesEditor({ open, onClose }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [pendingFocus, setPendingFocus] = useState<string | null>(null);
   const [bulkText, setBulkText] = useState<string | null>(null);
+  const [discoverOpen, setDiscoverOpen] = useState(false);
+  const [discovered, setDiscovered] = useState<DiscoveredService[]>([]);
+  const [discoverMsg, setDiscoverMsg] = useState<string | null>(null);
+  const [discovering, setDiscovering] = useState(false);
 
   // Seed local state when the modal opens.
   useEffect(() => {
@@ -154,6 +158,42 @@ export function ServicesEditor({ open, onClose }: Props) {
 
   const update = (key: number, patch: Partial<AppDef>) => {
     setApps((prev) => prev.map((a) => (a._key === key ? { ...a, ...patch } : a)));
+    setDirty(true);
+  };
+
+  const runDiscover = async () => {
+    setDiscovering(true);
+    setDiscoverMsg(null);
+    try {
+      const res = await api.discover();
+      // Drop candidates already in the working list (by URL).
+      const have = new Set(apps.map((a) => a.url.replace(/\/$/, "")));
+      const fresh = res.services.filter((s) => !have.has(s.url.replace(/\/$/, "")));
+      setDiscovered(fresh);
+      setDiscoverMsg(
+        res.error
+          ? `Discovery unavailable: ${res.error}`
+          : fresh.length === 0
+            ? "No new services found (need axboard.url or Traefik Host() labels)."
+            : null,
+      );
+    } catch (e) {
+      setDiscoverMsg((e as Error).message);
+    } finally {
+      setDiscovering(false);
+    }
+  };
+
+  const addDiscovered = (svc: DiscoveredService) => {
+    const existing = new Set(apps.map((a) => a.id));
+    let id = slugify(svc.name);
+    let n = 2;
+    while (existing.has(id)) id = `${slugify(svc.name)}-${n++}`;
+    const app: AppDef = { id, name: svc.name, url: svc.url };
+    if (svc.icon) app.icon = svc.icon;
+    if (svc.group) app.group = svc.group;
+    setApps((prev) => [...prev, keyed(app)]);
+    setDiscovered((prev) => prev.filter((s) => s.url !== svc.url));
     setDirty(true);
   };
 
@@ -346,6 +386,21 @@ export function ServicesEditor({ open, onClose }: Props) {
               </span>
               <div className="flex items-center gap-1 shrink-0">
                 <button
+                  onClick={() => {
+                    const next = !discoverOpen;
+                    setDiscoverOpen(next);
+                    if (next) void runDiscover();
+                  }}
+                  className={`px-2 py-1 text-[11px] rounded border whitespace-nowrap flex items-center gap-1 ${
+                    discoverOpen
+                      ? "border-accent/40 bg-accent/10 text-accent"
+                      : "border-border text-text-secondary hover:text-text hover:border-text-muted"
+                  }`}
+                  title="Auto-discover services from the Docker/Podman socket"
+                >
+                  Discover
+                </button>
+                <button
                   onClick={() => setBulkText(bulkText == null ? "" : null)}
                   className={`px-2 py-1 text-[11px] rounded border whitespace-nowrap flex items-center gap-1 ${
                     bulkText != null
@@ -365,6 +420,54 @@ export function ServicesEditor({ open, onClose }: Props) {
                 </button>
               </div>
             </div>
+            {discoverOpen && (
+              <div className="px-3 py-2 border-b border-border-subtle bg-bg-card/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+                    Discovered {discovering ? "…" : `(${discovered.length})`}
+                  </span>
+                  <button
+                    onClick={runDiscover}
+                    disabled={discovering}
+                    className="text-[10px] text-text-muted hover:text-text-secondary disabled:opacity-40"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                {discoverMsg && (
+                  <div className="text-[10.5px] text-text-muted leading-snug">{discoverMsg}</div>
+                )}
+                {discovered.length > 0 && (
+                  <>
+                    <div className="max-h-52 overflow-auto space-y-1">
+                      {discovered.map((svc) => (
+                        <div
+                          key={svc.url}
+                          className="flex items-center gap-2 px-2 py-1 rounded border border-border-subtle bg-bg-card/60"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[12px] text-text truncate">{svc.name}</div>
+                            <div className="text-[10px] text-text-muted truncate font-mono">{svc.url}</div>
+                          </div>
+                          <button
+                            onClick={() => addDiscovered(svc)}
+                            className="px-2 py-0.5 text-[11px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 shrink-0"
+                          >
+                            Add
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => discovered.forEach(addDiscovered)}
+                      className="w-full px-2 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted"
+                    >
+                      Add all {discovered.length}
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
             {bulkText != null && (
               <div className="px-3 py-2 border-b border-border-subtle bg-bg-card/40 space-y-2">
                 <textarea

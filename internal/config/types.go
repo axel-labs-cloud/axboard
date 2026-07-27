@@ -10,11 +10,20 @@ import (
 )
 
 type Config struct {
-	Server     ServerConfig `yaml:"server" json:"server"`
-	Alerts     AlertsConfig `yaml:"alerts,omitempty" json:"alerts,omitempty"`
-	Apps       []App        `yaml:"apps,omitempty" json:"apps,omitempty"`
-	Groups     []Group      `yaml:"groups,omitempty" json:"groups,omitempty"`
-	Dashboards []Dashboard  `yaml:"dashboards,omitempty" json:"dashboards,omitempty"`
+	Server     ServerConfig    `yaml:"server" json:"server"`
+	Alerts     AlertsConfig    `yaml:"alerts,omitempty" json:"alerts,omitempty"`
+	Discovery  DiscoveryConfig `yaml:"discovery,omitempty" json:"discovery,omitempty"`
+	Apps       []App           `yaml:"apps,omitempty" json:"apps,omitempty"`
+	Groups     []Group         `yaml:"groups,omitempty" json:"groups,omitempty"`
+	Dashboards []Dashboard     `yaml:"dashboards,omitempty" json:"dashboards,omitempty"`
+}
+
+// DiscoveryConfig configures the auto-discover feature. When a Docker/Podman
+// socket is reachable, axboard suggests services derived from container labels.
+type DiscoveryConfig struct {
+	// DockerSocket is the path to a Docker-API-compatible socket inside the
+	// container (Podman's socket works). Defaults to /var/run/docker.sock.
+	DockerSocket string `yaml:"docker_socket,omitempty" json:"docker_socket,omitempty"`
 }
 
 type ServerConfig struct {
