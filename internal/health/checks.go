@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -87,6 +89,36 @@ func CheckHTTP(ctx context.Context, client *http.Client, h *config.Health) Resul
 			ResponseMS:  elapsed,
 			Error:       fmt.Sprintf("body did not contain %q", h.BodyContains),
 		}
+	}
+	return Result{Status: StatusHealthy, LastChecked: time.Now(), ResponseMS: elapsed}
+}
+
+// CheckICMP sends a single ICMP echo to h.Host by shelling out to `ping`
+// (busybox in the container image). Requires the NET_RAW capability. A reply =
+// healthy; timeout/unreachable = down.
+func CheckICMP(ctx context.Context, h *config.Health) Result {
+	timeout := h.Timeout.Duration()
+	if timeout == 0 {
+		timeout = 5 * time.Second
+	}
+	secs := int(timeout.Seconds())
+	if secs < 1 {
+		secs = 1
+	}
+	// -c 1 = one echo, -W secs = wait-for-reply timeout. Give the process a
+	// little slack beyond the ping timeout before we hard-cancel it.
+	runCtx, cancel := context.WithTimeout(ctx, timeout+2*time.Second)
+	defer cancel()
+	start := time.Now()
+	cmd := exec.CommandContext(runCtx, "ping", "-c", "1", "-W", strconv.Itoa(secs), h.Host)
+	out, err := cmd.CombinedOutput()
+	elapsed := time.Since(start).Milliseconds()
+	if err != nil {
+		msg := strings.TrimSpace(string(out))
+		if msg == "" {
+			msg = err.Error()
+		}
+		return Result{Status: StatusDown, LastChecked: time.Now(), ResponseMS: elapsed, Error: msg}
 	}
 	return Result{Status: StatusHealthy, LastChecked: time.Now(), ResponseMS: elapsed}
 }

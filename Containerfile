@@ -18,7 +18,7 @@ COPY --from=web-build /src/internal/web/dist ./internal/web/dist
 RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/axboard ./cmd/axboard
 
 FROM docker.io/library/alpine:3.20
-RUN apk add --no-cache ca-certificates tzdata \
+RUN apk add --no-cache ca-certificates tzdata iputils \
     && mkdir -p /etc/axboard /var/lib/axboard
 COPY --from=go-build /out/axboard /usr/local/bin/axboard
 WORKDIR /var/lib/axboard

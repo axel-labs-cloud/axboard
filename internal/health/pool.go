@@ -60,6 +60,8 @@ func NewPool() *Pool {
 			return CheckHTTP(ctx, client, h)
 		case config.HealthTCP:
 			return CheckTCP(ctx, h)
+		case config.HealthPing:
+			return CheckICMP(ctx, h)
 		default:
 			return Result{Status: StatusUnknown, LastChecked: time.Now()}
 		}

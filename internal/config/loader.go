@@ -129,6 +129,10 @@ func validate(cfg *Config) error {
 				if app.Health.Host == "" || app.Health.Port == 0 {
 					return fmt.Errorf("apps[%d] (%s): health.host and health.port are required for type=tcp", i, app.ID)
 				}
+			case HealthPing:
+				if app.Health.Host == "" {
+					return fmt.Errorf("apps[%d] (%s): health.host is required for type=ping", i, app.ID)
+				}
 			case HealthNone, "":
 				// none = no check; empty type tolerated as none.
 			default:

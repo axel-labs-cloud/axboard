@@ -5,6 +5,9 @@ services:
       context: .
       dockerfile: Containerfile
     container_name: axboard
+    # NET_RAW lets the ICMP ping health-check type send echo requests.
+    cap_add:
+      - NET_RAW
     ports:
       - "8080:8080"
     volumes:

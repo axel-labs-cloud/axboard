@@ -1,6 +1,6 @@
 import type { AnyWidgetConfig, GridItem } from "../features/dashboard/widgets/types";
 
-export type HealthType = "http" | "tcp" | "none";
+export type HealthType = "http" | "tcp" | "ping" | "none";
 export type AppStatusValue = "unknown" | "healthy" | "degraded" | "down";
 
 export interface HealthCheck {

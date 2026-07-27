@@ -42,6 +42,7 @@ type HealthType string
 const (
 	HealthHTTP HealthType = "http"
 	HealthTCP  HealthType = "tcp"
+	HealthPing HealthType = "ping"
 	HealthNone HealthType = "none"
 )
 

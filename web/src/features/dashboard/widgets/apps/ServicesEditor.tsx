@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
-import type { AppDef, Config, GroupDef } from "../../../../api/types";
+import type { AppDef, Config, GroupDef, HealthType } from "../../../../api/types";
 import { SimpleIcon } from "../../SimpleIcon";
 import { IconPicker } from "./IconPicker";
 import { hashColor } from "./appVisual";
@@ -753,7 +753,7 @@ function ServiceForm({
     else onPatch({ name });
   };
 
-  const healthType = (app.health?.type ?? "none") as "http" | "tcp" | "none";
+  const healthType = (app.health?.type ?? "none") as HealthType;
 
   return (
     <div className="space-y-4 max-w-xl">
@@ -850,10 +850,12 @@ function ServiceForm({
             <select
               value={healthType}
               onChange={(e) => {
-                const t = e.target.value as "http" | "tcp" | "none";
+                const t = e.target.value as HealthType;
                 if (t === "none") onPatch({ health: undefined });
                 else if (t === "http")
                   onPatch({ health: { type: "http", url: app.url, interval: "60s" } });
+                else if (t === "ping")
+                  onPatch({ health: { type: "ping", host: hostFromURL(app.url), interval: "60s" } });
                 else
                   onPatch({
                     health: { type: "tcp", host: hostFromURL(app.url), port: 80, interval: "60s" },
@@ -864,6 +866,7 @@ function ServiceForm({
               <option value="none">None</option>
               <option value="http">HTTP — match status code</option>
               <option value="tcp">TCP — port open</option>
+              <option value="ping">Ping — ICMP reachable</option>
             </select>
 
             {healthType === "http" && (
@@ -923,6 +926,27 @@ function ServiceForm({
                   }
                   placeholder="port"
                   className="w-20 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50"
+                />
+              </div>
+            )}
+
+            {healthType === "ping" && (
+              <div className="flex gap-2">
+                <input
+                  value={app.health?.host ?? ""}
+                  onChange={(e) =>
+                    onPatch({ health: { ...app.health!, type: "ping", host: e.target.value } })
+                  }
+                  placeholder="host.example.com or 10.0.0.5"
+                  className="flex-1 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50 font-mono"
+                />
+                <input
+                  value={app.health?.interval ?? ""}
+                  onChange={(e) =>
+                    onPatch({ health: { ...app.health!, type: "ping", interval: e.target.value } })
+                  }
+                  placeholder="60s"
+                  className="w-24 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50"
                 />
               </div>
             )}
