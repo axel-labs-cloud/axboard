@@ -49,18 +49,20 @@ function Tile({
   status,
   showName,
   onCheck,
+  sameTab,
 }: {
   app: AppDef;
   status?: StatusMap[string];
   showName: boolean;
   onCheck?: () => void;
+  sameTab?: boolean;
 }) {
   const showStatus = !!app.health && app.health.type !== "none";
   return (
     <a
       href={app.url}
-      target="_blank"
-      rel="noreferrer noopener"
+      target={sameTab ? undefined : "_blank"}
+      rel={sameTab ? undefined : "noreferrer noopener"}
       onContextMenu={
         showStatus && onCheck
           ? (e) => {
@@ -169,6 +171,7 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
             status={statuses[apps[0].id]}
             showName={showNames || w * h >= 2}
             onCheck={() => checkNow(apps[0].id)}
+            sameTab={config?.openSameTab}
           />
         </div>
       </div>
@@ -198,6 +201,7 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
           status={statuses[app.id]}
           showName={showNames}
           onCheck={() => checkNow(app.id)}
+          sameTab={config?.openSameTab}
         />
       ))}
     </div>
@@ -365,7 +369,7 @@ function AppsConfigPanel({ config, save }: WidgetConfigProps<AppsConfig>) {
         )}
       </div>
 
-      <div>
+      <div className="space-y-1.5">
         <label className="flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
           <input
             type="checkbox"
@@ -374,6 +378,15 @@ function AppsConfigPanel({ config, save }: WidgetConfigProps<AppsConfig>) {
             className="accent-accent"
           />
           Show names under icons
+        </label>
+        <label className="flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
+          <input
+            type="checkbox"
+            checked={config?.openSameTab ?? false}
+            onChange={(e) => save({ openSameTab: e.target.checked })}
+            className="accent-accent"
+          />
+          Open links in the same tab
         </label>
       </div>
 

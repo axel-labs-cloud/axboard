@@ -11,6 +11,9 @@ export interface HealthCheck {
   expect_status?: number;
   interval?: string;
   timeout?: string;
+  headers?: Record<string, string>;
+  body_contains?: string;
+  insecure?: boolean;
 }
 
 export interface AppDef {
@@ -62,6 +65,14 @@ export interface AppStatus {
 }
 
 export type StatusMap = Record<string, AppStatus>;
+
+export interface HistoryPoint {
+  status: AppStatusValue;
+  response_ms: number;
+  at: string;
+}
+
+export type HistoryMap = Record<string, HistoryPoint[]>;
 
 export interface State {
   layouts?: Record<string, GridItem[]>;

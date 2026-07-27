@@ -105,10 +105,11 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
 
   const linkClass =
     "group/tile flex w-full h-full hover:bg-bg-hover transition-colors min-w-0 min-h-0";
+  const sameTab = config?.openSameTab ?? false;
   const props = {
     href: app.url,
-    target: "_blank",
-    rel: "noreferrer noopener",
+    target: sameTab ? undefined : "_blank",
+    rel: sameTab ? undefined : "noreferrer noopener",
     title: app.description || app.name,
   };
 
@@ -322,6 +323,11 @@ function AppConfigPanel({ config, save }: WidgetConfigProps<AppConfig>) {
                 onChange={(v) => save({ showLastChecked: v })}
                 disabled={!hasHealth}
                 hint={hasHealth ? "shown in 2x3" : "no health check on this service"}
+              />
+              <ToggleRow
+                label="Open in same tab"
+                checked={config?.openSameTab ?? false}
+                onChange={(v) => save({ openSameTab: v })}
               />
             </div>
           </div>

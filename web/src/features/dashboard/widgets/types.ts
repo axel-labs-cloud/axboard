@@ -9,7 +9,10 @@ export type WidgetType =
   | "weather"
   | "iframe"
   | "concentus"
-  | "status";
+  | "status"
+  | "notes"
+  | "countdown"
+  | "image";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -49,6 +52,8 @@ export interface AppsConfig {
   appIds?: string[];
   /** Show the service name under each icon. Default off. */
   showNames?: boolean;
+  /** Open links in the same tab instead of a new one. Default off (new tab). */
+  openSameTab?: boolean;
 }
 
 /**
@@ -63,6 +68,8 @@ export interface AppConfig {
   descriptionOverride?: string;
   showResponseTime?: boolean;
   showLastChecked?: boolean;
+  /** Open in the same tab instead of a new one. Default off (new tab). */
+  openSameTab?: boolean;
 }
 
 /**
@@ -108,6 +115,25 @@ export interface ConcentusConfig {
  */
 export interface StatusSummaryConfig {
   showLegend?: boolean;
+  byGroup?: boolean;
+}
+
+/** Notes / scratchpad widget — free text persisted in config.yaml. */
+export interface NotesConfig {
+  text?: string;
+}
+
+/** Countdown widget — time remaining until (or since) a target datetime. */
+export interface CountdownConfig {
+  target?: string; // ISO datetime
+  label?: string;
+}
+
+/** Image / banner widget — a static image, optionally linking somewhere. */
+export interface ImageConfig {
+  url?: string;
+  fit?: "cover" | "contain";
+  link?: string;
 }
 
 export type WidgetConfigByType = {
@@ -120,6 +146,9 @@ export type WidgetConfigByType = {
   iframe: IframeConfig;
   concentus: ConcentusConfig;
   status: StatusSummaryConfig;
+  notes: NotesConfig;
+  countdown: CountdownConfig;
+  image: ImageConfig;
 };
 
 export type AnyWidgetConfig = Partial<
@@ -131,7 +160,10 @@ export type AnyWidgetConfig = Partial<
     WeatherConfig &
     IframeConfig &
     ConcentusConfig &
-    StatusSummaryConfig
+    StatusSummaryConfig &
+    NotesConfig &
+    CountdownConfig &
+    ImageConfig
 >;
 
 export interface Widget {

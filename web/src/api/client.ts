@@ -1,4 +1,4 @@
-import type { Config, State, StatusMap } from "./types";
+import type { Config, State, StatusMap, HistoryMap } from "./types";
 
 async function jsonOk<T>(r: Response): Promise<T> {
   if (!r.ok) {
@@ -26,6 +26,7 @@ export const api = {
     }).then(jsonOk<State>),
 
   getStatus: () => fetch("/api/apps/status").then(jsonOk<StatusMap>),
+  getHistory: () => fetch("/api/apps/history").then(jsonOk<HistoryMap>),
   forceCheck: (id: string) =>
     fetch(`/api/apps/${encodeURIComponent(id)}/check`, { method: "POST" }).then(
       jsonOk<{ status: string }>,
