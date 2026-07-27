@@ -13,9 +13,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/config"
-	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/health"
-	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/state"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/config"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/health"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/state"
 )
 
 // Server holds the runtime references the HTTP handlers need.
@@ -115,9 +115,13 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 	return r
 }
 
-// dashboardOut is the per-dashboard shape the frontend reads: widgets carry
-// their merged (config + state overrides) config so the UI doesn't have to
-// merge client-side.
+// dashboardOut is the per-dashboard shape the frontend reads. Widgets carry
+// ONLY their config.yaml base config — state.yaml overrides are merged in
+// client-side by assembleLayout(). The server used to merge overrides here,
+// but that meant every UI write-back of the ["config"] cache (add widget,
+// manage services, dashboard CRUD) baked state-derived values into the human
+// config.yaml. Keeping this response raw makes config.yaml the sole source of
+// truth for widget base config.
 type dashboardOut struct {
 	ID      string          `json:"id"`
 	Name    string          `json:"name"`
@@ -139,32 +143,11 @@ type configOut struct {
 	Dashboards []dashboardOut      `json:"dashboards,omitempty"`
 }
 
-func mergeWidgetConfig(base, over map[string]any) map[string]any {
-	if base == nil && over == nil {
-		return nil
-	}
-	out := make(map[string]any, len(base)+len(over))
-	for k, v := range base {
-		out[k] = v
-	}
-	for k, v := range over {
-		out[k] = v
-	}
-	return out
-}
-
 func (s *Server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
 	c := s.getConfig()
 	if c == nil {
 		writeJSON(w, http.StatusOK, configOut{})
 		return
-	}
-	st := s.State.Get()
-	overrides := map[string]map[string]any{}
-	if st != nil {
-		for id, cfg := range st.WidgetConfigs {
-			overrides[id] = cfg
-		}
 	}
 	out := configOut{
 		Server:     c.Server,
@@ -184,7 +167,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
 				I:      w.ID,
 				Type:   w.Type,
 				Title:  w.Title,
-				Config: mergeWidgetConfig(w.Config, overrides[w.ID]),
+				Config: w.Config, // base only; state overrides merged client-side
 			})
 		}
 		out.Dashboards = append(out.Dashboards, do)
@@ -199,6 +182,14 @@ func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 	var next config.Config
 	if err := json.NewDecoder(r.Body).Decode(&next); err != nil {
 		writeErr(w, http.StatusBadRequest, "decode: "+err.Error())
+		return
+	}
+	// Validate BEFORE touching disk. Without this an invalid payload (duplicate
+	// ids, dangling group ref, unknown health.type, missing name/url) would be
+	// persisted, then the watcher would reject it on reload and serve last-good
+	// config with a config_error banner — i.e. the on-disk file left broken.
+	if err := config.Validate(&next); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err := config.Save(s.configPath, &next); err != nil {

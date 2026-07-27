@@ -1,14 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
-import { api } from "./api/client";
+import { useConfig } from "./hooks/useConfig";
 import { useSSE } from "./hooks/useSSE";
 import { useTheme } from "./hooks/useTheme";
 
 export function App() {
-  const { isLoading, isError } = useQuery({
-    queryKey: ["config"],
-    queryFn: api.getConfig,
-  });
+  const { isLoading, isError } = useConfig();
 
   const { error: configError, clearError } = useSSE();
   const [theme, setTheme] = useTheme();

@@ -56,6 +56,24 @@ interface StatePayload {
   lastActive?: string;
 }
 
+// Return only the keys of `merged` whose value differs from `base`. Used to
+// persist widget-config OVERRIDES into state.yaml as a delta against the
+// config.yaml base. Persisting the full merged config (the old behavior) meant
+// that after the first drag/resize, every widget's entire config was copied
+// into state.yaml and — because state overrides win in the merge — later
+// hand-edits to config.yaml were silently masked. A delta only shadows the
+// keys the UI actually changed, so unshadowed keys keep flowing from config.yaml.
+function diffConfig(
+  merged: Record<string, unknown>,
+  base: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(merged)) {
+    if (JSON.stringify(merged[k]) !== JSON.stringify(base[k])) out[k] = merged[k];
+  }
+  return out;
+}
+
 function assembleLayout(
   dash: ServerDashboard | undefined,
   state: StatePayload | undefined,
@@ -210,12 +228,27 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     mutationFn: async (l: DashboardLayout) => {
       if (activeDashboardId === null) return;
       const current = qc.getQueryData<StatePayload>(["state"]) ?? {};
+      // Base configs come from config.yaml (the ["config"] query). We persist
+      // only the delta of each widget's effective config against its base, so
+      // state.yaml never masks config.yaml — see diffConfig().
+      const cfg = qc.getQueryData<ConfigPayload>(["config"]);
+      const dash = cfg?.dashboards?.find((d) => d.id === activeDashboardId);
+      const baseConfigs: Record<string, Record<string, unknown>> = {};
+      for (const bw of dash?.widgets ?? []) {
+        baseConfigs[bw.i] = (bw.config ?? {}) as Record<string, unknown>;
+      }
       const widgetConfigs: Record<string, AnyWidgetConfig> = {
         ...(current.widgetConfigs ?? {}),
       };
       for (const w of l.widgets) {
-        if (w.config && Object.keys(w.config).length > 0) {
-          widgetConfigs[w.i] = w.config;
+        const delta = diffConfig(
+          (w.config ?? {}) as Record<string, unknown>,
+          baseConfigs[w.i] ?? {},
+        );
+        if (Object.keys(delta).length > 0) {
+          widgetConfigs[w.i] = delta as AnyWidgetConfig;
+        } else {
+          delete widgetConfigs[w.i];
         }
       }
       const next: StatePayload = {
@@ -413,6 +446,58 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     [dashboards, activeDashboardId, writeConfigAndRefresh],
   );
 
+  // Remove a widget entirely. Widget existence lives in config.yaml, so this
+  // writes config (comments lost — same caveat as add). It also prunes the
+  // widget's layout entry and any config override from state.yaml so no
+  // orphaned rows linger. Not undoable via the layout history stack (that only
+  // tracks state.yaml layouts, not config), so we gate it behind a confirm.
+  const handleRemoveWidget = useCallback(
+    (widgetId: string) => {
+      if (!activeDashboardId) return;
+      const widget = layout.widgets.find((w) => w.i === widgetId);
+      const label = widget?.title || "this widget";
+      if (!confirm(`Remove "${label}"? This can't be undone.`)) return;
+
+      // 1. Drop the widget from config.yaml (source of truth for existence).
+      writeConfigAndRefresh((cfg) => ({
+        ...cfg,
+        dashboards: (cfg.dashboards ?? []).map((d) =>
+          d.id === activeDashboardId
+            ? { ...d, widgets: (d.widgets ?? []).filter((w) => w.i !== widgetId) }
+            : d,
+        ),
+      }));
+
+      // 2. Prune the layout entry + config override from state.yaml.
+      const current = qc.getQueryData<StatePayload>(["state"]) ?? {};
+      const nextConfigs = { ...(current.widgetConfigs ?? {}) };
+      delete nextConfigs[widgetId];
+      const nextState: StatePayload = {
+        ...current,
+        layouts: {
+          ...(current.layouts ?? {}),
+          [activeDashboardId]: (current.layouts?.[activeDashboardId] ?? []).filter(
+            (it) => it.i !== widgetId,
+          ),
+        },
+        widgetConfigs: nextConfigs,
+      };
+      qc.setQueryData(["state"], nextState);
+      fetch("/api/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nextState),
+        // eslint-disable-next-line no-console
+      }).catch((e) => console.error("Failed to persist state after remove:", e));
+
+      // 3. Clear any UI referencing the now-gone widget.
+      setSelectedWidgetId(null);
+      setConfigId(null);
+      setContextMenu(null);
+    },
+    [activeDashboardId, layout.widgets, qc, writeConfigAndRefresh],
+  );
+
   useDashboardShortcuts({
     editing,
     selectedWidgetId,
@@ -435,7 +520,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       if (target) setActiveDashboardId(target.id);
     },
     removeWidget: () => {
-      // No-op: widgets are sourced from config.yaml; removing is a YAML edit.
+      if (editing && selectedWidgetId) handleRemoveWidget(selectedWidgetId);
     },
   });
 
@@ -486,9 +571,15 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     const widget = layout.widgets.find((w) => w.i === contextMenu.widgetId);
     if (!widget) return [];
     const def = getWidgetDefinition(widget.type);
-    if (!def?.ConfigPanel) return [];
-    return [
-      {
+    const items: {
+      label: string;
+      shortcut?: string;
+      onClick: () => void;
+      danger?: boolean;
+      icon?: React.ReactNode;
+    }[] = [];
+    if (def?.ConfigPanel) {
+      items.push({
         label: "Configure",
         onClick: () => {
           setConfigPos({
@@ -497,9 +588,48 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
           });
           setConfigId(contextMenu.widgetId);
         },
-      },
-    ];
+      });
+    }
+    items.push({
+      label: "Remove widget",
+      shortcut: "Del",
+      danger: true,
+      icon: (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-3.5 h-3.5"
+        >
+          <polyline points="3 6 5 6 21 6" />
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          <line x1="10" y1="11" x2="10" y2="17" />
+          <line x1="14" y1="11" x2="14" y2="17" />
+        </svg>
+      ),
+      onClick: () => handleRemoveWidget(contextMenu.widgetId),
+    });
+    return items;
   })();
+
+  // Total height the grid needs to show every widget — including any dragged
+  // below the initial viewport. Previously the grid was clamped to the
+  // container height (autoSize off, height=containerH) with no scroll, so a
+  // widget placed lower with free placement was unreachable. We size the grid
+  // (and the edit overlay) to the actual content and let the container scroll.
+  // In edit mode a few rows of headroom give empty grid to drag into.
+  const gridH = useMemo(() => {
+    const maxRow = (layout.layouts.lg || []).reduce(
+      (m, it) => Math.max(m, it.y + it.h),
+      0,
+    );
+    const contentH = maxRow * (cell + gap) + gap;
+    const headroom = editing ? 3 * (cell + gap) : 0;
+    return Math.max(contentH + headroom, containerH);
+  }, [layout.layouts, cell, gap, editing, containerH]);
 
   return (
     <div className="p-6 h-full flex flex-col min-h-0">
@@ -528,12 +658,15 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         setTheme={setTheme}
       />
 
-      <div ref={containerRef} className="flex-1 min-h-0 relative">
+      <div ref={containerRef} className="flex-1 min-h-0 relative overflow-y-auto overflow-x-hidden">
         {editing && cell > 0 && (
           <div
             aria-hidden
-            className="absolute inset-0 pointer-events-none"
+            className="absolute top-0 left-0 right-0 pointer-events-none"
             style={{
+              // Span the full scrollable content height, not just the viewport
+              // (an inset-0 overlay would stay pinned to the visible area).
+              height: gridH,
               backgroundImage: `
                 linear-gradient(to right, rgba(255,255,255,0.05) 1px, transparent 1px),
                 linear-gradient(to bottom, rgba(255,255,255,0.05) 1px, transparent 1px)
@@ -562,7 +695,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
             compactType={null}
             preventCollision
             autoSize={false}
-            style={{ height: containerH }}
+            style={{ height: gridH }}
             isDraggable={editing}
             isResizable={editing}
             draggableHandle=".wdrag"

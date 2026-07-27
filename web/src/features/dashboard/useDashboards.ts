@@ -1,27 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useConfig } from "../../hooks/useConfig";
+import type { DashboardDef } from "../../api/types";
 
-export interface Dashboard {
-  id: string;
-  name: string;
-  default?: boolean;
-}
+export type Dashboard = DashboardDef;
 
-interface ConfigResponse {
-  dashboards?: Dashboard[];
-}
-
+// Read-only view of the dashboards list, sourced from the shared ["config"]
+// query (see useConfig). No create/delete/rename here — the dashboard CRUD
+// write-path lives in DashboardPage and goes through PUT /api/config.
 export function useDashboards() {
-  const list = useQuery({
-    queryKey: ["config"],
-    queryFn: async () => {
-      const r = await fetch("/api/config");
-      if (!r.ok) return { dashboards: [] } as ConfigResponse;
-      return (await r.json()) as ConfigResponse;
-    },
-  });
-
+  const { data, isLoading } = useConfig();
   return {
-    dashboards: list.data?.dashboards ?? [],
-    loading: list.isLoading,
+    dashboards: data?.dashboards ?? [],
+    loading: isLoading,
   };
 }

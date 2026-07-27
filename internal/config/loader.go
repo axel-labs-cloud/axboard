@@ -67,6 +67,12 @@ func applyDefaults(cfg *Config) {
 	}
 }
 
+// Validate checks a config for internal consistency (unique ids, resolvable
+// group refs, valid health types, required fields, a single default dashboard).
+// Exported so the API's PUT /api/config path can reject bad payloads before
+// they're written to disk. Load() calls it too, after unmarshalling.
+func Validate(cfg *Config) error { return validate(cfg) }
+
 func validate(cfg *Config) error {
 	appIDs := make(map[string]bool, len(cfg.Apps))
 	for i, app := range cfg.Apps {
