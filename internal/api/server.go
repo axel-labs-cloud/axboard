@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -25,6 +27,10 @@ import (
 // are tiny in practice; this just stops a malformed/huge upload from being
 // buffered into memory.
 const maxBodyBytes = 8 << 20 // 8 MiB
+
+// proxyClient serves the RSS/calendar widget fetch proxy. Redirects are
+// followed (feeds commonly 301) and the timeout is set per-request via context.
+var proxyClient = &http.Client{Timeout: 15 * time.Second}
 
 // Server holds the runtime references the HTTP handlers need.
 type Server struct {
@@ -121,6 +127,7 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Get("/apps/status", s.handleStatus)
 		r.Get("/apps/history", s.handleHistory)
 		r.Get("/discover", s.handleDiscover)
+		r.Get("/proxy", s.handleProxy)
 		r.Post("/apps/{id}/check", s.handleForceCheck)
 		r.Get("/events", s.handleSSE)
 	})
@@ -265,6 +272,37 @@ func (s *Server) handlePutState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, &next)
+}
+
+// handleProxy fetches an http(s) URL server-side so browser widgets (RSS,
+// calendar) can read cross-origin feeds that would otherwise be CORS-blocked.
+// LAN-bound single-user posture; bounded by a timeout and a response cap.
+func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
+	target := r.URL.Query().Get("url")
+	u, err := url.Parse(target)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		writeErr(w, http.StatusBadRequest, "url must be an http(s) URL")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	req.Header.Set("User-Agent", "axboard")
+	resp, err := proxyClient.Do(req)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	if ct := resp.Header.Get("Content-Type"); ct != "" {
+		w.Header().Set("Content-Type", ct)
+	}
+	w.WriteHeader(resp.StatusCode)
+	_, _ = io.Copy(w, io.LimitReader(resp.Body, 4<<20)) // 4 MiB cap
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {

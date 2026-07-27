@@ -11,6 +11,8 @@ import status from "./status";
 import notes from "./notes";
 import countdown from "./countdown";
 import image from "./image";
+import rss from "./rss";
+import calendar from "./calendar";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -25,6 +27,8 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   notes,
   countdown,
   image,
+  rss,
+  calendar,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

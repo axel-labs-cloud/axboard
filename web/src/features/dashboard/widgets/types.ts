@@ -12,7 +12,9 @@ export type WidgetType =
   | "status"
   | "notes"
   | "countdown"
-  | "image";
+  | "image"
+  | "rss"
+  | "calendar";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -136,6 +138,18 @@ export interface ImageConfig {
   link?: string;
 }
 
+/** RSS/Atom feed widget — reads a feed via the server proxy. */
+export interface FeedConfig {
+  url?: string;
+  count?: number;
+}
+
+/** Calendar widget — reads an iCal (.ics) URL via the server proxy. */
+export interface CalendarConfig {
+  url?: string;
+  count?: number;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -149,6 +163,8 @@ export type WidgetConfigByType = {
   notes: NotesConfig;
   countdown: CountdownConfig;
   image: ImageConfig;
+  rss: FeedConfig;
+  calendar: CalendarConfig;
 };
 
 export type AnyWidgetConfig = Partial<
@@ -163,7 +179,9 @@ export type AnyWidgetConfig = Partial<
     StatusSummaryConfig &
     NotesConfig &
     CountdownConfig &
-    ImageConfig
+    ImageConfig &
+    FeedConfig &
+    CalendarConfig
 >;
 
 export interface Widget {
