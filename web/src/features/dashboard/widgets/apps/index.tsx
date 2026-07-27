@@ -10,37 +10,13 @@ import type {
   WidgetProps,
 } from "../types";
 import { ServicesEditor } from "./ServicesEditor";
+import { initials, hashColor, statusClasses } from "./appVisual";
 
 // ---------------------------------------------------------------------------
 // Apps grid widget — Shortcut-style. Each instance shows a hand-picked
 // subset of services from config.yaml, in a 2-per-grid-unit icon grid.
 // User adds multiple instances (one per category, or however they want).
 // ---------------------------------------------------------------------------
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
-function hashColor(name: string): string {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return `hsl(${h % 360}, 35%, 25%)`;
-}
-
-function statusClasses(s: string | undefined): string {
-  switch (s) {
-    case "healthy":
-      return "bg-emerald-400 status-pulse";
-    case "degraded":
-      return "bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.22)]";
-    case "down":
-      return "bg-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.22)]";
-    default:
-      return "bg-text-muted/60";
-  }
-}
 
 function Icon({ app, sizePortion }: { app: AppDef; sizePortion?: string }) {
   if (!app.icon) {
@@ -72,10 +48,12 @@ function Tile({
   app,
   status,
   showName,
+  onCheck,
 }: {
   app: AppDef;
   status?: StatusMap[string];
   showName: boolean;
+  onCheck?: () => void;
 }) {
   const showStatus = !!app.health && app.health.type !== "none";
   return (
@@ -83,8 +61,18 @@ function Tile({
       href={app.url}
       target="_blank"
       rel="noreferrer noopener"
+      onContextMenu={
+        showStatus && onCheck
+          ? (e) => {
+              e.preventDefault();
+              onCheck();
+            }
+          : undefined
+      }
       className="group/tile relative flex flex-col items-center justify-center min-w-0 min-h-0 rounded-md hover:bg-bg-hover transition-colors p-1 gap-1"
-      title={app.description || app.name}
+      title={
+        showStatus ? `${app.description || app.name} — right-click to check now` : app.description || app.name
+      }
     >
       <div className="flex-1 min-h-0 w-full flex items-center justify-center">
         <Icon app={app} sizePortion="70%" />
@@ -137,6 +125,15 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
 
   const showNames = config?.showNames ?? false;
   const anyHealth = apps.some((a) => a.health && a.health.type !== "none");
+
+  // Right-click "check now": force an immediate health check, then re-poll
+  // shortly after so the dot updates without waiting for the 15s interval.
+  const checkNow = (id: string) => {
+    api
+      .forceCheck(id)
+      .then(() => setTimeout(() => qc.invalidateQueries({ queryKey: ["apps-status"] }), 800))
+      .catch(() => {});
+  };
   const { data: statuses = {} } = useQuery({
     queryKey: ["apps-status"],
     queryFn: api.getStatus,
@@ -167,7 +164,12 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
     return (
       <div className="w-full h-full flex items-center justify-center">
         <div className="w-full h-full max-w-full max-h-full">
-          <Tile app={apps[0]} status={statuses[apps[0].id]} showName={showNames || (w * h >= 2)} />
+          <Tile
+            app={apps[0]}
+            status={statuses[apps[0].id]}
+            showName={showNames || w * h >= 2}
+            onCheck={() => checkNow(apps[0].id)}
+          />
         </div>
       </div>
     );
@@ -190,7 +192,13 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
       }}
     >
       {visible.map((app) => (
-        <Tile key={app.id} app={app} status={statuses[app.id]} showName={showNames} />
+        <Tile
+          key={app.id}
+          app={app}
+          status={statuses[app.id]}
+          showName={showNames}
+          onCheck={() => checkNow(app.id)}
+        />
       ))}
     </div>
   );

@@ -5,6 +5,7 @@ import { api } from "../../../../api/client";
 import type { AppDef, Config, GroupDef } from "../../../../api/types";
 import { SimpleIcon } from "../../SimpleIcon";
 import { IconPicker } from "./IconPicker";
+import { hashColor } from "./appVisual";
 
 interface Props {
   open: boolean;
@@ -889,12 +890,6 @@ function Field({
       {children}
     </div>
   );
-}
-
-function hashColor(name: string): string {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return `hsl(${h % 360}, 35%, 25%)`;
 }
 
 function hostFromURL(url: string): string {

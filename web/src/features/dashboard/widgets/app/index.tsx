@@ -8,6 +8,7 @@ import type {
   WidgetDefinition,
   WidgetProps,
 } from "../types";
+import { initials, hashColor, statusClasses } from "../apps/appVisual";
 
 // ---------------------------------------------------------------------------
 // App widget — single service per instance. The layout switches based on
@@ -15,31 +16,6 @@ import type {
 // detailed → icon + name + description + response-time pill.
 // Sizes allowed: 1x1, 1x2, 1x3, 2x1, 2x2, 2x3.
 // ---------------------------------------------------------------------------
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
-function hashColor(name: string): string {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return `hsl(${h % 360}, 35%, 25%)`;
-}
-
-function statusClasses(s: string | undefined): string {
-  switch (s) {
-    case "healthy":
-      return "bg-emerald-400 status-pulse";
-    case "degraded":
-      return "bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.22)]";
-    case "down":
-      return "bg-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.22)]";
-    default:
-      return "bg-text-muted/60";
-  }
-}
 
 function Icon({ app, className = "" }: { app: AppDef; className?: string }) {
   if (!app.icon) {
