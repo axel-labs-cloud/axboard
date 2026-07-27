@@ -25,6 +25,7 @@ interface Props {
   onSetAccent: (color: string) => void;
   onReorderDashboards: (fromId: string, toId: string) => void;
   onEditConfig: () => void;
+  onNewFromTemplate: () => void;
   onAddWidget: () => void;
   onManageServices: () => void;
   onAddDashboard: () => void;
@@ -53,6 +54,7 @@ export function DashboardTabBar({
   onSetAccent,
   onReorderDashboards,
   onEditConfig,
+  onNewFromTemplate,
   onAddWidget,
   onManageServices,
   onAddDashboard,
@@ -398,6 +400,13 @@ export function DashboardTabBar({
                 }}
               />
               <div className="my-1 border-t border-border-subtle" />
+              <MenuItem
+                label="New dashboard from template…"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onNewFromTemplate();
+                }}
+              />
               <MenuItem
                 label="Edit config.yaml…"
                 onClick={() => {

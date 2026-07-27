@@ -19,6 +19,8 @@ import { AddWidgetModal } from "./AddWidgetModal";
 import { ServicesEditor } from "./widgets/apps/ServicesEditor";
 import { Spotlight } from "./Spotlight";
 import { ConfigEditorModal } from "./ConfigEditorModal";
+import { TemplatePickerModal } from "./TemplatePickerModal";
+import type { DashboardTemplate } from "./templates";
 import type {
   AnyWidgetConfig,
   DashboardLayout,
@@ -139,6 +141,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const [manageServicesOpen, setManageServicesOpen] = useState(false);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [configEditorOpen, setConfigEditorOpen] = useState(false);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
 
   // Cmd/Ctrl+K opens the spotlight from anywhere on the dashboard.
   useEffect(() => {
@@ -593,6 +596,46 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     [qc],
   );
 
+  // Create a new dashboard from a built-in template (fresh widget ids).
+  const handleCreateFromTemplate = useCallback(
+    (tpl: DashboardTemplate) => {
+      if (dashboards.length >= 5) return;
+      const id = `dash-${Date.now()}`;
+      const widgets = tpl.widgets.map((w, i) => ({
+        i: `w-${Date.now()}-${i}`,
+        type: w.type,
+        title: w.title,
+        config: (w.config ?? {}) as AnyWidgetConfig,
+      }));
+      const layoutItems: GridItem[] = tpl.widgets.map((w, i) => ({
+        i: widgets[i].i,
+        x: w.x,
+        y: w.y,
+        w: w.w,
+        h: w.h,
+      }));
+      writeConfigAndRefresh((cfg) => ({
+        ...cfg,
+        dashboards: [...(cfg.dashboards ?? []), { id, name: tpl.name, default: false, widgets }],
+      }));
+      const current = qc.getQueryData<StatePayload>(["state"]) ?? {};
+      const next: StatePayload = {
+        ...current,
+        layouts: { ...(current.layouts ?? {}), [id]: layoutItems },
+      };
+      qc.setQueryData(["state"], next);
+      fetch("/api/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+        // eslint-disable-next-line no-console
+      }).catch((e) => console.error("Failed to persist state after template:", e));
+      setActiveDashboardId(id);
+      setTemplatePickerOpen(false);
+    },
+    [dashboards.length, qc, writeConfigAndRefresh],
+  );
+
   // Helper: persist a state object to state.yaml + cache.
   const persistState = useCallback(
     (next: StatePayload) => {
@@ -877,10 +920,11 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     return Math.max(contentH + headroom, containerH);
   }, [layout.layouts, cell, gap, editing, containerH]);
 
-  // Under a phone-ish width the 24-col drag grid is unusable, so fall back to a
-  // read-only single-column stack. Empty dashboards get a prompt instead of a
-  // blank grid.
-  const isNarrow = containerW > 0 && containerW < 600;
+  // Below ~900px the 24-col drag grid gets too cramped to use, so fall back to
+  // a read-only responsive stack: one column on phones, two on small tablets.
+  // Desktop keeps the full editable grid. Empty dashboards get a prompt.
+  const isStacked = containerW > 0 && containerW < 900;
+  const stackColumns = containerW < 560 ? 1 : 2;
   const isEmpty = layout.widgets.length === 0;
   const activeAccent = dashboards.find((d) => d.id === activeDashboardId)?.accent;
 
@@ -913,6 +957,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onSetAccent={handleSetAccent}
         onReorderDashboards={handleReorderDashboards}
         onEditConfig={() => setConfigEditorOpen(true)}
+        onNewFromTemplate={() => setTemplatePickerOpen(true)}
         onAddWidget={() => setAddWidgetOpen(true)}
         onManageServices={() => setManageServicesOpen(true)}
         onAddDashboard={handleAddDashboard}
@@ -924,8 +969,12 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       />
 
       <div ref={containerRef} className="flex-1 min-h-0 relative overflow-y-auto overflow-x-hidden">
-        {isNarrow ? (
-          <MobileStack widgets={layout.widgets} items={layout.layouts.lg || []} />
+        {isStacked ? (
+          <ResponsiveStack
+            widgets={layout.widgets}
+            items={layout.layouts.lg || []}
+            columns={stackColumns}
+          />
         ) : (
         <>
         {editing && cell > 0 && (
@@ -1053,6 +1102,12 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       />
       <Spotlight open={spotlightOpen} onClose={() => setSpotlightOpen(false)} />
       <ConfigEditorModal open={configEditorOpen} onClose={() => setConfigEditorOpen(false)} />
+      <TemplatePickerModal
+        open={templatePickerOpen}
+        onClose={() => setTemplatePickerOpen(false)}
+        onPick={handleCreateFromTemplate}
+        atLimit={dashboards.length >= 5}
+      />
 
       {deletedStash && (
         <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-2.5 rounded-lg bg-bg-elevated border border-border shadow-2xl ring-1 ring-white/5">
@@ -1071,25 +1126,54 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   );
 }
 
-// Read-only single-column rendering for narrow (phone) viewports. Widgets keep
-// their relative heights from the layout but span the full width; no drag/edit.
-function MobileStack({ widgets, items }: { widgets: Widget[]; items: GridItem[] }) {
+// Read-only responsive rendering for narrow viewports (phones/tablets). Widgets
+// keep their heights from the layout and flow in `columns` columns in the
+// dashboard's visual order (top-to-bottom, left-to-right); wide widgets span
+// the full row. No drag/edit.
+function ResponsiveStack({
+  widgets,
+  items,
+  columns,
+}: {
+  widgets: Widget[];
+  items: GridItem[];
+  columns: number;
+}) {
   if (widgets.length === 0) {
     return <EmptyDashboard editing={false} onAddWidget={() => {}} />;
   }
+  // Order by grid position so the stack matches the on-screen arrangement.
+  const ordered = [...widgets].sort((a, b) => {
+    const ga = items.find((l) => l.i === a.i);
+    const gb = items.find((l) => l.i === b.i);
+    return (ga?.y ?? 0) - (gb?.y ?? 0) || (ga?.x ?? 0) - (gb?.x ?? 0);
+  });
   return (
-    <div className="flex flex-col gap-3 py-1">
-      {widgets.map((widget) => {
+    <div
+      className="grid gap-3 py-1"
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+    >
+      {ordered.map((widget) => {
         const gi = items.find((l) => l.i === widget.i);
         const h = gi?.h ?? 2;
+        const wUnits = gi?.w ?? 3;
+        // A widget wider than half the grid takes the full row on tablet.
+        const span = columns > 1 && wUnits >= 12 ? columns : 1;
         const def = getWidgetDefinition(widget.type);
         return (
           <div
             key={widget.i}
             className="rounded-lg border border-border-subtle bg-bg-card/80 backdrop-blur-sm overflow-hidden shadow-sm shadow-black/20"
-            style={{ height: Math.max(120, h * 64) }}
+            style={{ gridColumn: `span ${span}`, height: Math.max(120, h * 64) }}
           >
-            <WidgetSurface widget={widget} def={def} w={4} h={h} editing={false} save={() => {}} />
+            <WidgetSurface
+              widget={widget}
+              def={def}
+              w={span >= columns ? 6 : 4}
+              h={h}
+              editing={false}
+              save={() => {}}
+            />
           </div>
         );
       })}
