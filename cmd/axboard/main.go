@@ -12,11 +12,11 @@ import (
 	"syscall"
 	"time"
 
-	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/api"
-	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/config"
-	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/health"
-	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/state"
-	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/web"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/api"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/config"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/health"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/state"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/web"
 )
 
 func main() {
@@ -97,7 +97,7 @@ func main() {
 	}
 
 	go func() {
-		slog.Info("ianua listening", "addr", bind)
+		slog.Info("axboard listening", "addr", bind)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			slog.Error("server exited", "err", err)
 			cancel()
@@ -120,7 +120,7 @@ func main() {
 	}
 	pool.Stop()
 	cancel()
-	slog.Info("ianua stopped")
+	slog.Info("axboard stopped")
 }
 
 // serverConfig pokes at the server to grab the live config for bind-address

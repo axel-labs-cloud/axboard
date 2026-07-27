@@ -1,4 +1,4 @@
-# ianua — implementation plan
+# axboard — implementation plan
 
 Active checklist. Tick boxes as work lands. Granularity is commit-level — one box ≈ one focused commit or a small cluster of related edits. See [CLAUDE.md](./CLAUDE.md) for stack, persistence model, and rationale.
 
@@ -8,8 +8,8 @@ Active checklist. Tick boxes as work lands. Granularity is commit-level — one 
 
 ## Phase 2 — Project skeleton
 
-- [ ] `go.mod` — `module gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua`, Go 1.26
-- [ ] `cmd/ianua/main.go` — minimal `package main` with placeholder server (just `/healthz` → "ok")
+- [ ] `go.mod` — `module gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard`, Go 1.26
+- [ ] `cmd/axboard/main.go` — minimal `package main` with placeholder server (just `/healthz` → "ok")
 - [ ] `internal/` packages stubbed (each with a `doc.go` so the package isn't empty)
 - [ ] `web/` Vite scaffold: `npm create vite@latest -- --template react-ts`, then add Tailwind 4 (`@tailwindcss/vite`), `@tanstack/react-query`, `react-router-dom`, `react-grid-layout`, `@headlessui/react`, `simple-icons`
 - [ ] `web/vite.config.ts` — proxy `/api/*` and `/healthz` to `localhost:8080` for dev
@@ -52,7 +52,7 @@ Copy these directly from `/home/axel/Code/projects/a1-v2/web/src/features/dashbo
 - [ ] `useDashboards.ts` — collapse to a read-only hook over `/api/config` (no create/delete/rename mutations)
 - [ ] `widgets/types.ts` — trim `WidgetType` union to `clock | shortcut | checklist | apps`; remove unused config interfaces; add `AppsConfig`
 - [ ] `widgets/registry.ts` — register `apps`, drop the removed types
-- [ ] `dashboardIO.ts` — rename serialized format tag `a1dash` → `ianua`
+- [ ] `dashboardIO.ts` — rename serialized format tag `a1dash` → `axboard`
 
 ### 3.3 Frontend plumbing
 
@@ -83,7 +83,7 @@ Copy these directly from `/home/axel/Code/projects/a1-v2/web/src/features/dashbo
 
 - [ ] `internal/state/types.go` — `State` struct (per-dashboard layouts keyed by widget ID, last-active dashboard)
 - [ ] `internal/state/store.go` — `Load`, `Save` with file lock (`flock`) and atomic rename (write to `state.yaml.tmp`, then `os.Rename`)
-- [ ] Header comment `# managed by ianua — do not edit` written on every save
+- [ ] Header comment `# managed by axboard — do not edit` written on every save
 - [ ] Test: concurrent Save calls don't corrupt the file
 
 ### 4.3 Health checker
@@ -109,7 +109,7 @@ Copy these directly from `/home/axel/Code/projects/a1-v2/web/src/features/dashbo
 - [ ] `internal/api/events.go` — SSE handler with channel-based broadcaster; subscribers added/removed safely
 - [ ] `internal/api/healthz.go` — `GET /healthz`
 - [ ] `internal/web/embed.go` — `//go:embed all:dist` + SPA fallback (lift pattern from [a1-v2/internal/api/spa.go](/home/axel/Code/projects/a1-v2/internal/api/spa.go))
-- [ ] `cmd/ianua/main.go` — wire everything: load config → start watcher → start health pool → start server → graceful shutdown on SIGTERM
+- [ ] `cmd/axboard/main.go` — wire everything: load config → start watcher → start health pool → start server → graceful shutdown on SIGTERM
 
 ### 4.6 Verify Phase 4
 
@@ -152,8 +152,8 @@ Copy these directly from `/home/axel/Code/projects/a1-v2/web/src/features/dashbo
 - [ ] **Bad YAML safety**: save syntactically broken YAML — server keeps serving last-good config, UI shows parse-error banner with line/column
 - [ ] **Drag-and-drop framework regression**: drag → position persisted on drag-stop. Resize → size persisted on resize-stop. Undo/redo keyboard shortcut works
 - [ ] **Multi-dashboard**: with 2 dashboards in YAML, the tab bar switches between them; correct layout loads per tab
-- [ ] **Single binary**: `make build` → ~20 MB. `./bin/ianua --config /tmp/test/config.yaml` from a clean tmpdir, no external deps
-- [ ] **Container**: `podman build`, run with `-v ./config.yaml:/etc/ianua/config.yaml`, hit from a phone on the same wifi
+- [ ] **Single binary**: `make build` → ~20 MB. `./bin/axboard --config /tmp/test/config.yaml` from a clean tmpdir, no external deps
+- [ ] **Container**: `podman build`, run with `-v ./config.yaml:/etc/axboard/config.yaml`, hit from a phone on the same wifi
 
 ---
 

@@ -1,4 +1,4 @@
-module gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua
+module gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard
 
 go 1.26.2
 

@@ -97,7 +97,7 @@ export function DashboardTabBar({
               <path d="M9 22V12h6v10" />
             </svg>
           </div>
-          <span className="text-[12px] font-semibold tracking-wide text-text">ianua</span>
+          <span className="text-[12px] font-semibold tracking-wide text-text">axboard</span>
           <span className="w-px h-4 bg-border" />
         </div>
         <div className="flex items-center gap-0.5 min-w-0 overflow-x-auto">

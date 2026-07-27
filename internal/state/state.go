@@ -43,7 +43,7 @@ type Store struct {
 	state *State
 }
 
-const header = "# managed by ianua — do not edit\n"
+const header = "# managed by axboard — do not edit\n"
 
 func New(path string) *Store {
 	return &Store{path: path, state: &State{}}
@@ -90,7 +90,7 @@ func (s *Store) Save(next *State) error {
 	}
 
 	dir := filepath.Dir(s.path)
-	tmp, err := os.CreateTemp(dir, ".ianua-state-*.yaml")
+	tmp, err := os.CreateTemp(dir, ".axboard-state-*.yaml")
 	if err != nil {
 		return err
 	}

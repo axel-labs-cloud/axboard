@@ -5,7 +5,7 @@ dev:
 	@echo "Run 'make dev-go' and 'make dev-web' in two terminals."
 
 dev-go:
-	go run ./cmd/ianua --config ./config/config.yaml --state ./state.yaml --addr :8080
+	go run ./cmd/axboard --config ./config/config.yaml --state ./state.yaml --addr :8080
 
 dev-web:
 	cd web && npm run dev
@@ -18,10 +18,10 @@ build-web:
 
 build-go:
 	mkdir -p bin
-	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/ianua ./cmd/ianua
+	CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o bin/axboard ./cmd/axboard
 
 container:
-	podman build -t ianua:latest -f Containerfile .
+	podman build -t axboard:latest -f Containerfile .
 
 tidy:
 	go mod tidy

@@ -15,7 +15,7 @@ import (
 // path does.
 func Save(path string, cfg *Config) error {
 	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".ianua-config-*.yaml")
+	tmp, err := os.CreateTemp(dir, ".axboard-config-*.yaml")
 	if err != nil {
 		return err
 	}
@@ -30,7 +30,7 @@ func Save(path string, cfg *Config) error {
 		}
 	}()
 
-	if _, err := tmp.WriteString("# ianua config.yaml — edit freely. UI edits will reformat and drop comments.\n"); err != nil {
+	if _, err := tmp.WriteString("# axboard config.yaml — edit freely. UI edits will reformat and drop comments.\n"); err != nil {
 		return err
 	}
 	enc := yaml.NewEncoder(tmp)

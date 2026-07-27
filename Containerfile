@@ -15,13 +15,13 @@ COPY go.mod go.sum* ./
 RUN go mod download
 COPY . .
 COPY --from=web-build /src/internal/web/dist ./internal/web/dist
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/ianua ./cmd/ianua
+RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/axboard ./cmd/axboard
 
 FROM docker.io/library/alpine:3.20
 RUN apk add --no-cache ca-certificates tzdata \
-    && mkdir -p /etc/ianua /var/lib/ianua
-COPY --from=go-build /out/ianua /usr/local/bin/ianua
-WORKDIR /var/lib/ianua
+    && mkdir -p /etc/axboard /var/lib/axboard
+COPY --from=go-build /out/axboard /usr/local/bin/axboard
+WORKDIR /var/lib/axboard
 EXPOSE 8080
 # No USER directive: in rootless podman, container root maps to the host
 # user who started the daemon — that's how the bind-mounted config/ dir
@@ -29,5 +29,5 @@ EXPOSE 8080
 # pushes the uid into the subuid range and breaks PUT /api/config (no
 # write permission on the bind mount). For LAN-bound homelab use, this
 # is the right trade-off.
-ENTRYPOINT ["/usr/local/bin/ianua"]
-CMD ["--config", "/etc/ianua/config.yaml", "--state", "/var/lib/ianua/state.yaml", "--addr", ":8080"]
+ENTRYPOINT ["/usr/local/bin/axboard"]
+CMD ["--config", "/etc/axboard/config.yaml", "--state", "/var/lib/axboard/state.yaml", "--addr", ":8080"]

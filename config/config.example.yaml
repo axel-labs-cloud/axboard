@@ -1,4 +1,4 @@
-# ianua config.yaml — human source of truth.
+# axboard config.yaml — human source of truth.
 # Edited by hand. The server reads freely and writes only via the UI
 # "edit app" flow, which warns that comments will be lost.
 

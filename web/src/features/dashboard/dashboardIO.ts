@@ -10,21 +10,23 @@ import { migrateLayout, CURRENT_VERSION } from "./layoutMigrations";
 // versioning via layoutMigrations).
 //
 //   {
-//     "format": "a1dash",
+//     "format": "axboard",
 //     "format_version": 1,
 //     "exported_at": "2026-04-10T09:30:00Z",
-//     "exported_from": "a1-v2",
+//     "exported_from": "axboard",
 //     "name": "Home Lab",
 //     "layout": { ... DashboardLayout ... }
 //   }
 //
-// Files are saved with a `.a1dash` extension. The import function only
+// Files are saved with a `.axboard.json` extension. The import function only
 // validates the wrapper shape and then defers to migrateLayout() for the
 // actual layout — so any layout that's loadable in the browser is also
-// importable.
+// importable. Legacy format tags from earlier names ("ianua", "a1dash") are
+// still accepted on import so old exports keep working across the rename.
 // ---------------------------------------------------------------------------
 
-const FORMAT = "ianua";
+const FORMAT = "axboard";
+const LEGACY_FORMATS = ["ianua", "a1dash"];
 const FORMAT_VERSION = 1;
 
 export interface DashboardExportFile {
@@ -41,13 +43,13 @@ export function buildExportFile(name: string, layout: DashboardLayout): Dashboar
     format: FORMAT,
     format_version: FORMAT_VERSION,
     exported_at: new Date().toISOString(),
-    exported_from: "ianua",
+    exported_from: "axboard",
     name,
     layout: { ...layout, version: CURRENT_VERSION },
   };
 }
 
-/** Trigger a browser download of the given dashboard as a .a1dash file. */
+/** Trigger a browser download of the given dashboard as a .axboard.json file. */
 export function downloadDashboardFile(name: string, layout: DashboardLayout): void {
   const file = buildExportFile(name, layout);
   const blob = new Blob([JSON.stringify(file, null, 2)], {
@@ -62,7 +64,7 @@ export function downloadDashboardFile(name: string, layout: DashboardLayout): vo
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "dashboard";
-  a.download = `${safe}.ianua.json`;
+  a.download = `${safe}.axboard.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -75,7 +77,7 @@ export interface ParsedImport {
 }
 
 /**
- * Parse a `.a1dash` JSON string into a name + layout. Throws on any structural
+ * Parse a `.axboard.json` JSON string into a name + layout. Throws on any structural
  * problem so the caller can render a single error message.
  */
 export function parseDashboardFile(text: string): ParsedImport {
@@ -89,8 +91,9 @@ export function parseDashboardFile(text: string): ParsedImport {
     throw new Error("File is empty or not an object");
   }
   const obj = raw as Record<string, unknown>;
-  if (obj.format !== FORMAT) {
-    throw new Error(`Wrong format — expected "${FORMAT}", got "${String(obj.format)}"`);
+  const fmt = String(obj.format);
+  if (fmt !== FORMAT && !LEGACY_FORMATS.includes(fmt)) {
+    throw new Error(`Wrong format — expected "${FORMAT}", got "${fmt}"`);
   }
   if (typeof obj.format_version !== "number") {
     throw new Error("Missing format_version");

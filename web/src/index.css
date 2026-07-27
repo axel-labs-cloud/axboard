@@ -71,7 +71,7 @@
 }
 
 /* Status-dot pulse for healthy services — very subtle. */
-@keyframes ianua-status-pulse {
+@keyframes axboard-status-pulse {
   0%,
   100% {
     box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.18);
@@ -81,7 +81,7 @@
   }
 }
 .status-pulse {
-  animation: ianua-status-pulse 2.4s ease-in-out infinite;
+  animation: axboard-status-pulse 2.4s ease-in-out infinite;
 }
 
 /* react-grid-layout polish — softer placeholder, smoother resize handle. */

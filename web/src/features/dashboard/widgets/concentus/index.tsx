@@ -146,7 +146,7 @@ function ConcentusComponent({ config, w, h, editing }: WidgetProps<ConcentusConf
         if (!r.ok) throw new Error(`${r.status}`);
         const data = (await r.json()) as SessionsResponse;
         const sessions = data.data ?? [];
-        // Skip ianua's own control session — we don't want to show it as
+        // Skip axboard's own control session — we don't want to show it as
         // "what's playing" since it never reports now_playing.
         const eligible = sessions.filter((s) => s.now_playing);
         const playing = eligible.find((s) => s.now_playing?.is_playing);
@@ -183,7 +183,7 @@ function ConcentusComponent({ config, w, h, editing }: WidgetProps<ConcentusConf
           ws.send(
             JSON.stringify({
               type: "register",
-              session_name: "ianua dashboard",
+              session_name: "axboard dashboard",
               capabilities: ["remote_control"],
             }),
           );
@@ -520,7 +520,7 @@ function ConcentusConfigPanel({ config, save }: WidgetConfigProps<ConcentusConfi
 
       <div className="text-[10px] text-text-muted/70 leading-snug">
         Credentials persist in <span className="font-mono text-text-secondary">state.yaml</span> in
-        plaintext. ianua is LAN-bound and single-user — fine for homelab, not safe to expose to
+        plaintext. axboard is LAN-bound and single-user — fine for homelab, not safe to expose to
         the wider internet.
       </div>
     </div>

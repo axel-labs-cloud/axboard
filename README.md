@@ -1,6 +1,6 @@
-# ianua
+# axboard
 
-`ianua` (Latin: *entrance, doorway*) is a homepage/Homarr-style apps dashboard. Single Go binary, embedded React SPA, hand-edited YAML config, no auth, LAN-bound. Drag-and-drop grid of widgets — most importantly clickable app cards with health pings — that acts as the front door to all self-hosted services on `axel-labs.cloud`.
+`axboard` is a homepage/Homarr-style apps dashboard. Single Go binary, embedded React SPA, hand-edited YAML config, no auth, LAN-bound. Drag-and-drop grid of widgets — most importantly clickable app cards with health pings — that acts as the front door to all self-hosted services on `axel-labs.cloud`.
 
 ## Quickstart
 
@@ -10,7 +10,7 @@ make build
 
 # Run
 cp config/config.example.yaml config/config.yaml
-./bin/ianua --config ./config/config.yaml --state ./state.yaml --addr :8080
+./bin/axboard --config ./config/config.yaml --state ./state.yaml --addr :8080
 
 # Or via podman-compose
 podman-compose up -d

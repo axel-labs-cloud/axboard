@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 export type Theme = "dark" | "light";
 
-const STORAGE_KEY = "ianua-theme";
+const STORAGE_KEY = "axboard-theme";
 
 /**
  * Persists the dashboard's theme in localStorage and applies a class to the
