@@ -18,6 +18,11 @@ import (
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/state"
 )
 
+// maxBodyBytes caps PUT /api/config and /api/state request bodies. Both files
+// are tiny in practice; this just stops a malformed/huge upload from being
+// buffered into memory.
+const maxBodyBytes = 8 << 20 // 8 MiB
+
 // Server holds the runtime references the HTTP handlers need.
 type Server struct {
 	configMu  sync.RWMutex
@@ -179,6 +184,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
 // the only path that ever mutates the human file; it WILL drop comments and
 // reformat. The frontend warns before calling this.
 func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	var next config.Config
 	if err := json.NewDecoder(r.Body).Decode(&next); err != nil {
 		writeErr(w, http.StatusBadRequest, "decode: "+err.Error())
@@ -205,6 +211,7 @@ func (s *Server) handleGetState(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *Server) handlePutState(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 	var next state.State
 	if err := json.NewDecoder(r.Body).Decode(&next); err != nil {
 		writeErr(w, http.StatusBadRequest, "decode: "+err.Error())

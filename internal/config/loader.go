@@ -4,10 +4,25 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
+	"strconv"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
+
+// yaml.v3 embeds the failing line in its error message ("yaml: line 12: ...",
+// "line 5: cannot unmarshal ..."). Pull it out so the UI banner can point at
+// the exact spot instead of leaving its "(line N)" slot empty.
+var yamlLineRe = regexp.MustCompile(`line (\d+)`)
+
+func parseYAMLLine(msg string) int {
+	if m := yamlLineRe.FindStringSubmatch(msg); m != nil {
+		n, _ := strconv.Atoi(m[1])
+		return n
+	}
+	return 0
+}
 
 // LoadError carries enough info for the UI to render a banner pointing at the
 // exact spot in config.yaml that failed.
@@ -35,9 +50,10 @@ func Load(path string) (*Config, error) {
 	if err := yaml.Unmarshal(raw, &cfg); err != nil {
 		var typeErr *yaml.TypeError
 		if errors.As(err, &typeErr) && len(typeErr.Errors) > 0 {
-			return nil, &LoadError{Path: path, Message: typeErr.Errors[0]}
+			msg := typeErr.Errors[0]
+			return nil, &LoadError{Path: path, Message: msg, Line: parseYAMLLine(msg)}
 		}
-		return nil, &LoadError{Path: path, Message: err.Error()}
+		return nil, &LoadError{Path: path, Message: err.Error(), Line: parseYAMLLine(err.Error())}
 	}
 	if err := validate(&cfg); err != nil {
 		return nil, &LoadError{Path: path, Message: err.Error()}

@@ -35,10 +35,9 @@ func main() {
 
 	pool := health.NewPool()
 	broadcaster := api.NewBroadcaster()
-	pool.OnChange(func(id string) {
-		broadcaster.Send(api.Event{Type: "status_changed"})
-		_ = id
-	})
+	// No per-status SSE: the client polls /api/apps/status on a 15s interval
+	// (a deliberate design choice), so broadcasting on every status flip would
+	// be wasted fan-out with no consumer.
 
 	server := api.NewServer(*configPath, store, pool, broadcaster)
 
@@ -113,6 +112,9 @@ func main() {
 		slog.Info("context cancelled, shutting down")
 	}
 
+	// Close SSE subscribers first so their long-lived handlers return, letting
+	// http.Server.Shutdown drain quickly instead of blocking to the deadline.
+	broadcaster.Close()
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {

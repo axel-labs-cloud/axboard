@@ -147,6 +147,19 @@ func TestValidate(t *testing.T) {
 	}
 }
 
+func TestParseYAMLLine(t *testing.T) {
+	cases := map[string]int{
+		"yaml: line 12: could not find expected ':'": 12,
+		"line 5: cannot unmarshal !!str into int":     5,
+		"no line info here":                            0,
+	}
+	for msg, want := range cases {
+		if got := parseYAMLLine(msg); got != want {
+			t.Errorf("parseYAMLLine(%q) = %d, want %d", msg, got, want)
+		}
+	}
+}
+
 func TestApplyDefaults(t *testing.T) {
 	cfg := Config{Apps: []App{{
 		ID: "a", Name: "A", URL: "u",

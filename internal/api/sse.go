@@ -23,6 +23,7 @@ type ConfigErrorJS struct {
 type Broadcaster struct {
 	mu          sync.RWMutex
 	subscribers map[chan []byte]struct{}
+	closed      bool
 }
 
 func NewBroadcaster() *Broadcaster {
@@ -34,6 +35,13 @@ func NewBroadcaster() *Broadcaster {
 func (b *Broadcaster) Subscribe() (chan []byte, func()) {
 	ch := make(chan []byte, 16)
 	b.mu.Lock()
+	if b.closed {
+		b.mu.Unlock()
+		// Server is shutting down — hand back an already-closed channel so the
+		// SSE handler's receive returns immediately instead of blocking.
+		close(ch)
+		return ch, func() {}
+	}
 	b.subscribers[ch] = struct{}{}
 	b.mu.Unlock()
 	return ch, func() {
@@ -43,6 +51,22 @@ func (b *Broadcaster) Subscribe() (chan []byte, func()) {
 			close(ch)
 		}
 		b.mu.Unlock()
+	}
+}
+
+// Close shuts every subscriber channel so blocked SSE handlers return at once.
+// Called on server shutdown so http.Server.Shutdown doesn't wait out its full
+// grace period on the long-lived /api/events connections. Idempotent.
+func (b *Broadcaster) Close() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if b.closed {
+		return
+	}
+	b.closed = true
+	for ch := range b.subscribers {
+		delete(b.subscribers, ch)
+		close(ch)
 	}
 }
 
