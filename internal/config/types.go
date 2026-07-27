@@ -46,6 +46,16 @@ type Health struct {
 	ExpectStatus int        `yaml:"expect_status,omitempty" json:"expect_status,omitempty"`
 	Interval     Duration   `yaml:"interval,omitempty" json:"interval,omitempty"`
 	Timeout      Duration   `yaml:"timeout,omitempty" json:"timeout,omitempty"`
+
+	// Optional HTTP-check refinements.
+	// Headers are sent on the request (e.g. an auth token for a protected
+	// health endpoint). BodyContains, when set, requires the response body to
+	// contain the substring for a healthy result (a cheap alternative to full
+	// JSON-path matching). Insecure overrides the default TLS-skip behavior:
+	// nil = skip verify (homelab default), false = enforce cert validation.
+	Headers      map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
+	BodyContains string            `yaml:"body_contains,omitempty" json:"body_contains,omitempty"`
+	Insecure     *bool             `yaml:"insecure,omitempty" json:"insecure,omitempty"`
 }
 
 type Group struct {

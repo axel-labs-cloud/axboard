@@ -24,12 +24,18 @@ import (
 // inject their own so the pool can be exercised without real network.
 type CheckFunc func(ctx context.Context, h *config.Health) Result
 
+// historyCap bounds the per-app rolling history (last N checks).
+const historyCap = 60
+
 type Pool struct {
 	mu       sync.Mutex
 	workers  map[string]*worker
 	results  sync.Map // map[string]Result
 	onChange func(id string)
 	check    CheckFunc
+
+	histMu  sync.Mutex
+	history map[string][]HistPoint
 }
 
 type worker struct {
@@ -38,12 +44,19 @@ type worker struct {
 	check  chan struct{} // signal a forced re-check
 }
 
-// NewPool builds a pool that runs real HTTP/TCP checks over one shared client.
+// NewPool builds a pool that runs real HTTP/TCP checks. It keeps one shared
+// client that skips TLS verification (homelab default) and one that enforces
+// it, so a per-check health.insecure=false can opt back into validation.
 func NewPool() *Pool {
-	client := newHealthClient()
+	insecureClient := newHealthClient(true)
+	secureClient := newHealthClient(false)
 	return NewPoolWithChecker(func(ctx context.Context, h *config.Health) Result {
 		switch h.Type {
 		case config.HealthHTTP:
+			client := insecureClient
+			if h.Insecure != nil && !*h.Insecure {
+				client = secureClient
+			}
 			return CheckHTTP(ctx, client, h)
 		case config.HealthTCP:
 			return CheckTCP(ctx, h)
@@ -59,7 +72,37 @@ func NewPoolWithChecker(check CheckFunc) *Pool {
 	return &Pool{
 		workers: make(map[string]*worker),
 		check:   check,
+		history: make(map[string][]HistPoint),
 	}
+}
+
+func (p *Pool) recordHistory(id string, res Result) {
+	p.histMu.Lock()
+	h := append(p.history[id], HistPoint{Status: res.Status, ResponseMS: res.ResponseMS, At: res.LastChecked})
+	if len(h) > historyCap {
+		h = h[len(h)-historyCap:]
+	}
+	p.history[id] = h
+	p.histMu.Unlock()
+}
+
+func (p *Pool) deleteHistory(id string) {
+	p.histMu.Lock()
+	delete(p.history, id)
+	p.histMu.Unlock()
+}
+
+// HistorySnapshot returns a copy of every app's rolling history.
+func (p *Pool) HistorySnapshot() map[string][]HistPoint {
+	p.histMu.Lock()
+	defer p.histMu.Unlock()
+	out := make(map[string][]HistPoint, len(p.history))
+	for k, v := range p.history {
+		cp := make([]HistPoint, len(v))
+		copy(cp, v)
+		out[k] = cp
+	}
+	return out
 }
 
 // OnChange registers a callback fired when any app's status flips. Used to
@@ -111,6 +154,7 @@ func (p *Pool) Reconcile(apps []config.App) {
 			w.cancel()
 			delete(p.workers, id)
 			p.results.Delete(id)
+			p.deleteHistory(id)
 		}
 	}
 }
@@ -170,6 +214,7 @@ func (p *Pool) run(ctx context.Context, app config.App, w *worker) {
 		res := p.check(ctx, app.Health)
 		prev, _ := p.results.Load(app.ID)
 		p.results.Store(app.ID, res)
+		p.recordHistory(app.ID, res)
 		if prev == nil || prev.(Result).Status != res.Status {
 			p.mu.Lock()
 			cb := p.onChange

@@ -103,12 +103,18 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		_, _ = w.Write([]byte("ok"))
 	})
 
+	// Prometheus scrape endpoint (root path per convention). Exposes app
+	// liveness so a real monitoring stack can alert on it — axboard stays a
+	// dashboard, not a metrics store.
+	r.Get("/metrics", s.handleMetrics)
+
 	r.Route("/api", func(r chi.Router) {
 		r.Get("/config", s.handleGetConfig)
 		r.Put("/config", s.handlePutConfig)
 		r.Get("/state", s.handleGetState)
 		r.Put("/state", s.handlePutState)
 		r.Get("/apps/status", s.handleStatus)
+		r.Get("/apps/history", s.handleHistory)
 		r.Post("/apps/{id}/check", s.handleForceCheck)
 		r.Get("/events", s.handleSSE)
 	})
@@ -226,6 +232,33 @@ func (s *Server) handlePutState(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, s.Health.Snapshot())
+}
+
+func (s *Server) handleHistory(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, s.Health.HistorySnapshot())
+}
+
+// handleMetrics renders app liveness in Prometheus text exposition format.
+func (s *Server) handleMetrics(w http.ResponseWriter, _ *http.Request) {
+	snap := s.Health.Snapshot()
+	var b strings.Builder
+	b.WriteString("# HELP axboard_app_up Whether the app's last health check passed (1) or not (0).\n")
+	b.WriteString("# TYPE axboard_app_up gauge\n")
+	for id, res := range snap {
+		up := 0
+		if res.Status == health.StatusHealthy {
+			up = 1
+		}
+		fmt.Fprintf(&b, "axboard_app_up{id=%q,status=%q} %d\n", id, res.Status, up)
+	}
+	b.WriteString("# HELP axboard_app_response_ms Last health-check response time in milliseconds.\n")
+	b.WriteString("# TYPE axboard_app_response_ms gauge\n")
+	for id, res := range snap {
+		fmt.Fprintf(&b, "axboard_app_response_ms{id=%q} %d\n", id, res.ResponseMS)
+	}
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(b.String()))
 }
 
 func (s *Server) handleForceCheck(w http.ResponseWriter, r *http.Request) {

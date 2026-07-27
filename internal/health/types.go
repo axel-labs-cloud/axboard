@@ -17,3 +17,11 @@ type Result struct {
 	ResponseMS  int64     `json:"response_ms,omitempty"`
 	Error       string    `json:"error,omitempty"`
 }
+
+// HistPoint is one entry in an app's rolling health history — enough to draw a
+// sparkline and compute a recent uptime percentage.
+type HistPoint struct {
+	Status     Status    `json:"status"`
+	ResponseMS int64     `json:"response_ms"`
+	At         time.Time `json:"at"`
+}
