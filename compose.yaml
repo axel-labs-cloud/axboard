@@ -8,6 +8,11 @@ services:
     # NET_RAW lets the ICMP ping health-check type send echo requests.
     cap_add:
       - NET_RAW
+    # label=disable runs the container unconfined by SELinux so it can reach the
+    # mounted Podman socket (auto-discovery). Remove this and the socket mount
+    # below together if you don't use discovery.
+    security_opt:
+      - label=disable
     ports:
       - "8080:8080"
     volumes:
