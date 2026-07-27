@@ -12,7 +12,7 @@ import { useDashboardHistory } from "./useDashboardHistory";
 import { useDashboardShortcuts } from "./useDashboardShortcuts";
 import { createEmptyLayout } from "./layoutMigrations";
 import { getWidgetDefinition } from "./widgets/registry";
-import { downloadDashboardFile } from "./dashboardIO";
+import { downloadDashboardFile, parseDashboardFile, readFileAsText } from "./dashboardIO";
 import { WidgetContextMenu } from "./WidgetContextMenu";
 import { AddWidgetModal } from "./AddWidgetModal";
 import { ServicesEditor } from "./widgets/apps/ServicesEditor";
@@ -446,6 +446,65 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     [dashboards, activeDashboardId, writeConfigAndRefresh],
   );
 
+  // Import a .axboard.json file as a NEW dashboard (non-destructive — never
+  // overwrites an existing one). Widget ids are regenerated so an import can't
+  // collide with widgets already on other dashboards. Writes config.yaml
+  // (widgets) + state.yaml (layout).
+  const handleImportFile = useCallback(
+    async (file: File) => {
+      let parsed;
+      try {
+        parsed = parseDashboardFile(await readFileAsText(file));
+      } catch (e) {
+        alert(`Import failed: ${(e as Error).message}`);
+        return;
+      }
+      if (dashboards.length >= 5) {
+        alert("Maximum 5 dashboards. Delete one before importing.");
+        return;
+      }
+      const id = `dash-${Date.now()}`;
+      const idMap = new Map<string, string>();
+      parsed.layout.widgets.forEach((w, i) => idMap.set(w.i, `w-${Date.now()}-${i}`));
+      const widgets = parsed.layout.widgets.map((w) => ({
+        i: idMap.get(w.i) as string,
+        type: w.type,
+        title: w.title,
+        config: (w.config ?? {}) as AnyWidgetConfig,
+      }));
+      const layoutItems = (parsed.layout.layouts.lg ?? []).map((it) => ({
+        ...it,
+        i: idMap.get(it.i) ?? it.i,
+      }));
+
+      // 1. config.yaml — append the new dashboard with its widgets.
+      writeConfigAndRefresh((cfg) => ({
+        ...cfg,
+        dashboards: [
+          ...(cfg.dashboards ?? []),
+          { id, name: parsed.name, default: false, widgets },
+        ],
+      }));
+
+      // 2. state.yaml — seed the layout for the new dashboard.
+      const current = qc.getQueryData<StatePayload>(["state"]) ?? {};
+      const nextState: StatePayload = {
+        ...current,
+        layouts: { ...(current.layouts ?? {}), [id]: layoutItems },
+      };
+      qc.setQueryData(["state"], nextState);
+      fetch("/api/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(nextState),
+        // eslint-disable-next-line no-console
+      }).catch((e) => console.error("Failed to persist state after import:", e));
+
+      setActiveDashboardId(id);
+    },
+    [dashboards.length, qc, writeConfigAndRefresh],
+  );
+
   // Remove a widget entirely. Widget existence lives in config.yaml, so this
   // writes config (comments lost — same caveat as add). It also prunes the
   // widget's layout entry and any config override from state.yaml so no
@@ -631,6 +690,12 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     return Math.max(contentH + headroom, containerH);
   }, [layout.layouts, cell, gap, editing, containerH]);
 
+  // Under a phone-ish width the 24-col drag grid is unusable, so fall back to a
+  // read-only single-column stack. Empty dashboards get a prompt instead of a
+  // blank grid.
+  const isNarrow = containerW > 0 && containerW < 600;
+  const isEmpty = layout.widgets.length === 0;
+
   return (
     <div className="p-6 h-full flex flex-col min-h-0">
       <DashboardTabBar
@@ -648,6 +713,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onUndo={handleUndo}
         onRedo={handleRedo}
         onExport={handleExport}
+        onImportFile={handleImportFile}
         onAddWidget={() => setAddWidgetOpen(true)}
         onManageServices={() => setManageServicesOpen(true)}
         onAddDashboard={handleAddDashboard}
@@ -659,6 +725,10 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       />
 
       <div ref={containerRef} className="flex-1 min-h-0 relative overflow-y-auto overflow-x-hidden">
+        {isNarrow ? (
+          <MobileStack widgets={layout.widgets} items={layout.layouts.lg || []} />
+        ) : (
+        <>
         {editing && cell > 0 && (
           <div
             aria-hidden
@@ -680,7 +750,9 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
             }}
           />
         )}
-        {cell > 0 && (
+        {isEmpty ? (
+          <EmptyDashboard editing={editing} onAddWidget={() => setAddWidgetOpen(true)} />
+        ) : cell > 0 ? (
           <ReactGridLayout
             layout={decoratedGridItems}
             onLayoutChange={onLayoutChange}
@@ -723,6 +795,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
                       title={widget.title}
                       hasConfig={!!def?.ConfigPanel}
                       onConfig={(e) => openConfig(widget.i, e)}
+                      onRemove={() => handleRemoveWidget(widget.i)}
                     />
                   )}
                   <div
@@ -743,6 +816,8 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
               );
             })}
           </ReactGridLayout>
+        ) : null}
+        </>
         )}
       </div>
 
@@ -778,6 +853,72 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onClose={() => setManageServicesOpen(false)}
       />
       <Spotlight open={spotlightOpen} onClose={() => setSpotlightOpen(false)} />
+    </div>
+  );
+}
+
+// Read-only single-column rendering for narrow (phone) viewports. Widgets keep
+// their relative heights from the layout but span the full width; no drag/edit.
+function MobileStack({ widgets, items }: { widgets: Widget[]; items: GridItem[] }) {
+  if (widgets.length === 0) {
+    return <EmptyDashboard editing={false} onAddWidget={() => {}} />;
+  }
+  return (
+    <div className="flex flex-col gap-3 py-1">
+      {widgets.map((widget) => {
+        const gi = items.find((l) => l.i === widget.i);
+        const h = gi?.h ?? 2;
+        const def = getWidgetDefinition(widget.type);
+        return (
+          <div
+            key={widget.i}
+            className="rounded-lg border border-border-subtle bg-bg-card/80 backdrop-blur-sm overflow-hidden shadow-sm shadow-black/20"
+            style={{ height: Math.max(120, h * 64) }}
+          >
+            <WidgetSurface widget={widget} def={def} w={4} h={h} editing={false} save={() => {}} />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function EmptyDashboard({
+  editing,
+  onAddWidget,
+}: {
+  editing: boolean;
+  onAddWidget: () => void;
+}) {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-3 px-6">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="w-8 h-8 text-text-muted/50"
+      >
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
+      </svg>
+      <div className="text-text-secondary text-[13px] font-medium">No widgets on this dashboard yet</div>
+      {editing ? (
+        <button
+          onClick={onAddWidget}
+          className="px-3 py-1.5 text-[12px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+        >
+          Add your first widget
+        </button>
+      ) : (
+        <div className="text-text-muted text-[12px]">
+          Press <kbd className="px-1 py-0.5 rounded bg-bg-elevated border border-border-subtle font-mono text-[10px]">⌘E</kbd> to edit, then add one.
+        </div>
+      )}
     </div>
   );
 }
@@ -820,13 +961,15 @@ function WidgetHoverHeader({
   title,
   hasConfig,
   onConfig,
+  onRemove,
 }: {
   title: string;
   hasConfig: boolean;
   onConfig: (e: React.MouseEvent) => void;
+  onRemove: () => void;
 }) {
   return (
-    <div className="wdrag absolute top-0 inset-x-0 h-6 z-[100] opacity-0 group-hover/w:opacity-100 transition-opacity flex items-center justify-between px-1.5 bg-bg-elevated/90 backdrop-blur-sm border-b border-border cursor-grab active:cursor-grabbing">
+    <div className="wdrag absolute top-0 inset-x-0 h-6 z-[100] opacity-80 group-hover/w:opacity-100 transition-opacity flex items-center justify-between px-1.5 bg-bg-elevated/90 backdrop-blur-sm border-b border-border cursor-grab active:cursor-grabbing">
       <div className="flex items-center gap-1.5 min-w-0">
         <svg viewBox="0 0 24 24" fill="currentColor" className="w-2.5 h-2.5 text-text-muted shrink-0">
           <circle cx="9" cy="6" r="1.5" />
@@ -862,6 +1005,30 @@ function WidgetHoverHeader({
             </svg>
           </button>
         )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+          className="w-4 h-4 flex items-center justify-center rounded text-text-muted hover:text-danger hover:bg-danger/10"
+          title="Remove widget (Del)"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-3 h-3"
+          >
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            <line x1="10" y1="11" x2="10" y2="17" />
+            <line x1="14" y1="11" x2="14" y2="17" />
+          </svg>
+        </button>
       </div>
     </div>
   );

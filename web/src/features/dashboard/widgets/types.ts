@@ -8,7 +8,8 @@ export type WidgetType =
   | "app"
   | "weather"
   | "iframe"
-  | "concentus";
+  | "concentus"
+  | "status";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -101,6 +102,14 @@ export interface ConcentusConfig {
   password?: string;
 }
 
+/**
+ * Status summary widget. Rolls up /api/apps/status into up/degraded/down/unknown
+ * counts. No config beyond an optional legend toggle.
+ */
+export interface StatusSummaryConfig {
+  showLegend?: boolean;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -110,6 +119,7 @@ export type WidgetConfigByType = {
   weather: WeatherConfig;
   iframe: IframeConfig;
   concentus: ConcentusConfig;
+  status: StatusSummaryConfig;
 };
 
 export type AnyWidgetConfig = Partial<
@@ -120,7 +130,8 @@ export type AnyWidgetConfig = Partial<
     AppConfig &
     WeatherConfig &
     IframeConfig &
-    ConcentusConfig
+    ConcentusConfig &
+    StatusSummaryConfig
 >;
 
 export interface Widget {

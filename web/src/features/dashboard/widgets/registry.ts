@@ -7,6 +7,7 @@ import app from "./app";
 import weather from "./weather";
 import iframe from "./iframe";
 import concentus from "./concentus";
+import status from "./status";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -17,6 +18,7 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   weather,
   iframe,
   concentus,
+  status,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

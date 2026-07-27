@@ -18,6 +18,7 @@ interface Props {
   onUndo: () => void;
   onRedo: () => void;
   onExport: () => void;
+  onImportFile: (file: File) => void;
   onAddWidget: () => void;
   onManageServices: () => void;
   onAddDashboard: () => void;
@@ -39,6 +40,7 @@ export function DashboardTabBar({
   onUndo,
   onRedo,
   onExport,
+  onImportFile,
   onAddWidget,
   onManageServices,
   onAddDashboard,
@@ -50,6 +52,7 @@ export function DashboardTabBar({
 }: Props) {
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
@@ -213,6 +216,32 @@ export function DashboardTabBar({
                 <line x1="12" y1="15" x2="12" y2="3" />
               </svg>
             </IconButton>
+            <IconButton title="Import dashboard (as new)" onClick={() => importInputRef.current?.click()}>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-3.5 h-3.5"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+            </IconButton>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onImportFile(f);
+                e.target.value = ""; // allow re-importing the same file
+              }}
+            />
             <div className="w-px h-4 bg-border mx-1" />
             <button
               onClick={onManageServices}
