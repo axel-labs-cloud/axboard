@@ -21,6 +21,9 @@ interface Props {
   onImportFile: (file: File) => void;
   onBackup: () => void;
   onRestoreFile: (file: File) => void;
+  activeAccent?: string;
+  onSetAccent: (color: string) => void;
+  onReorderDashboards: (fromId: string, toId: string) => void;
   onAddWidget: () => void;
   onManageServices: () => void;
   onAddDashboard: () => void;
@@ -45,6 +48,9 @@ export function DashboardTabBar({
   onImportFile,
   onBackup,
   onRestoreFile,
+  activeAccent,
+  onSetAccent,
+  onReorderDashboards,
   onAddWidget,
   onManageServices,
   onAddDashboard,
@@ -125,6 +131,7 @@ export function DashboardTabBar({
               }}
               onCancelRename={() => setRenamingId(null)}
               onDelete={() => onDeleteDashboard(db.id)}
+              onDropTab={(fromId) => onReorderDashboards(fromId, db.id)}
             />
           ))}
           {editing && (
@@ -260,6 +267,37 @@ export function DashboardTabBar({
                 e.target.value = ""; // allow re-importing the same file
               }}
             />
+            <label
+              className="relative w-7 h-7 flex items-center justify-center rounded cursor-pointer text-text-muted hover:text-text hover:bg-bg-hover"
+              title="Dashboard accent color"
+            >
+              <span
+                className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20"
+                style={{ background: activeAccent || "var(--color-accent)" }}
+              />
+              <input
+                type="color"
+                value={activeAccent || "#818cf8"}
+                onChange={(e) => onSetAccent(e.target.value)}
+                className="absolute inset-0 opacity-0 cursor-pointer"
+              />
+            </label>
+            {activeAccent && (
+              <IconButton title="Reset accent to theme default" onClick={() => onSetAccent("")}>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-3.5 h-3.5"
+                >
+                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+              </IconButton>
+            )}
             <div className="w-px h-4 bg-border mx-1" />
             <button
               onClick={onManageServices}
@@ -458,6 +496,7 @@ function DashboardTab({
   onCommitRename,
   onCancelRename,
   onDelete,
+  onDropTab,
 }: {
   db: Dashboard;
   active: boolean;
@@ -469,6 +508,7 @@ function DashboardTab({
   onCommitRename: (name: string) => void;
   onCancelRename: () => void;
   onDelete: () => void;
+  onDropTab: (fromId: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -494,11 +534,28 @@ function DashboardTab({
   }
 
   return (
-    <div className="relative flex items-center group/tab">
+    <div
+      className="relative flex items-center group/tab"
+      draggable={editing}
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/axboard-tab", db.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      onDragOver={(e) => {
+        if (editing && e.dataTransfer.types.includes("text/axboard-tab")) e.preventDefault();
+      }}
+      onDrop={(e) => {
+        const fromId = e.dataTransfer.getData("text/axboard-tab");
+        if (fromId) {
+          e.preventDefault();
+          onDropTab(fromId);
+        }
+      }}
+    >
       <button
         onClick={onSelect}
         onDoubleClick={() => editing && onStartRename()}
-        title={editing ? "Double-click to rename" : undefined}
+        title={editing ? "Drag to reorder · double-click to rename" : undefined}
         className={`relative px-3 py-1.5 text-[12px] font-medium transition-colors whitespace-nowrap ${
           active ? "text-text" : "text-text-muted hover:text-text-secondary"
         }`}

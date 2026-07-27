@@ -43,6 +43,7 @@ export interface DashboardDef {
   id: string;
   name: string;
   default?: boolean;
+  accent?: string;
   widgets?: WidgetDef[];
 }
 

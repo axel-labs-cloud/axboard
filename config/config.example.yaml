@@ -5,6 +5,12 @@
 server:
   bind: "0.0.0.0:8080"
 
+# Optional: POST a small JSON payload to this webhook when an app goes down or
+# recovers ({app, event, status, previous}). Works with ntfy, Discord/Slack
+# incoming webhooks, or any generic receiver. Omit to disable.
+# alerts:
+#   webhook_url: "https://ntfy.sh/my-axboard-topic"
+
 apps:
   - id: sonarr
     name: Sonarr

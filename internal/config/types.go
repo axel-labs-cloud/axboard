@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	Server     ServerConfig `yaml:"server" json:"server"`
+	Alerts     AlertsConfig `yaml:"alerts,omitempty" json:"alerts,omitempty"`
 	Apps       []App        `yaml:"apps,omitempty" json:"apps,omitempty"`
 	Groups     []Group      `yaml:"groups,omitempty" json:"groups,omitempty"`
 	Dashboards []Dashboard  `yaml:"dashboards,omitempty" json:"dashboards,omitempty"`
@@ -18,6 +19,12 @@ type Config struct {
 
 type ServerConfig struct {
 	Bind string `yaml:"bind,omitempty" json:"bind,omitempty"`
+}
+
+// AlertsConfig configures optional outbound notifications. When webhook_url is
+// set, axboard POSTs a small JSON payload when an app goes down or recovers.
+type AlertsConfig struct {
+	WebhookURL string `yaml:"webhook_url,omitempty" json:"webhook_url,omitempty"`
 }
 
 type App struct {
@@ -68,6 +75,7 @@ type Dashboard struct {
 	ID      string   `yaml:"id" json:"id"`
 	Name    string   `yaml:"name" json:"name"`
 	Default bool     `yaml:"default,omitempty" json:"default,omitempty"`
+	Accent  string   `yaml:"accent,omitempty" json:"accent,omitempty"`
 	Widgets []Widget `yaml:"widgets,omitempty" json:"widgets,omitempty"`
 }
 

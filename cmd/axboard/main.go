@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"io/fs"
@@ -9,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -35,9 +38,15 @@ func main() {
 
 	pool := health.NewPool()
 	broadcaster := api.NewBroadcaster()
-	// No per-status SSE: the client polls /api/apps/status on a 15s interval
-	// (a deliberate design choice), so broadcasting on every status flip would
-	// be wasted fan-out with no consumer.
+
+	// Optional outbound alerting: POST to a configured webhook when an app goes
+	// down or recovers. The webhook URL is refreshed on every config reload.
+	// No per-status SSE (the client polls /api/apps/status on a 15s interval),
+	// so this callback exists purely for alerts.
+	al := &alerter{client: &http.Client{Timeout: 5 * time.Second}}
+	pool.OnChange(func(id string, prev, cur health.Status) {
+		al.notify(id, prev, cur)
+	})
 
 	server := api.NewServer(*configPath, store, pool, broadcaster)
 
@@ -58,6 +67,7 @@ func main() {
 			return
 		}
 		server.SetConfig(ev.Config)
+		al.setURL(ev.Config.Alerts.WebhookURL)
 		pool.Reconcile(ev.Config.Apps)
 		broadcaster.Send(api.Event{Type: "config_changed"})
 		slog.Info("config loaded",
@@ -123,6 +133,62 @@ func main() {
 	pool.Stop()
 	cancel()
 	slog.Info("axboard stopped")
+}
+
+// alerter fires an outbound webhook when an app transitions to down or recovers
+// from down. The URL is swapped in on every config reload; an empty URL
+// disables alerting. Sends are best-effort and fired in a goroutine so a slow
+// webhook never blocks the health pool.
+type alerter struct {
+	mu     sync.RWMutex
+	url    string
+	client *http.Client
+}
+
+func (a *alerter) setURL(u string) {
+	a.mu.Lock()
+	a.url = u
+	a.mu.Unlock()
+}
+
+func (a *alerter) notify(id string, prev, cur health.Status) {
+	a.mu.RLock()
+	url := a.url
+	a.mu.RUnlock()
+	if url == "" {
+		return
+	}
+	// Only alert on the transitions that matter: newly down, or recovered.
+	wentDown := cur == health.StatusDown
+	recovered := prev == health.StatusDown && cur == health.StatusHealthy
+	if !wentDown && !recovered {
+		return
+	}
+	event := "down"
+	if recovered {
+		event = "recovered"
+	}
+	payload, _ := json.Marshal(map[string]string{
+		"app":      id,
+		"event":    event,
+		"status":   string(cur),
+		"previous": string(prev),
+	})
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
+		if err != nil {
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := a.client.Do(req)
+		if err != nil {
+			slog.Warn("alert webhook failed", "app", id, "err", err)
+			return
+		}
+		_ = resp.Body.Close()
+	}()
 }
 
 // serverConfig pokes at the server to grab the live config for bind-address

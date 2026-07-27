@@ -44,6 +44,7 @@ interface ServerDashboard {
   id: string;
   name: string;
   default?: boolean;
+  accent?: string;
   widgets?: ServerWidget[];
 }
 
@@ -453,6 +454,37 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     [dashboards, activeDashboardId, writeConfigAndRefresh],
   );
 
+  // Set (or clear, with "") the active dashboard's accent color.
+  const handleSetAccent = useCallback(
+    (color: string) => {
+      if (!activeDashboardId) return;
+      writeConfigAndRefresh((cfg) => ({
+        ...cfg,
+        dashboards: (cfg.dashboards ?? []).map((d) =>
+          d.id === activeDashboardId ? { ...d, accent: color || undefined } : d,
+        ),
+      }));
+    },
+    [activeDashboardId, writeConfigAndRefresh],
+  );
+
+  // Reorder dashboards (drag a tab onto another): move `fromId` to `toId`'s slot.
+  const handleReorderDashboards = useCallback(
+    (fromId: string, toId: string) => {
+      if (fromId === toId) return;
+      writeConfigAndRefresh((cfg) => {
+        const list = [...(cfg.dashboards ?? [])];
+        const from = list.findIndex((d) => d.id === fromId);
+        const to = list.findIndex((d) => d.id === toId);
+        if (from < 0 || to < 0) return cfg;
+        const [moved] = list.splice(from, 1);
+        list.splice(to, 0, moved);
+        return { ...cfg, dashboards: list };
+      });
+    },
+    [writeConfigAndRefresh],
+  );
+
   // Import a .axboard.json file as a NEW dashboard (non-destructive — never
   // overwrites an existing one). Widget ids are regenerated so an import can't
   // collide with widgets already on other dashboards. Writes config.yaml
@@ -848,9 +880,15 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   // blank grid.
   const isNarrow = containerW > 0 && containerW < 600;
   const isEmpty = layout.widgets.length === 0;
+  const activeAccent = dashboards.find((d) => d.id === activeDashboardId)?.accent;
 
   return (
-    <div className="p-6 h-full flex flex-col min-h-0">
+    <div
+      className="p-6 h-full flex flex-col min-h-0"
+      // Per-dashboard accent overrides the theme --color-accent for everything
+      // inside this subtree (all `*-accent` utilities read the variable).
+      style={activeAccent ? ({ "--color-accent": activeAccent } as React.CSSProperties) : undefined}
+    >
       <DashboardTabBar
         dashboards={dashboards.map((d) => ({
           id: d.id,
@@ -869,6 +907,9 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onImportFile={handleImportFile}
         onBackup={handleBackup}
         onRestoreFile={handleRestoreFile}
+        activeAccent={activeAccent}
+        onSetAccent={handleSetAccent}
+        onReorderDashboards={handleReorderDashboards}
         onAddWidget={() => setAddWidgetOpen(true)}
         onManageServices={() => setManageServicesOpen(true)}
         onAddDashboard={handleAddDashboard}

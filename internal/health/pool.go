@@ -31,7 +31,7 @@ type Pool struct {
 	mu       sync.Mutex
 	workers  map[string]*worker
 	results  sync.Map // map[string]Result
-	onChange func(id string)
+	onChange func(id string, prev, cur Status)
 	check    CheckFunc
 
 	histMu  sync.Mutex
@@ -105,9 +105,10 @@ func (p *Pool) HistorySnapshot() map[string][]HistPoint {
 	return out
 }
 
-// OnChange registers a callback fired when any app's status flips. Used to
-// broadcast SSE events. Set once at startup.
-func (p *Pool) OnChange(cb func(id string)) {
+// OnChange registers a callback fired when any app's status flips, with the
+// previous and current status (prev is StatusUnknown on the first check). Set
+// once at startup.
+func (p *Pool) OnChange(cb func(id string, prev, cur Status)) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.onChange = cb
@@ -215,12 +216,16 @@ func (p *Pool) run(ctx context.Context, app config.App, w *worker) {
 		prev, _ := p.results.Load(app.ID)
 		p.results.Store(app.ID, res)
 		p.recordHistory(app.ID, res)
-		if prev == nil || prev.(Result).Status != res.Status {
+		prevStatus := StatusUnknown
+		if prev != nil {
+			prevStatus = prev.(Result).Status
+		}
+		if prevStatus != res.Status {
 			p.mu.Lock()
 			cb := p.onChange
 			p.mu.Unlock()
 			if cb != nil {
-				cb(app.ID)
+				cb(app.ID, prevStatus, res.Status)
 			}
 		}
 	}
