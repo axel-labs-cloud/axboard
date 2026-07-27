@@ -1,4 +1,4 @@
-# ianua GitLab CI. Scoped to merge_request_event + main pushes so
+# axboard GitLab CI. Scoped to merge_request_event + main pushes so
 # feature-branch backups don't burn pipeline minutes.
 
 stages:
@@ -50,6 +50,15 @@ vet:
     - apk add --no-cache git
   script:
     - go vet ./...
+
+test:
+  stage: lint
+  image: docker.io/library/golang:1.26-alpine
+  extends: .go-cache
+  before_script:
+    - apk add --no-cache git gcc musl-dev
+  script:
+    - go test -race ./...
 
 web-check:
   stage: lint

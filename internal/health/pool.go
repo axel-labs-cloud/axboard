@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/ianua/internal/config"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/config"
 )
 
 // Pool runs one goroutine per app whose health.type != "none".
@@ -19,11 +19,17 @@ import (
 //   - existing app IDs whose health-config hash changed are restarted
 //   - existing app IDs whose hash is unchanged are left alone (this is the
 //     whole point — we don't reset every status to unknown on every YAML save)
+// CheckFunc runs a single health check and returns its result. The pool's
+// default routes by h.Type to CheckHTTP/CheckTCP over a shared client; tests
+// inject their own so the pool can be exercised without real network.
+type CheckFunc func(ctx context.Context, h *config.Health) Result
+
 type Pool struct {
 	mu       sync.Mutex
 	workers  map[string]*worker
 	results  sync.Map // map[string]Result
 	onChange func(id string)
+	check    CheckFunc
 }
 
 type worker struct {
@@ -32,9 +38,27 @@ type worker struct {
 	check  chan struct{} // signal a forced re-check
 }
 
+// NewPool builds a pool that runs real HTTP/TCP checks over one shared client.
 func NewPool() *Pool {
+	client := newHealthClient()
+	return NewPoolWithChecker(func(ctx context.Context, h *config.Health) Result {
+		switch h.Type {
+		case config.HealthHTTP:
+			return CheckHTTP(ctx, client, h)
+		case config.HealthTCP:
+			return CheckTCP(ctx, h)
+		default:
+			return Result{Status: StatusUnknown, LastChecked: time.Now()}
+		}
+	})
+}
+
+// NewPoolWithChecker builds a pool with an injectable check function. Used by
+// tests to avoid real network I/O.
+func NewPoolWithChecker(check CheckFunc) *Pool {
 	return &Pool{
 		workers: make(map[string]*worker),
+		check:   check,
 	}
 }
 
@@ -143,15 +167,7 @@ func (p *Pool) run(ctx context.Context, app config.App, w *worker) {
 	}
 
 	check := func() {
-		var res Result
-		switch app.Health.Type {
-		case config.HealthHTTP:
-			res = CheckHTTP(ctx, app.Health)
-		case config.HealthTCP:
-			res = CheckTCP(ctx, app.Health)
-		default:
-			res = Result{Status: StatusUnknown, LastChecked: time.Now()}
-		}
+		res := p.check(ctx, app.Health)
 		prev, _ := p.results.Load(app.ID)
 		p.results.Store(app.ID, res)
 		if prev == nil || prev.(Result).Status != res.Status {
