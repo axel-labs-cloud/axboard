@@ -13,6 +13,7 @@ import { useDashboardShortcuts } from "./useDashboardShortcuts";
 import { createEmptyLayout } from "./layoutMigrations";
 import { getWidgetDefinition } from "./widgets/registry";
 import { downloadDashboardFile, parseDashboardFile, readFileAsText } from "./dashboardIO";
+import { api } from "../../api/client";
 import { WidgetContextMenu } from "./WidgetContextMenu";
 import { AddWidgetModal } from "./AddWidgetModal";
 import { ServicesEditor } from "./widgets/apps/ServicesEditor";
@@ -126,6 +127,12 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const [configPos, setConfigPos] = useState<{ x: number; y: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | null>(null);
+  const [deletedStash, setDeletedStash] = useState<{
+    widget: Widget;
+    item?: GridItem;
+    dashboardId: string;
+  } | null>(null);
+  const deletedTimer = useRef<number | null>(null);
   const [addWidgetOpen, setAddWidgetOpen] = useState(false);
   const [manageServicesOpen, setManageServicesOpen] = useState(false);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
@@ -505,19 +512,123 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     [dashboards.length, qc, writeConfigAndRefresh],
   );
 
-  // Remove a widget entirely. Widget existence lives in config.yaml, so this
-  // writes config (comments lost — same caveat as add). It also prunes the
-  // widget's layout entry and any config override from state.yaml so no
-  // orphaned rows linger. Not undoable via the layout history stack (that only
-  // tracks state.yaml layouts, not config), so we gate it behind a confirm.
+  // Full backup: download config.yaml + state.yaml as one JSON file.
+  const handleBackup = useCallback(async () => {
+    const [cfg, st] = await Promise.all([api.getConfig(), api.getState()]);
+    const payload = { format: "axboard-backup", version: 1, config: cfg, state: st };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `axboard-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(a.href);
+  }, []);
+
+  // Full restore: replace everything (config + state) from a backup file.
+  const handleRestoreFile = useCallback(
+    async (file: File) => {
+      let parsed: { format?: string; config?: unknown; state?: unknown };
+      try {
+        parsed = JSON.parse(await readFileAsText(file));
+      } catch {
+        alert("Not a valid JSON file.");
+        return;
+      }
+      if (!parsed || parsed.format !== "axboard-backup" || !parsed.config) {
+        alert("This is not an axboard backup file.");
+        return;
+      }
+      if (
+        !confirm(
+          "Restore this backup? It REPLACES all current dashboards, widgets, apps, groups, and layouts.",
+        )
+      )
+        return;
+      try {
+        await api.putConfig(parsed.config as never);
+        if (parsed.state) await api.putState(parsed.state as never);
+      } catch (e) {
+        alert(`Restore failed: ${(e as Error).message}`);
+        return;
+      }
+      qc.invalidateQueries({ queryKey: ["config"] });
+      qc.invalidateQueries({ queryKey: ["state"] });
+    },
+    [qc],
+  );
+
+  // Helper: persist a state object to state.yaml + cache.
+  const persistState = useCallback(
+    (next: StatePayload) => {
+      qc.setQueryData(["state"], next);
+      fetch("/api/state", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(next),
+        // eslint-disable-next-line no-console
+      }).catch((e) => console.error("Failed to persist state:", e));
+    },
+    [qc],
+  );
+
+  // Duplicate a widget onto the same dashboard (offset one row down).
+  const handleDuplicateWidget = useCallback(
+    (widgetId: string) => {
+      if (!activeDashboardId) return;
+      const src = layout.widgets.find((w) => w.i === widgetId);
+      if (!src) return;
+      const newId = `w-${Date.now()}`;
+      writeConfigAndRefresh((cfg) => ({
+        ...cfg,
+        dashboards: (cfg.dashboards ?? []).map((d) =>
+          d.id === activeDashboardId
+            ? {
+                ...d,
+                widgets: [
+                  ...(d.widgets ?? []),
+                  { i: newId, type: src.type, title: src.title, config: (src.config ?? {}) as AnyWidgetConfig },
+                ],
+              }
+            : d,
+        ),
+      }));
+      const srcItem = layout.layouts.lg.find((l) => l.i === widgetId);
+      const newItem: GridItem = srcItem
+        ? { ...srcItem, i: newId, y: srcItem.y + srcItem.h }
+        : { i: newId, x: 0, y: 0, w: 3, h: 2 };
+      const current = qc.getQueryData<StatePayload>(["state"]) ?? {};
+      persistState({
+        ...current,
+        layouts: {
+          ...(current.layouts ?? {}),
+          [activeDashboardId]: [...(current.layouts?.[activeDashboardId] ?? []), newItem],
+        },
+      });
+      setContextMenu(null);
+    },
+    [activeDashboardId, layout, qc, writeConfigAndRefresh, persistState],
+  );
+
+  // Remove a widget. Widget existence lives in config.yaml, so this writes
+  // config and prunes the state.yaml layout entry + override. It stashes the
+  // removed widget for an 8-second undo window (a toast), so no confirm dialog.
   const handleRemoveWidget = useCallback(
     (widgetId: string) => {
       if (!activeDashboardId) return;
       const widget = layout.widgets.find((w) => w.i === widgetId);
-      const label = widget?.title || "this widget";
-      if (!confirm(`Remove "${label}"? This can't be undone.`)) return;
+      if (!widget) return;
+      const current = qc.getQueryData<StatePayload>(["state"]) ?? {};
+      const item =
+        (current.layouts?.[activeDashboardId] ?? []).find((it) => it.i === widgetId) ??
+        layout.layouts.lg.find((it) => it.i === widgetId);
 
-      // 1. Drop the widget from config.yaml (source of truth for existence).
+      // Stash for undo (widget carries its effective config).
+      setDeletedStash({ widget, item, dashboardId: activeDashboardId });
+      if (deletedTimer.current) window.clearTimeout(deletedTimer.current);
+      deletedTimer.current = window.setTimeout(() => setDeletedStash(null), 8000);
+
       writeConfigAndRefresh((cfg) => ({
         ...cfg,
         dashboards: (cfg.dashboards ?? []).map((d) =>
@@ -527,11 +638,9 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         ),
       }));
 
-      // 2. Prune the layout entry + config override from state.yaml.
-      const current = qc.getQueryData<StatePayload>(["state"]) ?? {};
       const nextConfigs = { ...(current.widgetConfigs ?? {}) };
       delete nextConfigs[widgetId];
-      const nextState: StatePayload = {
+      persistState({
         ...current,
         layouts: {
           ...(current.layouts ?? {}),
@@ -540,22 +649,48 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
           ),
         },
         widgetConfigs: nextConfigs,
-      };
-      qc.setQueryData(["state"], nextState);
-      fetch("/api/state", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(nextState),
-        // eslint-disable-next-line no-console
-      }).catch((e) => console.error("Failed to persist state after remove:", e));
+      });
 
-      // 3. Clear any UI referencing the now-gone widget.
       setSelectedWidgetId(null);
       setConfigId(null);
       setContextMenu(null);
     },
-    [activeDashboardId, layout.widgets, qc, writeConfigAndRefresh],
+    [activeDashboardId, layout, qc, writeConfigAndRefresh, persistState],
   );
+
+  // Undo the last widget removal within the toast window.
+  const handleUndoDelete = useCallback(() => {
+    const stash = deletedStash;
+    if (!stash) return;
+    setDeletedStash(null);
+    if (deletedTimer.current) window.clearTimeout(deletedTimer.current);
+    writeConfigAndRefresh((cfg) => ({
+      ...cfg,
+      dashboards: (cfg.dashboards ?? []).map((d) =>
+        d.id === stash.dashboardId
+          ? {
+              ...d,
+              widgets: [
+                ...(d.widgets ?? []),
+                {
+                  i: stash.widget.i,
+                  type: stash.widget.type,
+                  title: stash.widget.title,
+                  config: (stash.widget.config ?? {}) as AnyWidgetConfig,
+                },
+              ],
+            }
+          : d,
+      ),
+    }));
+    const current = qc.getQueryData<StatePayload>(["state"]) ?? {};
+    const arr = [...(current.layouts?.[stash.dashboardId] ?? [])];
+    if (stash.item && !arr.some((it) => it.i === stash.widget.i)) arr.push(stash.item);
+    persistState({
+      ...current,
+      layouts: { ...(current.layouts ?? {}), [stash.dashboardId]: arr },
+    });
+  }, [deletedStash, qc, writeConfigAndRefresh, persistState]);
 
   useDashboardShortcuts({
     editing,
@@ -650,6 +785,24 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       });
     }
     items.push({
+      label: "Duplicate",
+      icon: (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-3.5 h-3.5"
+        >
+          <rect x="9" y="9" width="13" height="13" rx="2" />
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+        </svg>
+      ),
+      onClick: () => handleDuplicateWidget(contextMenu.widgetId),
+    });
+    items.push({
       label: "Remove widget",
       shortcut: "Del",
       danger: true,
@@ -714,6 +867,8 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onRedo={handleRedo}
         onExport={handleExport}
         onImportFile={handleImportFile}
+        onBackup={handleBackup}
+        onRestoreFile={handleRestoreFile}
         onAddWidget={() => setAddWidgetOpen(true)}
         onManageServices={() => setManageServicesOpen(true)}
         onAddDashboard={handleAddDashboard}
@@ -853,6 +1008,20 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onClose={() => setManageServicesOpen(false)}
       />
       <Spotlight open={spotlightOpen} onClose={() => setSpotlightOpen(false)} />
+
+      {deletedStash && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-2.5 rounded-lg bg-bg-elevated border border-border shadow-2xl ring-1 ring-white/5">
+          <span className="text-[12px] text-text-secondary">
+            Removed <span className="text-text font-medium">{deletedStash.widget.title}</span>
+          </span>
+          <button
+            onClick={handleUndoDelete}
+            className="text-[12px] font-medium text-accent hover:underline"
+          >
+            Undo
+          </button>
+        </div>
+      )}
     </div>
   );
 }

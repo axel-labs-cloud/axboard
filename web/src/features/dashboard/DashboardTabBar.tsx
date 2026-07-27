@@ -19,6 +19,8 @@ interface Props {
   onRedo: () => void;
   onExport: () => void;
   onImportFile: (file: File) => void;
+  onBackup: () => void;
+  onRestoreFile: (file: File) => void;
   onAddWidget: () => void;
   onManageServices: () => void;
   onAddDashboard: () => void;
@@ -41,6 +43,8 @@ export function DashboardTabBar({
   onRedo,
   onExport,
   onImportFile,
+  onBackup,
+  onRestoreFile,
   onAddWidget,
   onManageServices,
   onAddDashboard,
@@ -53,6 +57,7 @@ export function DashboardTabBar({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const restoreInputRef = useRef<HTMLInputElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
 
@@ -171,6 +176,19 @@ export function DashboardTabBar({
 
       {/* RIGHT — edit-mode actions + Done + menu */}
       <div className="flex items-center gap-1 justify-end min-w-0">
+        {/* Always-mounted so the general-menu Restore action can trigger it
+            even outside edit mode (and it survives the menu portal closing). */}
+        <input
+          ref={restoreInputRef}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onRestoreFile(f);
+            e.target.value = "";
+          }}
+        />
         {editing && (
           <>
             <IconButton title="Undo (⌘Z)" disabled={!canUndo} onClick={onUndo}>
@@ -337,6 +355,21 @@ export function DashboardTabBar({
                 onClick={() => {
                   setMenuOpen(false);
                   onToggleEdit();
+                }}
+              />
+              <div className="my-1 border-t border-border-subtle" />
+              <MenuItem
+                label="Back up everything"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onBackup();
+                }}
+              />
+              <MenuItem
+                label="Restore from backup…"
+                onClick={() => {
+                  setMenuOpen(false);
+                  restoreInputRef.current?.click();
                 }}
               />
               <div className="my-1 border-t border-border-subtle" />
