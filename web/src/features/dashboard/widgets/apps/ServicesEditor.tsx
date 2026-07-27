@@ -18,6 +18,53 @@ type WorkingGroup = GroupDef;
 let nextKey = 1;
 const keyed = (a: AppDef): WorkingApp => ({ ...a, _key: nextKey++ });
 
+// Parse a bulk-import blob: either a JSON array of app objects, or newline-
+// separated "Name, URL" / "Name | URL" lines. Ids are slugified from the name
+// (deduped against existing ids). Returns {apps, error}.
+function parseBulkApps(
+  text: string,
+  existingIds: Set<string>,
+): { apps: AppDef[]; error?: string } {
+  const trimmed = text.trim();
+  if (!trimmed) return { apps: [] };
+  let raw: unknown[];
+  if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+    try {
+      const j = JSON.parse(trimmed);
+      raw = Array.isArray(j) ? j : [j];
+    } catch {
+      return { apps: [], error: "Invalid JSON." };
+    }
+  } else {
+    raw = trimmed
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((l) => {
+        const parts = l.split(/\s*[|,]\s*/);
+        return { name: parts[0], url: parts[1] ?? "" };
+      });
+  }
+  const out: AppDef[] = [];
+  const used = new Set(existingIds);
+  for (const item of raw) {
+    const o = item as Record<string, unknown>;
+    const name = String(o.name ?? "").trim();
+    const url = String(o.url ?? "").trim();
+    if (!name || !url) continue;
+    let id = String(o.id ?? "").trim() || slugify(name);
+    let n = 2;
+    while (used.has(id)) id = `${slugify(name)}-${n++}`;
+    used.add(id);
+    const app: AppDef = { id, name, url };
+    if (o.icon) app.icon = String(o.icon);
+    if (o.group) app.group = String(o.group);
+    if (o.description) app.description = String(o.description);
+    out.push(app);
+  }
+  return { apps: out };
+}
+
 function slugify(name: string): string {
   return name
     .trim()
@@ -40,6 +87,7 @@ export function ServicesEditor({ open, onClose }: Props) {
   const [dirty, setDirty] = useState(false);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [pendingFocus, setPendingFocus] = useState<string | null>(null);
+  const [bulkText, setBulkText] = useState<string | null>(null);
 
   // Seed local state when the modal opens.
   useEffect(() => {
@@ -107,6 +155,26 @@ export function ServicesEditor({ open, onClose }: Props) {
   const update = (key: number, patch: Partial<AppDef>) => {
     setApps((prev) => prev.map((a) => (a._key === key ? { ...a, ...patch } : a)));
     setDirty(true);
+  };
+
+  const importBulk = () => {
+    if (bulkText == null) return;
+    const { apps: parsed, error: err } = parseBulkApps(
+      bulkText,
+      new Set(apps.map((a) => a.id)),
+    );
+    if (err) {
+      setError(err);
+      return;
+    }
+    if (parsed.length === 0) {
+      setError("Nothing to import — expected a JSON array or 'Name, URL' lines.");
+      return;
+    }
+    setApps((prev) => [...prev, ...parsed.map(keyed)]);
+    setDirty(true);
+    setBulkText(null);
+    setError(null);
   };
 
   const addApp = (groupId?: string) => {
@@ -272,18 +340,57 @@ export function ServicesEditor({ open, onClose }: Props) {
         <div className="flex-1 grid grid-cols-[minmax(320px,380px)_1fr] min-h-0">
           {/* Sidebar list */}
           <div className="border-r border-border-subtle overflow-auto">
-            <div className="px-3 py-2 border-b border-border-subtle flex items-center justify-between sticky top-0 bg-bg-elevated z-20">
-              <span className="text-[11px] text-text-muted">
-                Drag the grip to reorder · drop on a row in another group to move
+            <div className="px-3 py-2 border-b border-border-subtle flex items-center justify-between gap-2 sticky top-0 bg-bg-elevated z-20">
+              <span className="text-[11px] text-text-muted min-w-0 truncate">
+                Drag the grip to reorder · drop on another group to move
               </span>
-              <button
-                onClick={addGroup}
-                className="px-2 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted whitespace-nowrap flex items-center gap-1"
-                title="Add a new group"
-              >
-                <PlusIcon /> Group
-              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => setBulkText(bulkText == null ? "" : null)}
+                  className={`px-2 py-1 text-[11px] rounded border whitespace-nowrap flex items-center gap-1 ${
+                    bulkText != null
+                      ? "border-accent/40 bg-accent/10 text-accent"
+                      : "border-border text-text-secondary hover:text-text hover:border-text-muted"
+                  }`}
+                  title="Bulk import services"
+                >
+                  Bulk
+                </button>
+                <button
+                  onClick={addGroup}
+                  className="px-2 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted whitespace-nowrap flex items-center gap-1"
+                  title="Add a new group"
+                >
+                  <PlusIcon /> Group
+                </button>
+              </div>
             </div>
+            {bulkText != null && (
+              <div className="px-3 py-2 border-b border-border-subtle bg-bg-card/40 space-y-2">
+                <textarea
+                  value={bulkText}
+                  onChange={(e) => setBulkText(e.target.value)}
+                  rows={5}
+                  autoFocus
+                  placeholder={'Paste a JSON array of {name,url,...}\nor one "Name, URL" per line.'}
+                  className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[11px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono resize-y"
+                />
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    onClick={() => setBulkText(null)}
+                    className="px-2 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={importBulk}
+                    className="px-2 py-1 text-[11px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20"
+                  >
+                    Import
+                  </button>
+                </div>
+              </div>
+            )}
             {groupedView.map((section, sIdx) => {
               const sectionKey = section.group?.id ?? `__none_${sIdx}`;
               const isCollapsed = section.group ? collapsed.has(section.group.id) : false;
