@@ -62,7 +62,7 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
       onClick={onClose}
     >
       <div
-        className="bg-bg-elevated border border-border rounded-lg shadow-2xl w-full max-w-2xl ring-1 ring-white/5"
+        className="animate-pop-in bg-bg-elevated border border-border rounded-lg shadow-2xl w-full max-w-2xl ring-1 ring-white/5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">

@@ -15,16 +15,31 @@ export function hashColor(name: string): string {
   return `hsl(${h % 360}, 35%, 25%)`;
 }
 
-/** Tailwind classes for the status dot given a health status value. */
+/** Tailwind classes for the status dot given a health status value. Colors come
+ *  from the semantic --color-up/degraded/down/unknown tokens so every widget
+ *  (and light mode, and per-dashboard accents) stays coherent. */
 export function statusClasses(s: string | undefined): string {
   switch (s) {
     case "healthy":
-      return "bg-emerald-400 status-pulse";
+      return "bg-up status-pulse";
     case "degraded":
-      return "bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.22)]";
+      return "bg-degraded ring-2 ring-degraded/30";
     case "down":
-      return "bg-rose-500 shadow-[0_0_0_2px_rgba(244,63,94,0.22)]";
+      return "bg-down ring-2 ring-down/30";
     default:
-      return "bg-text-muted/60";
+      return "bg-unknown/60";
+  }
+}
+
+/** Ring classes to draw attention to a whole tile whose service is degraded or
+ *  down — a soft glow that reads across a dense board. Empty otherwise. */
+export function tileAlertClasses(s: string | undefined): string {
+  switch (s) {
+    case "degraded":
+      return "ring-1 ring-degraded/30";
+    case "down":
+      return "ring-1 ring-down/40";
+    default:
+      return "";
   }
 }

@@ -21,6 +21,13 @@
 
   /* Danger / destructive. */
   --color-danger: #f43f5e;
+
+  /* Health/status semantic colors — the single source of truth for the
+     healthy/degraded/down/unknown palette used across every widget. */
+  --color-up: #34d399;
+  --color-degraded: #fbbf24;
+  --color-down: #f43f5e;
+  --color-unknown: #6b7280;
 }
 
 /* Light theme overrides — applied when the document root carries
@@ -42,6 +49,11 @@
 
   --color-accent: #6366f1;
   --color-danger: #e11d48;
+
+  --color-up: #059669;
+  --color-degraded: #d97706;
+  --color-down: #e11d48;
+  --color-unknown: #9ca3af;
 }
 
 @layer base {
@@ -74,25 +86,105 @@
 @keyframes axboard-status-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.18);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-up) 20%, transparent);
   }
   50% {
-    box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.32);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-up) 34%, transparent);
   }
 }
 .status-pulse {
   animation: axboard-status-pulse 2.4s ease-in-out infinite;
 }
 
+/* ---- Motion vocabulary ---------------------------------------------------- */
+@keyframes axboard-slide-up {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+.animate-slide-up {
+  animation: axboard-slide-up 0.18s ease-out;
+}
+
+@keyframes axboard-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-pop-in {
+  animation: axboard-pop-in 0.14s ease-out;
+}
+
+@keyframes axboard-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade-in {
+  animation: axboard-fade-in 0.15s ease-out;
+}
+
+/* ---- Skeleton shimmer ----------------------------------------------------- */
+@keyframes axboard-shimmer {
+  100% {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-elevated) 25%,
+    var(--color-bg-hover) 37%,
+    var(--color-bg-elevated) 63%
+  );
+  background-size: 200% 100%;
+  animation: axboard-shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-pulse,
+  .skeleton,
+  .animate-slide-up,
+  .animate-pop-in,
+  .animate-fade-in {
+    animation: none;
+  }
+}
+
 /* react-grid-layout polish — softer placeholder, smoother resize handle. */
 .react-grid-item.react-grid-placeholder {
-  background: rgba(129, 140, 248, 0.12) !important;
-  border: 1px dashed rgba(129, 140, 248, 0.45) !important;
-  border-radius: 6px;
+  background: color-mix(in srgb, var(--color-accent) 14%, transparent) !important;
+  border: 1px dashed color-mix(in srgb, var(--color-accent) 55%, transparent) !important;
+  border-radius: 8px;
   opacity: 1 !important;
 }
+/* Only reveal resize handles on hover of an item, and tint them to the accent
+   so the edit surface feels intentional rather than default-RGL. */
+.react-grid-item > .react-resizable-handle {
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.react-grid-item:hover > .react-resizable-handle {
+  opacity: 1;
+}
 .react-grid-item > .react-resizable-handle::after {
-  border-color: rgba(255, 255, 255, 0.25) !important;
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent) !important;
+  width: 7px !important;
+  height: 7px !important;
 }
 
 /* Scrollbar styling — subtler in dark theme. */

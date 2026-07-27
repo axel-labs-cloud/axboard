@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { SkeletonLines } from "../../../../components/Skeleton";
 import type {
   CalendarConfig,
   WidgetConfigProps,
@@ -78,7 +79,7 @@ function CalendarComponent({ config }: WidgetProps<CalendarConfig>) {
     );
   }
   if (isLoading) {
-    return <div className="flex items-center justify-center h-full text-text-muted text-[11px]">Loading…</div>;
+    return <SkeletonLines rows={4} />;
   }
   if (isError || !data) {
     return (

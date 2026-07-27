@@ -35,10 +35,10 @@ function Sparkline({ series }: { series: number[] }) {
 // ---------------------------------------------------------------------------
 
 const SEGMENTS = [
-  { key: "healthy", label: "Up", cls: "bg-emerald-400", text: "text-emerald-400" },
-  { key: "degraded", label: "Degraded", cls: "bg-amber-400", text: "text-amber-400" },
-  { key: "down", label: "Down", cls: "bg-rose-500", text: "text-rose-500" },
-  { key: "unknown", label: "Unknown", cls: "bg-text-muted/50", text: "text-text-muted" },
+  { key: "healthy", label: "Up", cls: "bg-up", text: "text-up" },
+  { key: "degraded", label: "Degraded", cls: "bg-degraded", text: "text-degraded" },
+  { key: "down", label: "Down", cls: "bg-down", text: "text-down" },
+  { key: "unknown", label: "Unknown", cls: "bg-unknown/60", text: "text-text-muted" },
 ] as const;
 
 function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>) {
@@ -138,7 +138,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
   }
 
   const headlineColor =
-    counts.down > 0 ? "text-rose-500" : counts.degraded > 0 ? "text-amber-400" : "text-emerald-400";
+    counts.down > 0 ? "text-down" : counts.degraded > 0 ? "text-degraded" : "text-up";
 
   return (
     <div className="flex flex-col h-full px-3 py-2.5 gap-2">
@@ -183,7 +183,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
               {r.color && <span className="inline-block w-1 h-3 rounded-sm shrink-0" style={{ background: r.color }} />}
               <span className="text-text-muted flex-1 truncate">{r.name}</span>
               <span
-                className={`font-mono tabular-nums ${r.up === r.total ? "text-emerald-400" : "text-amber-400"}`}
+                className={`font-mono tabular-nums ${r.up === r.total ? "text-up" : "text-degraded"}`}
               >
                 {r.up}/{r.total}
               </span>

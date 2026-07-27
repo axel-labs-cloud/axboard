@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { SkeletonLines } from "../../../../components/Skeleton";
 import type {
   FeedConfig,
   WidgetConfigProps,
@@ -56,7 +57,7 @@ function FeedComponent({ config }: WidgetProps<FeedConfig>) {
     );
   }
   if (isLoading) {
-    return <div className="flex items-center justify-center h-full text-text-muted text-[11px]">Loading…</div>;
+    return <SkeletonLines rows={4} />;
   }
   if (isError || !data) {
     return (

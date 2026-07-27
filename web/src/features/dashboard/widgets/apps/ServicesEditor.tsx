@@ -326,18 +326,28 @@ export function ServicesEditor({ open, onClose }: Props) {
       }}
     >
       <div
-        className="bg-bg-elevated border border-border rounded-lg shadow-2xl w-full max-w-5xl h-[80vh] flex flex-col ring-1 ring-white/5 overflow-hidden"
+        className="animate-pop-in bg-bg-elevated border border-border rounded-xl shadow-2xl shadow-black/50 w-full max-w-5xl h-[82vh] flex flex-col ring-1 ring-white/5 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border-subtle">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle bg-bg-card/40">
           <div className="flex items-center gap-3">
-            <span className="text-[14px] font-semibold text-text">Manage services</span>
-            <span className="text-[11px] text-text-muted">
-              {apps.length} {apps.length === 1 ? "service" : "services"} · {groups.length} groups
-            </span>
+            <div className="w-6 h-6 rounded-md bg-accent/12 ring-1 ring-accent/25 flex items-center justify-center text-accent">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                <rect x="3" y="3" width="7" height="7" rx="1" />
+                <rect x="14" y="3" width="7" height="7" rx="1" />
+                <rect x="3" y="14" width="7" height="7" rx="1" />
+                <rect x="14" y="14" width="7" height="7" rx="1" />
+              </svg>
+            </div>
+            <div className="flex flex-col leading-tight">
+              <span className="text-[14px] font-semibold text-text">Services</span>
+              <span className="text-[11px] text-text-muted">
+                {apps.length} {apps.length === 1 ? "service" : "services"} · {groups.length} groups
+              </span>
+            </div>
             {dirty && (
-              <span className="text-[10px] uppercase tracking-wider text-amber-400 font-semibold">
+              <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-degraded/15 text-degraded font-medium ring-1 ring-degraded/25">
                 Unsaved
               </span>
             )}
@@ -947,7 +957,7 @@ function ServiceForm({
         </div>
       </Field>
 
-      <div className="border-t border-border-subtle pt-4">
+      <div className="rounded-lg border border-border-subtle bg-bg-card/40 p-3.5">
         <Field label="Health check">
           <div className="space-y-2">
             <select
@@ -1114,12 +1124,10 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-3">
-        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-          {label}
-        </label>
-        {hint && <span className="text-[10px] text-text-muted/70">{hint}</span>}
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-3">
+        <label className="text-[11.5px] text-text-secondary font-medium">{label}</label>
+        {hint && <span className="text-[10px] text-text-muted/80">{hint}</span>}
       </div>
       {children}
     </div>

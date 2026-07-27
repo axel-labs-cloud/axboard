@@ -968,7 +968,12 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         setTheme={setTheme}
       />
 
-      <div ref={containerRef} className="flex-1 min-h-0 relative overflow-y-auto overflow-x-hidden">
+      <div
+        ref={containerRef}
+        className={`flex-1 min-h-0 relative overflow-y-auto overflow-x-hidden transition-shadow ${
+          editing ? "rounded-lg ring-1 ring-inset ring-accent/15" : ""
+        }`}
+      >
         {isStacked ? (
           <ResponsiveStack
             widgets={layout.widgets}
@@ -1030,12 +1035,12 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
                 <div
                   key={widget.i}
                   onContextMenu={(e) => onWidgetContextMenu(widget.i, e)}
-                  className={`group/w relative rounded-lg border bg-bg-card/80 backdrop-blur-sm overflow-hidden shadow-sm shadow-black/20 ${
+                  className={`group/w relative rounded-lg border overflow-hidden bg-bg-card transition-[border-color,box-shadow] shadow-[0_1px_2px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.03)] ${
                     selected
-                      ? "border-accent ring-1 ring-accent/30"
+                      ? "border-accent ring-1 ring-accent/40"
                       : editing
-                        ? "border-accent/20"
-                        : "border-border-subtle"
+                        ? "border-border hover:border-accent/40"
+                        : "border-border-subtle hover:border-border"
                   }`}
                 >
                   {editing && (
@@ -1110,7 +1115,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       />
 
       {deletedStash && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-2.5 rounded-lg bg-bg-elevated border border-border shadow-2xl ring-1 ring-white/5">
+        <div className="animate-slide-up fixed bottom-5 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-4 py-2.5 rounded-lg bg-bg-elevated border border-border shadow-2xl ring-1 ring-white/5">
           <span className="text-[12px] text-text-secondary">
             Removed <span className="text-text font-medium">{deletedStash.widget.title}</span>
           </span>
@@ -1345,20 +1350,28 @@ function ConfigPanelHost({
 }) {
   return (
     <div
-      className="fixed z-50 w-[340px] bg-bg-elevated/95 backdrop-blur-md border border-border rounded-lg shadow-2xl shadow-black/40 ring-1 ring-white/5"
+      className="animate-pop-in fixed z-50 w-[340px] origin-top bg-bg-elevated border border-border rounded-xl shadow-2xl shadow-black/50 ring-1 ring-white/5 overflow-hidden"
       style={{ left: pos.x, top: pos.y }}
     >
-      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-border-subtle">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle bg-bg-card/40">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-            Configure
-          </span>
-          <span className="text-text-muted/40">·</span>
-          <span className="text-[12px] font-medium text-text truncate">{title}</span>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-3.5 h-3.5 text-accent shrink-0"
+          >
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span className="text-[13px] font-medium text-text truncate">{title}</span>
         </div>
         <button
           onClick={onClose}
-          className="text-text-muted hover:text-text w-5 h-5 flex items-center justify-center"
+          className="text-text-muted hover:text-text w-6 h-6 flex items-center justify-center rounded hover:bg-bg-hover -mr-1"
           title="Close"
         >
           <svg
@@ -1375,7 +1388,7 @@ function ConfigPanelHost({
           </svg>
         </button>
       </div>
-      <div className="p-3.5 max-h-[60vh] overflow-auto">{children}</div>
+      <div className="p-4 max-h-[60vh] overflow-auto">{children}</div>
     </div>
   );
 }

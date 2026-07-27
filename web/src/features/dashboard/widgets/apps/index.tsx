@@ -10,7 +10,7 @@ import type {
   WidgetProps,
 } from "../types";
 import { ServicesEditor } from "./ServicesEditor";
-import { initials, hashColor, statusClasses } from "./appVisual";
+import { initials, hashColor, statusClasses, tileAlertClasses } from "./appVisual";
 
 // ---------------------------------------------------------------------------
 // Apps grid widget — Shortcut-style. Each instance shows a hand-picked
@@ -71,7 +71,7 @@ function Tile({
             }
           : undefined
       }
-      className="group/tile relative flex flex-col items-center justify-center min-w-0 min-h-0 rounded-md hover:bg-bg-hover transition-colors p-1 gap-1"
+      className={`group/tile relative flex flex-col items-center justify-center min-w-0 min-h-0 rounded-md hover:bg-bg-hover transition-colors p-1 gap-1 ${tileAlertClasses(status?.status)}`}
       title={
         showStatus ? `${app.description || app.name} — right-click to check now` : app.description || app.name
       }
