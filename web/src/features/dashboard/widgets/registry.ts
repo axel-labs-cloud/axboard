@@ -15,6 +15,10 @@ import rss from "./rss";
 import calendar from "./calendar";
 import containers from "./containers";
 import host from "./host";
+import sun from "./sun";
+import pomodoro from "./pomodoro";
+import search from "./search";
+import section from "./section";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -33,6 +37,10 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   calendar,
   containers,
   host,
+  sun,
+  pomodoro,
+  search,
+  section,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {
