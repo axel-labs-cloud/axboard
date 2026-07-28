@@ -14,6 +14,7 @@ import { createEmptyLayout } from "./layoutMigrations";
 import { getWidgetDefinition } from "./widgets/registry";
 import { downloadDashboardFile, parseDashboardFile, readFileAsText } from "./dashboardIO";
 import { api } from "../../api/client";
+import { useDownAlerts } from "../../hooks/useDownAlerts";
 import { WidgetContextMenu } from "./WidgetContextMenu";
 import { AddWidgetModal } from "./AddWidgetModal";
 import { ServicesEditor } from "./widgets/apps/ServicesEditor";
@@ -142,6 +143,24 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [configEditorOpen, setConfigEditorOpen] = useState(false);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [alertsEnabled, setAlertsEnabled] = useState(
+    () => typeof window !== "undefined" && window.localStorage.getItem("axboard-alerts") === "1",
+  );
+  useDownAlerts(alertsEnabled);
+
+  const toggleAlerts = useCallback(async () => {
+    if (!alertsEnabled) {
+      if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
+        const p = await Notification.requestPermission();
+        if (p !== "granted") return;
+      }
+      setAlertsEnabled(true);
+      window.localStorage.setItem("axboard-alerts", "1");
+    } else {
+      setAlertsEnabled(false);
+      window.localStorage.setItem("axboard-alerts", "0");
+    }
+  }, [alertsEnabled]);
 
   // Cmd/Ctrl+K opens the spotlight from anywhere on the dashboard.
   useEffect(() => {
@@ -958,6 +977,8 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onReorderDashboards={handleReorderDashboards}
         onEditConfig={() => setConfigEditorOpen(true)}
         onNewFromTemplate={() => setTemplatePickerOpen(true)}
+        alertsEnabled={alertsEnabled}
+        onToggleAlerts={toggleAlerts}
         onAddWidget={() => setAddWidgetOpen(true)}
         onManageServices={() => setManageServicesOpen(true)}
         onAddDashboard={handleAddDashboard}

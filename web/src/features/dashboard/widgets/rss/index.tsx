@@ -41,7 +41,7 @@ function FeedComponent({ config }: WidgetProps<FeedConfig>) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["rss", url],
     enabled: !!url,
-    refetchInterval: 10 * 60_000,
+    refetchInterval: Math.max(1, config?.refreshMin ?? 10) * 60_000,
     queryFn: async () => {
       const r = await fetch(`/api/proxy?url=${encodeURIComponent(url as string)}`);
       if (!r.ok) throw new Error(`feed fetch failed (${r.status})`);
@@ -110,18 +110,33 @@ function FeedConfigPanel({ config, save }: WidgetConfigProps<FeedConfig>) {
           className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono"
         />
       </div>
-      <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-          Items to show
-        </label>
-        <input
-          type="number"
-          min={1}
-          max={30}
-          value={config?.count ?? 8}
-          onChange={(e) => save({ count: Number(e.target.value) || 8 })}
-          className="w-24 px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+            Items
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={30}
+            value={config?.count ?? 8}
+            onChange={(e) => save({ count: Number(e.target.value) || 8 })}
+            className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+            Refresh (min)
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={360}
+            value={config?.refreshMin ?? 10}
+            onChange={(e) => save({ refreshMin: Number(e.target.value) || 10 })}
+            className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent"
+          />
+        </div>
       </div>
     </div>
   );

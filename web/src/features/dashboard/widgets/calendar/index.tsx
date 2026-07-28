@@ -156,7 +156,7 @@ function CalendarComponent({ config, w, h }: WidgetProps<CalendarConfig>) {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["calendar", url],
     enabled: !!url,
-    refetchInterval: 30 * 60_000,
+    refetchInterval: Math.max(1, config?.refreshMin ?? 30) * 60_000,
     queryFn: async () => {
       const r = await fetch(`/api/proxy?url=${encodeURIComponent(url as string)}`);
       if (!r.ok) throw new Error(`calendar fetch failed (${r.status})`);
@@ -266,18 +266,33 @@ function CalendarConfigPanel({ config, save }: WidgetConfigProps<CalendarConfig>
         <p className="text-[10.5px] text-text-muted">Month view needs at least a 3×3 widget.</p>
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-          Events to show (agenda)
-        </label>
-        <input
-          type="number"
-          min={1}
-          max={20}
-          value={config?.count ?? 6}
-          onChange={(e) => save({ count: Number(e.target.value) || 6 })}
-          className="w-24 px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent"
-        />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+            Events (agenda)
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={20}
+            value={config?.count ?? 6}
+            onChange={(e) => save({ count: Number(e.target.value) || 6 })}
+            className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+            Refresh (min)
+          </label>
+          <input
+            type="number"
+            min={1}
+            max={360}
+            value={config?.refreshMin ?? 30}
+            onChange={(e) => save({ refreshMin: Number(e.target.value) || 30 })}
+            className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent"
+          />
+        </div>
       </div>
     </div>
   );

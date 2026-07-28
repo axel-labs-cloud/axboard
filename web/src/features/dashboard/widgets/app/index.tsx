@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
-import type { AppDef, GroupDef, StatusMap } from "../../../../api/types";
+import type { AppDef, GroupDef, StatusMap, HistoryMap } from "../../../../api/types";
 import { SimpleIcon } from "../../SimpleIcon";
 import type {
   AppConfig,
@@ -91,7 +91,21 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
   });
   const status = app ? statuses[app.id] : undefined;
 
+  const { data: history = {} as HistoryMap } = useQuery({
+    queryKey: ["apps-history"],
+    queryFn: api.getHistory,
+    refetchInterval: 15_000,
+    enabled: hasHealth,
+  });
+
   if (!app) return <Empty />;
+
+  const hist = history[app.id] ?? [];
+  const uptimePct =
+    hist.length > 0
+      ? Math.round((hist.filter((p) => p.status === "healthy").length / hist.length) * 100)
+      : null;
+  const spark = hist.map((p) => p.response_ms || 0);
 
   // Visibility toggles. Default = visible; user unchecks to hide.
   const showStatus = (config?.showStatus ?? true) && hasHealth;
@@ -218,9 +232,43 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
             )}
           </div>
         )}
+        {hasHealth && h >= 3 && spark.length >= 2 && (
+          <div className="mt-1.5">
+            <div className="flex items-center justify-between text-[10px] text-text-muted mb-0.5">
+              <span>Response trend</span>
+              {uptimePct != null && (
+                <span className="text-up font-mono tabular-nums">{uptimePct}% up</span>
+              )}
+            </div>
+            <div className={statusColor(status?.status)}>
+              <Spark points={spark} />
+            </div>
+          </div>
+        )}
       </div>
     </a>
   );
+}
+
+// Compact response-time sparkline; colored by the current status.
+function Spark({ points }: { points: number[] }) {
+  if (points.length < 2) return null;
+  const max = Math.max(...points, 1);
+  const W = 100;
+  const H = 20;
+  const step = W / (points.length - 1);
+  const d = points
+    .map((v, i) => `${(i * step).toFixed(1)},${(H - (v / max) * H).toFixed(1)}`)
+    .join(" ");
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full h-5">
+      <polyline points={d} fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+function statusColor(s: string | undefined): string {
+  return s === "down" ? "text-down" : s === "degraded" ? "text-degraded" : "text-up";
 }
 
 function AppConfigPanel({ config, save }: WidgetConfigProps<AppConfig>) {

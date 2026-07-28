@@ -148,6 +148,8 @@ export interface ImageConfig {
 export interface FeedConfig {
   url?: string;
   count?: number;
+  /** Refresh interval in minutes (default 10). */
+  refreshMin?: number;
 }
 
 /** Calendar widget — reads an iCal (.ics) URL via the server proxy. */
@@ -156,6 +158,8 @@ export interface CalendarConfig {
   count?: number;
   /** "agenda" = upcoming list (default), "month" = month grid with event dots. */
   view?: "agenda" | "month";
+  /** Refresh interval in minutes (default 30). */
+  refreshMin?: number;
 }
 
 /** Container-status widget — filter running containers by a name substring. */

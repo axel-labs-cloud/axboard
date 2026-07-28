@@ -27,6 +27,8 @@ interface Props {
   onReorderDashboards: (fromId: string, toId: string) => void;
   onEditConfig: () => void;
   onNewFromTemplate: () => void;
+  alertsEnabled: boolean;
+  onToggleAlerts: () => void;
   onAddWidget: () => void;
   onManageServices: () => void;
   onAddDashboard: () => void;
@@ -56,6 +58,8 @@ export function DashboardTabBar({
   onReorderDashboards,
   onEditConfig,
   onNewFromTemplate,
+  alertsEnabled,
+  onToggleAlerts,
   onAddWidget,
   onManageServices,
   onAddDashboard,
@@ -412,6 +416,13 @@ export function DashboardTabBar({
                 onClick={() => {
                   setMenuOpen(false);
                   onEditConfig();
+                }}
+              />
+              <MenuItem
+                label={alertsEnabled ? "Desktop alerts: on" : "Desktop alerts: off"}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onToggleAlerts();
                 }}
               />
               <MenuItem
