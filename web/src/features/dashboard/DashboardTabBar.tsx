@@ -434,6 +434,8 @@ export function DashboardTabBar({
         apps={apps}
         theme={theme}
         setTheme={setTheme}
+        accent={activeAccent}
+        onSetAccent={onSetAccent}
       />
     </div>
   );

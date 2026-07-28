@@ -46,6 +46,8 @@ export interface BackgroundDef {
   image?: string;
   blur?: number;
   dim?: number;
+  fit?: "cover" | "contain" | "tile";
+  opacity?: number;
 }
 
 export interface HeaderDef {

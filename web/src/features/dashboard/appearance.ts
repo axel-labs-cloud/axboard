@@ -30,6 +30,13 @@ export function barStyleClass(id: string | undefined): string {
   return (BAR_STYLES.find((s) => s.id === id) ?? BAR_STYLES[0]).className;
 }
 
+/** Quick accent swatches for the appearance panel. */
+export const ACCENT_PRESETS: string[] = [
+  "#818cf8", "#6366f1", "#22d3ee", "#06b6d4", "#10b981", "#22c55e",
+  "#eab308", "#f59e0b", "#f97316", "#ef4444", "#f43f5e", "#ec4899",
+  "#a855f7", "#8b5cf6", "#14b8a6", "#84cc16",
+];
+
 /**
  * CSS for the background layer that sits behind the widget grid. Returns null
  * when no background is configured (the theme's body gradient shows through).
@@ -47,21 +54,25 @@ export function backgroundLayerStyle(
     return { backgroundColor: `rgba(0,0,0,${Math.min(100, Math.max(0, bg.dim)) / 100})` };
   }
 
+  const opacity = bg.opacity && bg.opacity > 0 ? bg.opacity / 100 : undefined;
+
   if (bg.type === "color") {
     if (!bg.color) return null;
-    return { background: bg.color };
+    return { background: bg.color, opacity };
   }
   if (bg.type === "gradient") {
     if (!bg.gradient) return null;
-    return { background: bg.gradient };
+    return { background: bg.gradient, opacity };
   }
   if (bg.type === "image") {
     if (!bg.image) return null;
+    const tile = bg.fit === "tile";
     const s: CSSProperties = {
       backgroundImage: `url("${bg.image}")`,
-      backgroundSize: "cover",
+      backgroundSize: tile ? "auto" : bg.fit === "contain" ? "contain" : "cover",
       backgroundPosition: "center",
-      backgroundRepeat: "no-repeat",
+      backgroundRepeat: tile ? "repeat" : "no-repeat",
+      opacity,
     };
     if (bg.blur) {
       s.filter = `blur(${bg.blur}px)`;

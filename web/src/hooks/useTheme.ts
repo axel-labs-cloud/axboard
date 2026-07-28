@@ -3,6 +3,7 @@ import { DEFAULT_THEME, LEGACY_THEME } from "./themes";
 import { injectCustomThemes } from "./customThemes";
 import { applyWidgetStyle, loadWidgetStyle } from "./widgetStyle";
 import { applyFont, loadFont } from "./fontStyle";
+import { applyCustomCss, loadCustomCss } from "./customCss";
 
 export type Theme = string;
 
@@ -22,6 +23,7 @@ export function useTheme(): [Theme, (t: Theme) => void] {
     injectCustomThemes();
     applyWidgetStyle(loadWidgetStyle());
     applyFont(loadFont());
+    applyCustomCss(loadCustomCss());
     const stored = window.localStorage.getItem(STORAGE_KEY) ?? "";
     const migrated = LEGACY_THEME[stored] ?? stored;
     return migrated || DEFAULT_THEME;

@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import type { AppDef, BackgroundDef, HeaderDef } from "../../api/types";
 import { api } from "../../api/client";
 import { SimpleIcon } from "./SimpleIcon";
-import { BAR_STYLES, GRADIENT_PRESETS } from "./appearance";
+import { ACCENT_PRESETS, BAR_STYLES, GRADIENT_PRESETS } from "./appearance";
+import { loadCustomCss, saveCustomCss } from "../../hooks/customCss";
 import { THEMES } from "../../hooks/themes";
 import {
   CUSTOM_VARS,
@@ -34,6 +35,8 @@ interface Props {
   apps: AppDef[];
   theme: string;
   setTheme: (t: string) => void;
+  accent?: string;
+  onSetAccent: (color: string) => void;
 }
 
 const BG_TYPES: { id: BackgroundDef["type"] | "none"; label: string }[] = [
@@ -132,6 +135,23 @@ function WidgetStyleSection() {
   );
 }
 
+function CustomCssSection() {
+  const [css, setCss] = useState<string>(() => loadCustomCss());
+  return (
+    <Section title="Custom CSS">
+      <p className="text-[10px] text-text-muted mb-1.5 leading-snug">Advanced — injected globally. Target theme vars or any selector.</p>
+      <textarea
+        value={css}
+        onChange={(e) => { setCss(e.target.value); saveCustomCss(e.target.value); }}
+        spellCheck={false}
+        placeholder={":root { --color-accent: #f0f; }\n.widget-card { box-shadow: 0 0 0 1px #0ff; }"}
+        rows={5}
+        className="w-full px-2 py-1.5 rounded bg-bg-elevated border border-border text-[11px] text-text font-mono focus:outline-none focus:border-accent resize-y"
+      />
+    </Section>
+  );
+}
+
 function ThemesTab({ theme, setTheme }: { theme: string; setTheme: (t: string) => void }) {
   const [customs, setCustoms] = useState<CustomTheme[]>(() => loadCustomThemes());
   const [draft, setDraft] = useState<CustomTheme | null>(null);
@@ -139,6 +159,25 @@ function ThemesTab({ theme, setTheme }: { theme: string; setTheme: (t: string) =
   const persist = (next: CustomTheme[]) => {
     setCustoms(next);
     saveCustomThemes(next);
+  };
+  const exportThemes = () => {
+    const blob = new Blob([JSON.stringify(customs, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "axboard-themes.json";
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  const importThemes = async (file: File) => {
+    try {
+      const list = JSON.parse(await file.text());
+      if (!Array.isArray(list)) throw new Error("not a list");
+      const byId = new Map(customs.map((c) => [c.id, c]));
+      for (const t of list) if (t?.id && t?.vars) byId.set(t.id, t as CustomTheme);
+      persist([...byId.values()]);
+    } catch {
+      alert("Invalid theme file.");
+    }
   };
   const startNew = () =>
     setDraft({ id: `custom-${Date.now().toString(36)}`, label: "My theme", vars: { ...DEFAULT_CUSTOM_VARS } });
@@ -230,16 +269,24 @@ function ThemesTab({ theme, setTheme }: { theme: string; setTheme: (t: string) =
             + New custom theme
           </button>
         )}
+        <div className="flex gap-3 mt-2">
+          <button onClick={exportThemes} disabled={customs.length === 0} className="text-[11px] text-text-muted hover:text-text disabled:opacity-40">Export</button>
+          <label className="text-[11px] text-text-muted hover:text-text cursor-pointer">
+            Import
+            <input type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importThemes(f); e.target.value = ""; }} />
+          </label>
+        </div>
       </Section>
 
       <FontSection />
       <WidgetStyleSection />
+      <CustomCssSection />
     </div>
   );
 }
 
 export function AppearancePanel(props: Props) {
-  const { open, onClose, background, onSetBackground, barStyle, onSetBarStyle, header, onSetHeader, apps, theme, setTheme } = props;
+  const { open, onClose, background, onSetBackground, barStyle, onSetBarStyle, header, onSetHeader, apps, theme, setTheme, accent, onSetAccent } = props;
   const [tab, setTab] = useState<"dashboard" | "themes">("dashboard");
   const bg = background ?? {};
   const type = bg.type ?? "none";
@@ -318,6 +365,27 @@ export function AppearancePanel(props: Props) {
         {tab === "themes" && <ThemesTab theme={theme} setTheme={setTheme} />}
 
         <div className={`p-4 space-y-4 ${tab === "dashboard" ? "" : "hidden"}`}>
+          {/* -------- Accent (per-dashboard) -------- */}
+          <Section title="Accent color">
+            <div className="flex flex-wrap gap-1.5 items-center">
+              {ACCENT_PRESETS.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => onSetAccent(c)}
+                  title={c}
+                  style={{ background: c }}
+                  className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 ${accent === c ? "ring-2 ring-offset-1 ring-offset-bg-card ring-accent border-transparent" : "border-black/20"}`}
+                />
+              ))}
+              <label className="w-6 h-6 rounded-full border border-border overflow-hidden cursor-pointer relative" title="Custom">
+                <input type="color" value={accent ?? "#818cf8"} onChange={(e) => onSetAccent(e.target.value)} className="absolute inset-0 w-[150%] h-[150%] -translate-x-2 -translate-y-2 cursor-pointer" />
+              </label>
+              {accent && (
+                <button onClick={() => onSetAccent("")} className="text-[11px] text-text-muted hover:text-text ml-1">reset</button>
+              )}
+            </div>
+          </Section>
+
           {/* -------- Background -------- */}
           <Section title="Background">
             <div className="flex gap-1 mb-3">
@@ -376,6 +444,16 @@ export function AppearancePanel(props: Props) {
                   </div>
                 )}
                 <div>
+                  <Label>Fit</Label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {(["cover", "contain", "tile"] as const).map((f) => (
+                      <button key={f} onClick={() => patchBg({ fit: f })} className={`px-2 py-1.5 text-[11px] rounded border capitalize transition-colors ${(bg.fit ?? "cover") === f ? "bg-accent/15 border-accent text-accent" : "bg-bg-elevated border-border text-text-muted hover:text-text"}`}>
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
                   <Label>Blur · {bg.blur ?? 0}px</Label>
                   <input type="range" min={0} max={20} value={bg.blur ?? 0} onChange={(e) => patchBg({ blur: Number(e.target.value) })} className="w-full accent-accent" />
                 </div>
@@ -383,6 +461,13 @@ export function AppearancePanel(props: Props) {
                   <Label>Dim · {bg.dim ?? 0}%</Label>
                   <input type="range" min={0} max={80} value={bg.dim ?? 0} onChange={(e) => patchBg({ dim: Number(e.target.value) })} className="w-full accent-accent" />
                 </div>
+              </div>
+            )}
+
+            {type !== "none" && (
+              <div className="mt-3">
+                <Label>Opacity · {bg.opacity && bg.opacity > 0 ? bg.opacity : 100}%</Label>
+                <input type="range" min={20} max={100} value={bg.opacity && bg.opacity > 0 ? bg.opacity : 100} onChange={(e) => patchBg({ opacity: Number(e.target.value) })} className="w-full accent-accent" />
               </div>
             )}
           </Section>

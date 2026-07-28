@@ -106,6 +106,8 @@ type Background struct {
 	Image    string `yaml:"image,omitempty" json:"image,omitempty"`       // URL or data: URI
 	Blur     int    `yaml:"blur,omitempty" json:"blur,omitempty"`         // px, image only
 	Dim      int    `yaml:"dim,omitempty" json:"dim,omitempty"`           // 0-100 dark overlay
+	Fit      string `yaml:"fit,omitempty" json:"fit,omitempty"`           // cover | contain | tile (image)
+	Opacity  int    `yaml:"opacity,omitempty" json:"opacity,omitempty"`   // 0-100 overall (0 = use 100)
 }
 
 // Header configures the top bar: small widgets, bookmark launchers, and the
