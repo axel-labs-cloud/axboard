@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { wmoIcon } from "../weather/icons";
 import type {
   SunConfig,
   WidgetConfigProps,
@@ -8,10 +9,13 @@ import type {
 } from "../types";
 
 // ---------------------------------------------------------------------------
-// Sun widget — sunrise/sunset + daylight arc, via Open-Meteo (no auth).
+// Sun widget — sunrise/sunset + daylight arc, via Open-Meteo (no auth). The
+// marker on the arc is the live weather icon (sun/cloud/rain/…) so it reflects
+// current conditions, and a soft gradient sky sits under the arc.
 // ---------------------------------------------------------------------------
 
 interface SunResponse {
+  current?: { weather_code: number; is_day: number };
   daily?: { sunrise: string[]; sunset: string[] };
 }
 
@@ -19,6 +23,7 @@ async function fetchSun(lat: number, lon: number): Promise<SunResponse> {
   const p = new URLSearchParams({
     latitude: String(lat),
     longitude: String(lon),
+    current: "weather_code,is_day",
     daily: "sunrise,sunset",
     timezone: "auto",
     forecast_days: "1",
@@ -72,19 +77,53 @@ function SunComponent({ config }: WidgetProps<SunConfig>) {
   const dayH = Math.floor(dayMs / 3600000);
   const dayM = Math.floor((dayMs % 3600000) / 60000);
 
-  // Sun position on a semicircle arc (viewBox 0..100 x, 0..40 y).
+  // Live weather icon rides the arc (falls back to a clear sun/moon).
+  const wi = wmoIcon(data.current?.weather_code ?? 0, data.current?.is_day !== 0);
+  const MarkerIcon = wi.Icon;
+
+  // Marker position on a semicircle arc (viewBox 0..100 x, 0..44 y). We also
+  // place an HTML icon overlay at the same spot as a percentage of the box.
   const angle = Math.PI * (1 - frac); // pi at sunrise (left) → 0 at sunset (right)
-  const cx = 50 - 42 * Math.cos(angle);
-  const cy = 38 - 30 * Math.sin(angle);
+  const mx = 50 - 42 * Math.cos(angle);
+  const my = 40 - 32 * Math.sin(angle);
 
   return (
-    <div className="h-full flex flex-col justify-center px-3 py-2 gap-1">
+    <div className="h-full flex flex-col justify-center px-3.5 py-2.5 gap-2">
       <div className="relative">
-        <svg viewBox="0 0 100 42" className="w-full">
-          <path d="M8 38 A42 30 0 0 1 92 38" fill="none" stroke="var(--color-border)" strokeWidth="1" strokeDasharray="2 2" />
-          <line x1="8" y1="38" x2="92" y2="38" stroke="var(--color-border-subtle)" strokeWidth="1" />
-          {isDay && <circle cx={cx} cy={cy} r="4" fill="#fbbf24" />}
+        <svg viewBox="0 0 100 44" className="w-full">
+          <defs>
+            <linearGradient id="sun-sky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="var(--color-accent)" stopOpacity="0.16" />
+              <stop offset="1" stopColor="var(--color-accent)" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="sun-arc" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stopColor="#fbbf24" stopOpacity="0.5" />
+              <stop offset="0.5" stopColor="var(--color-accent)" stopOpacity="0.7" />
+              <stop offset="1" stopColor="#fbbf24" stopOpacity="0.5" />
+            </linearGradient>
+          </defs>
+          {/* filled sky under the arc */}
+          <path d="M8 40 A42 32 0 0 1 92 40 Z" fill="url(#sun-sky)" />
+          {/* arc line */}
+          <path d="M8 40 A42 32 0 0 1 92 40" fill="none" stroke="url(#sun-arc)" strokeWidth="1.5" strokeLinecap="round" />
+          {/* horizon */}
+          <line x1="4" y1="40" x2="96" y2="40" stroke="var(--color-border-subtle)" strokeWidth="1" />
+          {/* progress dot on the horizon markers */}
+          <circle cx="8" cy="40" r="1.6" fill="var(--color-text-muted)" />
+          <circle cx="92" cy="40" r="1.6" fill="var(--color-text-muted)" />
         </svg>
+        {/* live weather icon on the arc */}
+        <div
+          className="absolute w-7 h-7 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+          style={{
+            left: `${mx}%`,
+            top: `${(my / 44) * 100}%`,
+            filter: isDay ? "drop-shadow(0 0 5px rgba(251,191,36,0.55))" : "none",
+            opacity: isDay ? 1 : 0.85,
+          }}
+        >
+          <MarkerIcon className="w-full h-full" />
+        </div>
       </div>
       <div className="flex items-center justify-between text-[11px]">
         <div className="flex flex-col">
