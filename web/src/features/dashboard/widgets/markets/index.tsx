@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import type {
@@ -165,38 +166,149 @@ function MarketsComponent({ config }: WidgetProps<MarketsConfig>) {
   );
 }
 
+// --- search picker -------------------------------------------------------
+
+interface Hit {
+  kind: "crypto" | "stock";
+  value: string; // coin id or ticker
+  label: string; // display name
+  sub: string; // symbol / exchange
+}
+
+async function searchMarkets(q: string): Promise<Hit[]> {
+  const px = (u: string) => `/api/proxy?url=${encodeURIComponent(u)}`;
+  const [cg, yh] = await Promise.allSettled([
+    fetch(px(`https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(q)}`)).then((r) => r.json()),
+    fetch(px(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}`)).then((r) => r.json()),
+  ]);
+  const out: Hit[] = [];
+  if (cg.status === "fulfilled") {
+    const coins = (cg.value?.coins ?? []) as Array<{ id: string; name: string; symbol: string }>;
+    for (const c of coins.slice(0, 6))
+      out.push({ kind: "crypto", value: c.id, label: c.name, sub: (c.symbol || "").toUpperCase() });
+  }
+  if (yh.status === "fulfilled") {
+    const quotes = (yh.value?.quotes ?? []) as Array<{
+      symbol: string;
+      shortname?: string;
+      longname?: string;
+      exchDisp?: string;
+      quoteType?: string;
+    }>;
+    for (const q2 of quotes.filter((x) => x.symbol && x.quoteType !== "OPTION").slice(0, 6))
+      out.push({
+        kind: "stock",
+        value: q2.symbol,
+        label: q2.shortname || q2.longname || q2.symbol,
+        sub: q2.exchDisp || q2.quoteType || "",
+      });
+  }
+  return out;
+}
+
+function Chip({ marker, text, onRemove }: { marker: string; text: string; onRemove: () => void }) {
+  return (
+    <span className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded bg-bg-card border border-border text-[11px] text-text">
+      <span className="text-text-muted font-mono">{marker}</span>
+      <span className="truncate max-w-[120px]">{text}</span>
+      <button onClick={onRemove} className="text-text-muted hover:text-danger px-0.5 leading-none" title="Remove">
+        ×
+      </button>
+    </span>
+  );
+}
+
 function MarketsConfigPanel({ config, save }: WidgetConfigProps<MarketsConfig>) {
+  const ids = config?.ids ?? [];
+  const stocks = config?.stocks ?? [];
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<Hit[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const term = q.trim();
+    if (term.length < 2) {
+      setHits([]);
+      return;
+    }
+    setBusy(true);
+    let alive = true;
+    const t = setTimeout(async () => {
+      try {
+        const r = await searchMarkets(term);
+        if (alive) setHits(r);
+      } catch {
+        if (alive) setHits([]);
+      } finally {
+        if (alive) setBusy(false);
+      }
+    }, 300);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [q]);
+
+  const add = (h: Hit) => {
+    if (h.kind === "crypto") {
+      if (!ids.includes(h.value)) save({ ids: [...ids, h.value] });
+    } else {
+      if (!stocks.includes(h.value)) save({ stocks: [...stocks, h.value] });
+    }
+    setQ("");
+    setHits([]);
+  };
+
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
         <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-          Coins (CoinGecko ids, comma-separated)
+          Add a coin or stock
         </label>
         <input
-          value={(config?.ids ?? []).join(", ")}
-          onChange={(e) =>
-            save({ ids: e.target.value.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean) })
-          }
-          placeholder="bitcoin, ethereum, monero"
-          className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search — bitcoin, nvidia, S&P 500…"
+          className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
         />
+        {(busy || hits.length > 0) && q.trim().length >= 2 && (
+          <div className="rounded border border-border bg-bg-elevated max-h-56 overflow-auto divide-y divide-border-subtle">
+            {busy && hits.length === 0 && (
+              <div className="px-2 py-2 text-[11px] text-text-muted">Searching…</div>
+            )}
+            {hits.map((h) => {
+              const already = h.kind === "crypto" ? ids.includes(h.value) : stocks.includes(h.value);
+              return (
+                <button
+                  key={`${h.kind}:${h.value}`}
+                  onClick={() => add(h)}
+                  disabled={already}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-bg-hover disabled:opacity-40 disabled:cursor-default"
+                >
+                  <span className={`text-[10px] font-mono w-3 shrink-0 ${h.kind === "crypto" ? "text-accent" : "text-text-muted"}`}>
+                    {h.kind === "crypto" ? "₿" : "$"}
+                  </span>
+                  <span className="text-[12px] text-text flex-1 truncate">{h.label}</span>
+                  <span className="text-[10px] text-text-muted font-mono uppercase shrink-0">{h.sub}</span>
+                  {already && <span className="text-[10px] text-up shrink-0">added</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
-      <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-          Stocks / ETFs (Yahoo tickers, comma-separated)
-        </label>
-        <input
-          value={(config?.stocks ?? []).join(", ")}
-          onChange={(e) =>
-            save({ stocks: e.target.value.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean) })
-          }
-          placeholder="NVDA, AAPL, ^GSPC"
-          className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono"
-        />
-        <p className="text-[10px] text-text-muted leading-snug">
-          Any Yahoo Finance symbol works — indices (^GSPC, ^IXIC), FX (EURUSD=X), even crypto (BTC-EUR).
-        </p>
-      </div>
+
+      {(ids.length > 0 || stocks.length > 0) && (
+        <div className="flex flex-wrap gap-1.5">
+          {ids.map((id) => (
+            <Chip key={`c:${id}`} marker="₿" text={id} onRemove={() => save({ ids: ids.filter((x) => x !== id) })} />
+          ))}
+          {stocks.map((s) => (
+            <Chip key={`s:${s}`} marker="$" text={s} onRemove={() => save({ stocks: stocks.filter((x) => x !== s) })} />
+          ))}
+        </div>
+      )}
+
       <div className="space-y-1.5">
         <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
           Coin currency
