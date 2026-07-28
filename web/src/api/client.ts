@@ -42,6 +42,17 @@ export const api = {
     }
   },
 
+  uploadIcon: async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const r = await fetch("/api/icons", { method: "POST", body: fd });
+    if (!r.ok) {
+      const b = await r.json().catch(() => ({}) as { error?: string });
+      throw new Error(b.error || `${r.status} ${r.statusText}`);
+    }
+    return (await r.json()).icon as string;
+  },
+
   getStatus: () => fetch("/api/apps/status").then(jsonOk<StatusMap>),
   getHistory: () => fetch("/api/apps/history").then(jsonOk<HistoryMap>),
   discover: () =>

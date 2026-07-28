@@ -2,6 +2,8 @@ package api
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -39,15 +42,17 @@ type Server struct {
 	configErr atomic.Value // *ConfigErrorJS, nil-able
 
 	configPath string
+	iconsDir   string
 
 	State     *state.Store
 	Health    *health.Pool
 	Broadcast *Broadcaster
 }
 
-func NewServer(configPath string, st *state.Store, hp *health.Pool, b *Broadcaster) *Server {
+func NewServer(configPath, iconsDir string, st *state.Store, hp *health.Pool, b *Broadcaster) *Server {
 	return &Server{
 		configPath: configPath,
+		iconsDir:   iconsDir,
 		State:      st,
 		Health:     hp,
 		Broadcast:  b,
@@ -128,6 +133,8 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Get("/apps/history", s.handleHistory)
 		r.Get("/discover", s.handleDiscover)
 		r.Get("/proxy", s.handleProxy)
+		r.Post("/icons", s.handleUploadIcon)
+		r.Get("/icons/{name}", s.handleGetIcon)
 		r.Post("/apps/{id}/check", s.handleForceCheck)
 		r.Get("/events", s.handleSSE)
 	})
@@ -303,6 +310,73 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, io.LimitReader(resp.Body, 4<<20)) // 4 MiB cap
+}
+
+// iconExts maps accepted upload content types to file extensions.
+var iconExts = map[string]string{
+	"image/png":     ".png",
+	"image/jpeg":    ".jpg",
+	"image/gif":     ".gif",
+	"image/webp":    ".webp",
+	"image/svg+xml": ".svg",
+	"image/x-icon":  ".ico",
+}
+
+// handleUploadIcon stores an uploaded image under iconsDir (named by content
+// hash for dedup) and returns {"icon": "/api/icons/<name>"} for use as an app
+// icon. LAN-bound single-user posture; capped at 2 MiB.
+func (s *Server) handleUploadIcon(w http.ResponseWriter, r *http.Request) {
+	if s.iconsDir == "" {
+		writeErr(w, http.StatusInternalServerError, "icon storage not configured")
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
+	file, hdr, err := r.FormFile("file")
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "missing file field: "+err.Error())
+		return
+	}
+	defer file.Close()
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	ct := hdr.Header.Get("Content-Type")
+	if ct == "" {
+		ct = http.DetectContentType(data)
+	}
+	ext, ok := iconExts[ct]
+	if !ok {
+		// http.DetectContentType returns text/plain for svg; sniff by extension.
+		if strings.HasSuffix(strings.ToLower(hdr.Filename), ".svg") {
+			ext, ok = ".svg", true
+		}
+	}
+	if !ok {
+		writeErr(w, http.StatusBadRequest, "unsupported image type (png/jpg/gif/webp/svg/ico)")
+		return
+	}
+	sum := sha256.Sum256(data)
+	name := hex.EncodeToString(sum[:8]) + ext
+	if err := os.WriteFile(filepath.Join(s.iconsDir, name), data, 0o644); err != nil {
+		writeErr(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"icon": "/api/icons/" + name})
+}
+
+// handleGetIcon serves a previously uploaded icon (path-traversal safe).
+func (s *Server) handleGetIcon(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	if name == "" || strings.ContainsAny(name, "/\\") || strings.Contains(name, "..") {
+		http.NotFound(w, r)
+		return
+	}
+	p := filepath.Join(s.iconsDir, filepath.Base(name))
+	w.Header().Set("Cache-Control", "public, max-age=604800")
+	http.ServeFile(w, r, p)
 }
 
 func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {

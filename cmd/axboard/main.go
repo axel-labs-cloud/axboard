@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
@@ -48,7 +49,13 @@ func main() {
 		al.notify(id, prev, cur)
 	})
 
-	server := api.NewServer(*configPath, store, pool, broadcaster)
+	// Uploaded icons live next to state.yaml (machine-owned, persisted volume).
+	iconsDir := filepath.Join(filepath.Dir(*statePath), "icons")
+	if err := os.MkdirAll(iconsDir, 0o755); err != nil {
+		slog.Warn("could not create icons dir", "dir", iconsDir, "err", err)
+	}
+
+	server := api.NewServer(*configPath, iconsDir, store, pool, broadcaster)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

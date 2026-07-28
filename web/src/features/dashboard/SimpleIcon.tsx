@@ -24,7 +24,10 @@ export function SimpleIcon({ slug, size = 24, fill = false, className = "" }: Si
   // lint warning we used to have here.
   const svgUrl = useMemo<string | null>(() => {
     if (!slug) return null;
-    if (slug.startsWith("http://") || slug.startsWith("https://")) return slug;
+    // Absolute URL or an app-served path (uploaded icons live at /api/icons/…).
+    if (slug.startsWith("http://") || slug.startsWith("https://") || slug.startsWith("/")) {
+      return slug;
+    }
     if (slug.startsWith("si:")) {
       const name = slug.slice(3).toLowerCase();
       return `https://cdn.simpleicons.org/${name}/e5e5e5`;
