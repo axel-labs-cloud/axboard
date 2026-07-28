@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { THEMES } from "../../hooks/themes";
 
 interface Dashboard {
   id: string;
@@ -32,8 +33,8 @@ interface Props {
   onRenameDashboard: (id: string, name: string) => void;
   onDeleteDashboard: (id: string) => void;
   onOpenSpotlight: () => void;
-  theme: "dark" | "light";
-  setTheme: (t: "dark" | "light") => void;
+  theme: string;
+  setTheme: (t: string) => void;
 }
 
 export function DashboardTabBar({
@@ -374,7 +375,7 @@ export function DashboardTabBar({
           createPortal(
             <div
               data-general-menu
-              className="fixed z-[300] min-w-[220px] bg-bg-elevated border border-border rounded-lg shadow-2xl ring-1 ring-white/5 py-1"
+              className="fixed z-[300] w-[260px] bg-bg-elevated border border-border rounded-lg shadow-2xl ring-1 ring-white/5 py-1"
               style={{ top: menuPos.top, right: menuPos.right }}
             >
               <MenuItem
@@ -429,46 +430,33 @@ export function DashboardTabBar({
               />
               <div className="my-1 border-t border-border-subtle" />
               <div className="px-3 py-1.5">
-                <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-1.5">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-2">
                   Theme
                 </div>
-                <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card w-full">
-                  <ThemeButton active={theme === "dark"} onClick={() => setTheme("dark")}>
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="w-3 h-3"
+                <div className="grid grid-cols-3 gap-1.5">
+                  {THEMES.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setTheme(t.id)}
+                      title={t.label}
+                      className={`flex flex-col items-center gap-1 rounded-md p-1.5 border transition-colors ${
+                        theme === t.id
+                          ? "border-accent/50 bg-accent/10"
+                          : "border-border-subtle hover:border-border hover:bg-bg-hover"
+                      }`}
                     >
-                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-                    </svg>
-                    Dark
-                  </ThemeButton>
-                  <ThemeButton active={theme === "light"} onClick={() => setTheme("light")}>
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="w-3 h-3"
-                    >
-                      <circle cx="12" cy="12" r="5" />
-                      <line x1="12" y1="1" x2="12" y2="3" />
-                      <line x1="12" y1="21" x2="12" y2="23" />
-                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-                      <line x1="1" y1="12" x2="3" y2="12" />
-                      <line x1="21" y1="12" x2="23" y2="12" />
-                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-                    </svg>
-                    Light
-                  </ThemeButton>
+                      <span
+                        className="w-full h-6 rounded flex items-center justify-end px-1 ring-1 ring-black/20"
+                        style={{ background: t.bg }}
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: t.accent }} />
+                        <span className="w-2.5 h-4 rounded-sm ml-0.5" style={{ background: t.surface }} />
+                      </span>
+                      <span className="text-[10px] text-text-secondary truncate max-w-full">
+                        {t.label}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>,
@@ -476,29 +464,6 @@ export function DashboardTabBar({
           )}
       </div>
     </div>
-  );
-}
-
-function ThemeButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex-1 inline-flex items-center justify-center gap-1.5 px-2 py-1 text-[11px] rounded transition-colors ${
-        active
-          ? "bg-bg-elevated text-text shadow-sm"
-          : "text-text-muted hover:text-text-secondary"
-      }`}
-    >
-      {children}
-    </button>
   );
 }
 

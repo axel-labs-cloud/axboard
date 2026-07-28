@@ -30,30 +30,227 @@
   --color-unknown: #6b7280;
 }
 
-/* Light theme overrides — applied when the document root carries
- * `.theme-light` (toggled from the general menu). The dark theme is the
- * default and lives on `.theme-dark` (also applied explicitly to keep
- * specificity predictable). */
+/* ---- Themes -------------------------------------------------------------- *
+ * Each theme overrides the :root (Midnight) defaults via a `.theme-<id>` class
+ * on the document root. Midnight itself needs no class — it IS the default. */
+
 .theme-light {
   --color-bg: #fafafa;
   --color-bg-card: #ffffff;
   --color-bg-elevated: #ffffff;
   --color-bg-hover: #f4f4f5;
-
   --color-border: #e4e4e7;
   --color-border-subtle: #f1f1f4;
-
   --color-text: #18181b;
   --color-text-secondary: #3f3f46;
   --color-text-muted: #71717a;
-
   --color-accent: #6366f1;
   --color-danger: #e11d48;
-
   --color-up: #059669;
   --color-degraded: #d97706;
   --color-down: #e11d48;
   --color-unknown: #9ca3af;
+}
+
+.theme-paper {
+  --color-bg: #f5f3ee;
+  --color-bg-card: #fffdf8;
+  --color-bg-elevated: #fffdf8;
+  --color-bg-hover: #efece3;
+  --color-border: #e2ddd0;
+  --color-border-subtle: #ece8dd;
+  --color-text: #3a3426;
+  --color-text-secondary: #5c5442;
+  --color-text-muted: #8a8069;
+  --color-accent: #b45309;
+  --color-danger: #b91c1c;
+  --color-up: #4d7c0f;
+  --color-degraded: #b45309;
+  --color-down: #b91c1c;
+  --color-unknown: #a8a290;
+}
+
+.theme-nord {
+  --color-bg: #2e3440;
+  --color-bg-card: #333b49;
+  --color-bg-elevated: #3b4252;
+  --color-bg-hover: #434c5e;
+  --color-border: #434c5e;
+  --color-border-subtle: #3b4252;
+  --color-text: #eceff4;
+  --color-text-secondary: #d8dee9;
+  --color-text-muted: #7b88a1;
+  --color-accent: #88c0d0;
+  --color-danger: #bf616a;
+  --color-up: #a3be8c;
+  --color-degraded: #ebcb8b;
+  --color-down: #bf616a;
+  --color-unknown: #7b88a1;
+}
+
+.theme-dracula {
+  --color-bg: #282a36;
+  --color-bg-card: #21222c;
+  --color-bg-elevated: #343746;
+  --color-bg-hover: #44475a;
+  --color-border: #44475a;
+  --color-border-subtle: #343746;
+  --color-text: #f8f8f2;
+  --color-text-secondary: #d5d5e0;
+  --color-text-muted: #6272a4;
+  --color-accent: #bd93f9;
+  --color-danger: #ff5555;
+  --color-up: #50fa7b;
+  --color-degraded: #f1fa8c;
+  --color-down: #ff5555;
+  --color-unknown: #6272a4;
+}
+
+.theme-catppuccin {
+  --color-bg: #1e1e2e;
+  --color-bg-card: #181825;
+  --color-bg-elevated: #313244;
+  --color-bg-hover: #45475a;
+  --color-border: #313244;
+  --color-border-subtle: #262637;
+  --color-text: #cdd6f4;
+  --color-text-secondary: #bac2de;
+  --color-text-muted: #7f849c;
+  --color-accent: #cba6f7;
+  --color-danger: #f38ba8;
+  --color-up: #a6e3a1;
+  --color-degraded: #f9e2af;
+  --color-down: #f38ba8;
+  --color-unknown: #7f849c;
+}
+
+.theme-gruvbox {
+  --color-bg: #1d2021;
+  --color-bg-card: #282828;
+  --color-bg-elevated: #32302f;
+  --color-bg-hover: #3c3836;
+  --color-border: #3c3836;
+  --color-border-subtle: #32302f;
+  --color-text: #ebdbb2;
+  --color-text-secondary: #d5c4a1;
+  --color-text-muted: #928374;
+  --color-accent: #fabd2f;
+  --color-danger: #fb4934;
+  --color-up: #b8bb26;
+  --color-degraded: #fe8019;
+  --color-down: #fb4934;
+  --color-unknown: #928374;
+}
+
+.theme-rosepine {
+  --color-bg: #191724;
+  --color-bg-card: #1f1d2e;
+  --color-bg-elevated: #26233a;
+  --color-bg-hover: #2a2740;
+  --color-border: #26233a;
+  --color-border-subtle: #211f30;
+  --color-text: #e0def4;
+  --color-text-secondary: #cbcadf;
+  --color-text-muted: #6e6a86;
+  --color-accent: #c4a7e7;
+  --color-danger: #eb6f92;
+  --color-up: #9ccfd8;
+  --color-degraded: #f6c177;
+  --color-down: #eb6f92;
+  --color-unknown: #6e6a86;
+}
+
+.theme-solarized {
+  --color-bg: #002b36;
+  --color-bg-card: #073642;
+  --color-bg-elevated: #0a4a5a;
+  --color-bg-hover: #0d5567;
+  --color-border: #0a4a5a;
+  --color-border-subtle: #073642;
+  --color-text: #eee8d5;
+  --color-text-secondary: #93a1a1;
+  --color-text-muted: #657b83;
+  --color-accent: #268bd2;
+  --color-danger: #dc322f;
+  --color-up: #859900;
+  --color-degraded: #b58900;
+  --color-down: #dc322f;
+  --color-unknown: #657b83;
+}
+
+/* --- Square-cornered / structurally distinct styles --- */
+
+/* Zero the box-radius scale so cards, inputs, buttons go sharp. rounded-full is
+   a separate literal (calc(infinity*1px)) so status dots/pills stay circular. */
+.theme-square-shape {
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+}
+
+.theme-terminal {
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --color-bg: #08120a;
+  --color-bg-card: #0d1a0f;
+  --color-bg-elevated: #122415;
+  --color-bg-hover: #16301a;
+  --color-border: #1e4626;
+  --color-border-subtle: #143a1c;
+  --color-text: #9ff0a8;
+  --color-text-secondary: #5fd678;
+  --color-text-muted: #3f8f52;
+  --color-accent: #22c55e;
+  --color-danger: #f87171;
+  --color-up: #22c55e;
+  --color-degraded: #eab308;
+  --color-down: #ef4444;
+  --color-unknown: #3f8f52;
+}
+
+.theme-mono {
+  --radius-xs: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+  --color-bg: #0a0a0a;
+  --color-bg-card: #141414;
+  --color-bg-elevated: #1c1c1c;
+  --color-bg-hover: #242424;
+  --color-border: #2c2c2c;
+  --color-border-subtle: #1e1e1e;
+  --color-text: #e5e5e5;
+  --color-text-secondary: #b0b0b0;
+  --color-text-muted: #6b6b6b;
+  --color-accent: #a3a3a3;
+  --color-danger: #ef4444;
+  --color-up: #22c55e;
+  --color-degraded: #eab308;
+  --color-down: #ef4444;
+  --color-unknown: #6b6b6b;
+}
+
+/* Gruvbox goes square too, for a retro-terminal feel. */
+.theme-gruvbox {
+  --radius-xs: 2px;
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-xl: 2px;
+  --radius-2xl: 2px;
+  --radius-3xl: 2px;
 }
 
 @layer base {

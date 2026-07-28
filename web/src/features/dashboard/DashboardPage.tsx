@@ -117,8 +117,8 @@ function assembleLayout(
 }
 
 interface DashboardPageProps {
-  theme: "dark" | "light";
-  setTheme: (t: "dark" | "light") => void;
+  theme: string;
+  setTheme: (t: string) => void;
 }
 
 export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
