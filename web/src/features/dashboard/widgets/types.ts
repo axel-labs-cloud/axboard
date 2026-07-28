@@ -62,6 +62,8 @@ export interface AppsConfig {
   showNames?: boolean;
   /** Open links in the same tab instead of a new one. Default off (new tab). */
   openSameTab?: boolean;
+  /** Group the tiles by their group with collapsible headers. Default off. */
+  grouped?: boolean;
 }
 
 /**

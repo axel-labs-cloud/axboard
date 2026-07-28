@@ -143,6 +143,15 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
     enabled: anyHealth,
   });
 
+  const cfgGroups = qc.getQueryData<{ groups?: GroupDef[] }>(["config"])?.groups ?? [];
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const toggleGroup = (key: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+
   if (allApps.length === 0) {
     return (
       <EmptyMessage
@@ -158,6 +167,74 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
         title="No services picked"
         hint="Open this widget's config and choose which services it should show."
       />
+    );
+  }
+
+  // Grouped mode — sections with collapsible headers, scrollable.
+  if (config?.grouped) {
+    const byGroup = new Map<string | null, AppDef[]>();
+    for (const a of apps) {
+      const k = a.group || null;
+      const arr = byGroup.get(k) ?? [];
+      arr.push(a);
+      byGroup.set(k, arr);
+    }
+    const sections: { group?: GroupDef; apps: AppDef[] }[] = [];
+    for (const g of cfgGroups) if (byGroup.has(g.id)) sections.push({ group: g, apps: byGroup.get(g.id)! });
+    if (byGroup.has(null)) sections.push({ apps: byGroup.get(null)! });
+    const perRow = Math.max(2, w);
+    return (
+      <div className="h-full overflow-auto p-1.5 space-y-1.5">
+        {sections.map((s) => {
+          const key = s.group?.id ?? "__ungrouped";
+          const isCollapsed = collapsedGroups.has(key);
+          return (
+            <div key={key}>
+              <button
+                onClick={() => toggleGroup(key)}
+                className="w-full flex items-center gap-1.5 px-1 py-1 text-left hover:bg-bg-hover rounded"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className={`w-3 h-3 text-text-muted transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+                {s.group?.color && (
+                  <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: s.group.color }} />
+                )}
+                <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold flex-1 truncate">
+                  {s.group?.name ?? "Ungrouped"}
+                </span>
+                <span className="text-[10px] text-text-muted tabular-nums">{s.apps.length}</span>
+              </button>
+              {!isCollapsed && (
+                <div
+                  className="grid gap-1 pt-0.5"
+                  style={{ gridTemplateColumns: `repeat(${perRow}, minmax(0, 1fr))` }}
+                >
+                  {s.apps.map((app) => (
+                    <div key={app.id} className="aspect-square">
+                      <Tile
+                        app={app}
+                        status={statuses[app.id]}
+                        showName={showNames}
+                        onCheck={() => checkNow(app.id)}
+                        sameTab={config?.openSameTab}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     );
   }
 
@@ -387,6 +464,15 @@ function AppsConfigPanel({ config, save }: WidgetConfigProps<AppsConfig>) {
             className="accent-accent"
           />
           Open links in the same tab
+        </label>
+        <label className="flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
+          <input
+            type="checkbox"
+            checked={config?.grouped ?? false}
+            onChange={(e) => save({ grouped: e.target.checked })}
+            className="accent-accent"
+          />
+          Group by category (collapsible)
         </label>
       </div>
 

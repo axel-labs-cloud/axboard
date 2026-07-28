@@ -17,6 +17,19 @@ const ENGINES: Record<string, { label: string; url: string }> = {
   bing: { label: "Bing", url: "https://www.bing.com/search?q={q}" },
 };
 
+// Bang prefixes: type "g cats" or "!yt lofi" to jump to a specific engine.
+const BANGS: Record<string, string> = {
+  g: "https://www.google.com/search?q={q}",
+  ddg: "https://duckduckgo.com/?q={q}",
+  gh: "https://github.com/search?q={q}",
+  gl: "https://gitlab.com/search?search={q}",
+  yt: "https://www.youtube.com/results?search_query={q}",
+  w: "https://en.wikipedia.org/wiki/Special:Search?search={q}",
+  npm: "https://www.npmjs.com/search?q={q}",
+  aw: "https://wiki.archlinux.org/index.php?search={q}",
+  gm: "https://www.google.com/maps/search/{q}",
+};
+
 function SearchComponent({ config }: WidgetProps<SearchConfig>) {
   const [q, setQ] = useState("");
   const engine = config?.engine ?? "duckduckgo";
@@ -25,9 +38,18 @@ function SearchComponent({ config }: WidgetProps<SearchConfig>) {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    const query = q.trim();
-    if (!query || !template.includes("{q}")) return;
-    window.open(template.replace("{q}", encodeURIComponent(query)), "_blank", "noopener,noreferrer");
+    const raw = q.trim();
+    if (!raw) return;
+    // Bang: first token like "g" or "!yt" picks an engine, the rest is the query.
+    let tpl = template;
+    let query = raw;
+    const m = raw.match(/^!?([a-z]+)\s+(.+)$/i);
+    if (m && BANGS[m[1].toLowerCase()]) {
+      tpl = BANGS[m[1].toLowerCase()];
+      query = m[2];
+    }
+    if (!tpl.includes("{q}")) return;
+    window.open(tpl.replace("{q}", encodeURIComponent(query)), "_blank", "noopener,noreferrer");
     setQ("");
   };
 
