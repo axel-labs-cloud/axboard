@@ -20,3 +20,14 @@ func TestExampleConfigLoads(t *testing.T) {
 		t.Errorf("example config should demonstrate the global topBar")
 	}
 }
+
+// TestShowcaseConfigLoads keeps the all-widgets showcase config valid.
+func TestShowcaseConfigLoads(t *testing.T) {
+	cfg, err := Load(filepath.Join("..", "..", "config.showcase.yaml"))
+	if err != nil {
+		t.Fatalf("showcase config failed to load: %v", err)
+	}
+	if len(cfg.Dashboards) < 3 {
+		t.Errorf("showcase should have several dashboards, got %d", len(cfg.Dashboards))
+	}
+}

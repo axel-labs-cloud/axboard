@@ -1,0 +1,97 @@
+# axboard SHOWCASE config — every widget, filled with good-looking demo data.
+# Load it to screenshot the full widget set:
+#   cp config.showcase.yaml config/config.yaml   (compose)  — or paste via
+#   the in-app "Edit config.yaml" editor. Layouts default; drag to taste.
+#
+# A few widgets need YOUR endpoint/creds to show live data (marked below):
+#   concentus, axdnsd, axlbd. Fill baseUrl/username/password or delete them.
+
+server:
+  bind: "0.0.0.0:8080"
+
+apps:
+  - { id: jellyfin,    name: Jellyfin,    url: https://jellyfin.lan,    icon: jellyfin,    group: media, description: Movies & TV,      health: { type: http, url: https://jellyfin.lan/health, interval: 60s } }
+  - { id: sonarr,      name: Sonarr,      url: https://sonarr.lan,      icon: sonarr,      group: media, description: TV automation,    health: { type: http, url: https://sonarr.lan/ping, interval: 60s } }
+  - { id: radarr,      name: Radarr,      url: https://radarr.lan,      icon: radarr,      group: media, description: Movie automation, health: { type: http, url: https://radarr.lan/ping, interval: 60s } }
+  - { id: transmission,name: Transmission,url: https://tr.lan,          icon: transmission,group: media, description: Torrents }
+  - { id: proxmox,     name: Proxmox,     url: https://pve.lan:8006,    icon: proxmox,     group: infra, description: Hypervisor,       health: { type: tcp, host: pve.lan, port: 8006, interval: 60s } }
+  - { id: gitlab,      name: GitLab,      url: https://gitlab.lan,      icon: gitlab,      group: infra, description: Git + CI,          health: { type: http, url: https://gitlab.lan/-/health, interval: 120s } }
+  - { id: grafana,     name: Grafana,     url: https://grafana.lan,     icon: grafana,     group: infra, description: Metrics,           health: { type: http, url: https://grafana.lan/api/health, interval: 60s } }
+  - { id: authentik,   name: Authentik,   url: https://auth.lan,        icon: authentik,   group: infra, description: SSO }
+  - { id: vaultwarden, name: Vaultwarden, url: https://vault.lan,       icon: vaultwarden, group: tools, description: Password vault,    health: { type: http, url: https://vault.lan/alive, interval: 120s } }
+  - { id: paperless,   name: Paperless,   url: https://paperless.lan,   icon: paperless-ngx, group: tools, description: Documents }
+  - { id: homeassistant, name: Home Assistant, url: https://ha.lan,     icon: home-assistant, group: tools, description: Home automation }
+
+groups:
+  - { id: media, name: Media,          color: "#8b5cf6" }
+  - { id: infra, name: Infrastructure, color: "#06b6d4" }
+  - { id: tools, name: Tools,          color: "#22c55e" }
+
+topBar:
+  barStyle: default
+  header:
+    clock: true
+    appsUp: true
+    weather: true
+    weatherCity: Barcelona
+    weatherLat: 41.39
+    weatherLon: 2.16
+    links: [jellyfin, gitlab, grafana, homeassistant]
+
+dashboards:
+  # ---- 1. Overview -------------------------------------------------------
+  - id: overview
+    name: Overview
+    default: true
+    accent: "#22d3ee"
+    background:
+      type: gradient
+      gradient: "linear-gradient(135deg, #0f172a 0%, #075985 55%, #0e7490 100%)"
+      opacity: 92
+    widgets:
+      - { id: clock,   type: clock,   title: Clock,   config: { use24h: true, dateFormat: long, timezones: ["America/New_York", "Asia/Tokyo"] } }
+      - { id: status,  type: status,  title: Status,  config: { byGroup: true, showLegend: true } }
+      - { id: apps,    type: apps,    title: Services, config: { grouped: true } }
+      - { id: weather, type: weather, title: Weather, config: { city: Barcelona, lat: 41.39, lon: 2.16, hourly: true } }
+      - { id: sun,     type: sun,     title: Sun,     config: { city: Barcelona, lat: 41.39, lon: 2.16 } }
+      - { id: host,    type: host,    title: Host stats }
+      - { id: markets, type: markets, title: Markets, config: { ids: [bitcoin, ethereum, monero], stocks: [NVDA, GOOG, MSFT], vs: usd, period: 1m } }
+      - { id: appcard, type: app,     title: App, config: { appId: jellyfin, showResponseTime: true, showStatus: true, showDescription: true } }
+
+  # ---- 2. Ops ------------------------------------------------------------
+  - id: ops
+    name: Ops
+    accent: "#f59e0b"
+    background: { type: color, color: "#0a0a0f" }
+    widgets:
+      - { id: sec-ops, type: section, title: Section, config: { text: "Infrastructure", align: left } }
+      - { id: containers, type: containers, title: Containers }
+      - { id: monitor, type: monitor, title: Uptime monitor, config: { refreshSec: 30, targets: [ { name: GitHub, url: https://github.com }, { name: GitLab, url: https://gitlab.com }, { name: Cloudflare, url: https://www.cloudflare.com }, { name: Grafana, url: https://grafana.com } ] } }
+      - { id: publicip, type: publicip, title: Public IP }
+      - { id: releases, type: releases, title: Releases, config: { repos: ["gh:jellyfin/jellyfin", "gh:go-gitea/gitea", "gh:home-assistant/core"] } }
+      - { id: customapi, type: customapi, title: Linux kernel, config: { url: "https://api.github.com/repos/torvalds/linux", title: "Linux kernel", fields: [ { label: Stars, path: stargazers_count }, { label: Forks, path: forks_count }, { label: Issues, path: open_issues_count }, { label: Watchers, path: subscribers_count } ] } }
+      # These need YOUR service + login to show live data — fill or remove:
+      - { id: axdnsd, type: axdnsd, title: axdnsd, config: { baseUrl: "https://dns.int.axel-labs.cloud", username: "", password: "" } }
+      - { id: axlbd,  type: axlbd,  title: axlbd,  config: { baseUrl: "https://lb.int.axel-labs.cloud",  username: "", password: "" } }
+
+  # ---- 3. Personal -------------------------------------------------------
+  - id: personal
+    name: Personal
+    accent: "#a78bfa"
+    background:
+      type: gradient
+      gradient: "linear-gradient(135deg, #1e1b4b 0%, #4c1d95 50%, #831843 100%)"
+      opacity: 88
+    widgets:
+      - { id: search,   type: search,   title: Search, config: { engine: duckduckgo, placeholder: "Search the web…" } }
+      - { id: bookmarks, type: shortcut, title: Bookmarks, config: { shortcuts: [ { label: GitLab, url: https://gitlab.com, icon: gitlab }, { label: GitHub, url: https://github.com, icon: github }, { label: Hacker News, url: https://news.ycombinator.com, icon: ycombinator }, { label: Reddit, url: https://reddit.com, icon: reddit }, { label: YouTube, url: https://youtube.com, icon: youtube } ] } }
+      - { id: checklist, type: checklist, title: Today, config: { checklist: [ { text: "Ship the release", done: true }, { text: "Review MRs", done: true }, { text: "Update the docs", done: false }, { text: "Back up Vaultwarden", done: false } ] } }
+      - { id: notes,    type: notes,    title: Notes, config: { text: "Scratchpad — URLs auto-link.\n\nDeploy: podman compose up -d\nDocs: https://axel-labs.cloud" } }
+      - { id: countdown, type: countdown, title: Countdown, config: { label: "New Year", target: "2027-01-01T00:00:00" } }
+      - { id: pomodoro, type: pomodoro, title: Focus, config: { work: 25, break: 5 } }
+      - { id: calendar, type: calendar, title: Calendar, config: { view: month, url: "https://www.google.com/calendar/ical/en.usa%23holiday%40group.v.calendar.google.com/public/basic.ics", count: 6 } }
+      - { id: rss,      type: rss,      title: Hacker News, config: { url: "https://hnrss.org/frontpage", count: 8 } }
+      - { id: image,    type: image,    title: Image, config: { url: "https://picsum.photos/seed/axboard/800/320", fit: cover, link: "https://axel-labs.cloud" } }
+      - { id: embed,    type: iframe,   title: Map, config: { url: "https://www.openstreetmap.org/export/embed.html?bbox=2.10%2C41.36%2C2.23%2C41.43&layer=mapnik" } }
+      # Now-playing needs YOUR Concentus server + login:
+      - { id: concentus, type: concentus, title: Now playing, config: { baseUrl: "https://music.int.axel-labs.cloud", username: "", password: "" } }
