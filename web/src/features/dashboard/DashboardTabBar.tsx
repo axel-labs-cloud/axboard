@@ -362,7 +362,6 @@ export function DashboardTabBar({
                   label={editing ? "Done editing" : "Edit dashboard"}
                   onClick={() => { setMenuOpen(false); onToggleEdit(); }}
                 />
-                <MenuItem label="Appearance…" onClick={() => { setMenuOpen(false); setAppearanceOpen(true); }} />
                 <MenuItem label="Export this dashboard" onClick={() => { setMenuOpen(false); onExport(); }} />
                 <MenuItem label="Import a dashboard…" onClick={() => { setMenuOpen(false); importInputRef.current?.click(); }} />
               </MenuGroup>
@@ -385,6 +384,7 @@ export function DashboardTabBar({
                 open={openGroup === "display"}
                 onToggle={() => setOpenGroup((g) => (g === "display" ? null : "display"))}
               >
+                <MenuItem label="Appearance…" onClick={() => { setMenuOpen(false); setAppearanceOpen(true); }} />
                 <MenuItem label={alertsEnabled ? "Desktop alerts: on" : "Desktop alerts: off"} onClick={() => { setMenuOpen(false); onToggleAlerts(); }} />
                 <MenuItem label="Enter kiosk mode" onClick={() => { setMenuOpen(false); onEnterKiosk(); }} />
                 <div className="px-3 py-1.5">

@@ -167,11 +167,14 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 // config.yaml. Keeping this response raw makes config.yaml the sole source of
 // truth for widget base config.
 type dashboardOut struct {
-	ID      string      `json:"id"`
-	Name    string      `json:"name"`
-	Default bool        `json:"default,omitempty"`
-	Accent  string      `json:"accent,omitempty"`
-	Widgets []widgetOut `json:"widgets,omitempty"`
+	ID         string             `json:"id"`
+	Name       string             `json:"name"`
+	Default    bool               `json:"default,omitempty"`
+	Accent     string             `json:"accent,omitempty"`
+	Background *config.Background `json:"background,omitempty"`
+	BarStyle   string             `json:"barStyle,omitempty"`
+	Header     *config.Header     `json:"header,omitempty"`
+	Widgets    []widgetOut        `json:"widgets,omitempty"`
 }
 
 type widgetOut struct {
@@ -202,11 +205,14 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
 	}
 	for _, d := range c.Dashboards {
 		do := dashboardOut{
-			ID:      d.ID,
-			Name:    d.Name,
-			Default: d.Default,
-			Accent:  d.Accent,
-			Widgets: make([]widgetOut, 0, len(d.Widgets)),
+			ID:         d.ID,
+			Name:       d.Name,
+			Default:    d.Default,
+			Accent:     d.Accent,
+			Background: d.Background,
+			BarStyle:   d.BarStyle,
+			Header:     d.Header,
+			Widgets:    make([]widgetOut, 0, len(d.Widgets)),
 		}
 		for _, w := range d.Widgets {
 			do.Widgets = append(do.Widgets, widgetOut{
