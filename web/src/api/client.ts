@@ -61,6 +61,9 @@ export const api = {
     return (await r.json()).icon as string;
   },
 
+  getVersion: () =>
+    fetch("/api/version").then(jsonOk<{ version?: string; buildDate?: string }>),
+
   getStatus: () => fetch("/api/apps/status").then(jsonOk<StatusMap>),
   getHistory: () => fetch("/api/apps/history").then(jsonOk<HistoryMap>),
   discover: () =>

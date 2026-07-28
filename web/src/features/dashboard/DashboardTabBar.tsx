@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../api/client";
 import type { AppDef, BackgroundDef, HeaderDef } from "../../api/types";
 import { barStyleClass } from "./appearance";
 import { HeaderWidgets } from "./HeaderWidgets";
@@ -100,6 +102,7 @@ export function DashboardTabBar({
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const versionQ = useQuery({ queryKey: ["version"], queryFn: api.getVersion, staleTime: Infinity });
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -417,6 +420,12 @@ export function DashboardTabBar({
                 </div>
                 <MenuItem label="Themes & appearance…" onClick={() => { setMenuOpen(false); setAppearanceOpen(true); }} />
               </MenuGroup>
+              <div className="px-3 py-2 border-t border-border-subtle flex items-center justify-between">
+                <span className="text-[10px] text-text-muted">axboard</span>
+                <span className="text-[10px] font-mono text-text-muted/70" title={versionQ.data?.buildDate || ""}>
+                  {versionQ.data?.version ? (versionQ.data.version.length > 10 ? versionQ.data.version.slice(0, 8) : versionQ.data.version) : "…"}
+                </span>
+              </div>
             </div>,
             document.body,
           )}

@@ -28,6 +28,17 @@ import (
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/state"
 )
 
+// Build info, injected at link time via -ldflags "-X ...".
+var (
+	Version   = "dev"
+	BuildDate = ""
+)
+
+// handleVersion reports the build version + date for the UI footer.
+func handleVersion(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]string{"version": Version, "buildDate": BuildDate})
+}
+
 // maxBodyBytes caps PUT /api/config and /api/state request bodies. Both files
 // are tiny in practice; this just stops a malformed/huge upload from being
 // buffered into memory.
@@ -132,6 +143,7 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 	r.Get("/metrics", s.handleMetrics)
 
 	r.Route("/api", func(r chi.Router) {
+		r.Get("/version", handleVersion)
 		r.Get("/config", s.handleGetConfig)
 		r.Put("/config", s.handlePutConfig)
 		r.Get("/config/raw", s.handleGetRawConfig)
