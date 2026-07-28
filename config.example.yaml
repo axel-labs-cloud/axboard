@@ -1,0 +1,174 @@
+# axboard config.yaml — the human source of truth.
+# Copy to config.yaml and edit freely. axboard reads this on change (hot
+# reload). Only the UI "edit app / add widget" flow ever writes it back, and
+# that reformats + drops comments — so most of the time this file is yours.
+#
+# Layouts (widget x/y/w/h) live in state.yaml, NOT here, so dragging widgets
+# never touches this file. Themes + widget style are browser-local.
+
+server:
+  # Bind a LAN address in production. axboard has NO auth by design — put it
+  # behind a reverse-proxy / forward-auth if you expose it beyond the LAN.
+  bind: "0.0.0.0:8080"
+
+# Optional: POST a small JSON payload to a webhook when an app goes down/up.
+# alerts:
+#   webhook_url: "https://hooks.example.com/axboard"
+
+# ---------------------------------------------------------------------------
+# Apps — clickable, health-checked service cards. `icon` resolves via
+# simple-icons ("si:gitlab"), selfh.st ("sh:jellyfin" / bare "jellyfin"),
+# an absolute URL, an uploaded "/api/icons/..." path, or initials.
+# ---------------------------------------------------------------------------
+apps:
+  - id: jellyfin
+    name: Jellyfin
+    url: https://jellyfin.lan
+    icon: jellyfin
+    group: media
+    description: Movies & TV
+    health: { type: http, url: https://jellyfin.lan/health, interval: 60s }
+
+  - id: sonarr
+    name: Sonarr
+    url: https://sonarr.lan
+    icon: sonarr
+    group: media
+    description: TV automation
+    health: { type: http, url: https://sonarr.lan/ping, interval: 60s }
+
+  - id: radarr
+    name: Radarr
+    url: https://radarr.lan
+    icon: radarr
+    group: media
+    description: Movie automation
+    health: { type: http, url: https://radarr.lan/ping, interval: 60s }
+
+  - id: proxmox
+    name: Proxmox
+    url: https://pve.lan:8006
+    icon: proxmox
+    group: infra
+    description: Hypervisor
+    health: { type: tcp, host: pve.lan, port: 8006, interval: 60s }
+
+  - id: gitlab
+    name: GitLab
+    url: https://gitlab.lan
+    icon: gitlab
+    group: infra
+    description: Git + CI
+    health: { type: http, url: https://gitlab.lan/-/health, interval: 120s }
+
+  - id: grafana
+    name: Grafana
+    url: https://grafana.lan
+    icon: grafana
+    group: infra
+    description: Dashboards & metrics
+    health: { type: http, url: https://grafana.lan/api/health, interval: 60s }
+
+  - id: vaultwarden
+    name: Vaultwarden
+    url: https://vault.lan
+    icon: vaultwarden
+    group: tools
+    description: Password vault
+    health: { type: http, url: https://vault.lan/alive, interval: 120s }
+
+  - id: paperless
+    name: Paperless
+    url: https://paperless.lan
+    icon: paperless-ngx
+    group: tools
+    description: Documents
+
+groups:
+  - { id: media, name: Media, color: "#8b5cf6" }
+  - { id: infra, name: Infrastructure, color: "#06b6d4" }
+  - { id: tools, name: Tools, color: "#22c55e" }
+
+# ---------------------------------------------------------------------------
+# Top bar — GLOBAL (shared across all dashboards): style, branding, header
+# widgets and bookmark launchers. Configure it in Appearance → Branding /
+# Top-bar widgets, or here by hand.
+# ---------------------------------------------------------------------------
+topBar:
+  barStyle: default # default | solid | contrast | transparent
+  header:
+    clock: true
+    appsUp: true
+    weather: true
+    weatherCity: Barcelona
+    weatherLat: 41.39
+    weatherLon: 2.16
+    links: [jellyfin, gitlab, grafana] # icon-only quick launchers
+    barFlush: false
+
+# ---------------------------------------------------------------------------
+# Dashboards — each tab. `accent` and `background` are per-dashboard.
+# ---------------------------------------------------------------------------
+dashboards:
+  - id: home
+    name: Home
+    default: true
+    accent: "#22d3ee"
+    background:
+      type: gradient
+      gradient: "linear-gradient(135deg, #0f172a 0%, #075985 50%, #0e7490 100%)"
+      opacity: 90
+    widgets:
+      - id: clock-1
+        type: clock
+        title: Clock
+        config: { use24h: true, dateFormat: full }
+      - id: apps-media
+        type: apps
+        title: Media
+        config: { groups: [media], grouped: true }
+      - id: apps-infra
+        type: apps
+        title: Infrastructure
+        config: { groups: [infra] }
+      - id: weather-1
+        type: weather
+        title: Weather
+        config: { city: Barcelona, lat: 41.39, lon: 2.16, hourly: true }
+      - id: sun-1
+        type: sun
+        title: Sun
+        config: { city: Barcelona, lat: 41.39, lon: 2.16 }
+      - id: search-1
+        type: search
+        title: Search
+
+  - id: ops
+    name: Ops
+    accent: "#f59e0b"
+    background:
+      type: color
+      color: "#0a0a0f"
+    widgets:
+      - id: host-1
+        type: host
+        title: Host stats
+      - id: containers-1
+        type: containers
+        title: Containers
+      - id: monitor-1
+        type: monitor
+        title: Uptime
+        config:
+          refreshSec: 30
+          targets:
+            - { name: gitlab, url: https://gitlab.lan/-/health }
+            - { name: grafana, url: https://grafana.lan/api/health }
+      - id: markets-1
+        type: markets
+        title: Markets
+        config: { ids: [bitcoin, ethereum], stocks: [NVDA], vs: usd, period: 1m }
+      - id: releases-1
+        type: releases
+        title: Releases
+        config: { repos: ["gh:jellyfin/jellyfin", "gh:go-gitea/gitea"] }

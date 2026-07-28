@@ -24,6 +24,8 @@ interface Props {
   onUndo: () => void;
   onRedo: () => void;
   onExport: () => void;
+  onCopyDashboard: () => void;
+  copiedShare: boolean;
   onImportFile: (file: File) => void;
   onBackup: () => void;
   onRestoreFile: (file: File) => void;
@@ -65,6 +67,8 @@ export function DashboardTabBar({
   onUndo,
   onRedo,
   onExport,
+  onCopyDashboard,
+  copiedShare,
   onImportFile,
   onBackup,
   onRestoreFile,
@@ -378,6 +382,7 @@ export function DashboardTabBar({
                   onClick={() => { setMenuOpen(false); onToggleEdit(); }}
                 />
                 <MenuItem label="Export this dashboard" onClick={() => { setMenuOpen(false); onExport(); }} />
+                <MenuItem label={copiedShare ? "Copied to clipboard ✓" : "Copy dashboard (share)"} onClick={() => onCopyDashboard()} />
                 <MenuItem label="Import a dashboard…" onClick={() => { setMenuOpen(false); importInputRef.current?.click(); }} />
               </MenuGroup>
 

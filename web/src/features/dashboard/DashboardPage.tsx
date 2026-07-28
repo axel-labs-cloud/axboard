@@ -13,7 +13,7 @@ import { useDashboardHistory } from "./useDashboardHistory";
 import { useDashboardShortcuts } from "./useDashboardShortcuts";
 import { createEmptyLayout } from "./layoutMigrations";
 import { getWidgetDefinition } from "./widgets/registry";
-import { downloadDashboardFile, parseDashboardFile, readFileAsText } from "./dashboardIO";
+import { buildExportFile, downloadDashboardFile, parseDashboardFile, readFileAsText } from "./dashboardIO";
 import { api } from "../../api/client";
 import { useDownAlerts } from "../../hooks/useDownAlerts";
 import { WidgetContextMenu } from "./WidgetContextMenu";
@@ -451,6 +451,20 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     const dash = dashboards.find((d) => d.id === activeDashboardId);
     downloadDashboardFile(dash?.name ?? "dashboard", layout);
   };
+
+  const [copiedShare, setCopiedShare] = useState(false);
+  const handleCopyDashboard = useCallback(async () => {
+    const dash = dashboards.find((d) => d.id === activeDashboardId);
+    const json = JSON.stringify(buildExportFile(dash?.name ?? "dashboard", layout), null, 2);
+    try {
+      await navigator.clipboard.writeText(json);
+      setCopiedShare(true);
+      window.setTimeout(() => setCopiedShare(false), 2000);
+    } catch {
+      // Clipboard blocked (non-secure context) — fall back to a download.
+      downloadDashboardFile(dash?.name ?? "dashboard", layout);
+    }
+  }, [dashboards, activeDashboardId, layout]);
 
   // ---- Dashboard CRUD (writes config.yaml — comments lost on save) ----
   const writeConfigAndRefresh = useCallback(
@@ -1169,6 +1183,8 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onUndo={handleUndo}
         onRedo={handleRedo}
         onExport={handleExport}
+        onCopyDashboard={handleCopyDashboard}
+        copiedShare={copiedShare}
         onImportFile={handleImportFile}
         onBackup={handleBackup}
         onRestoreFile={handleRestoreFile}
