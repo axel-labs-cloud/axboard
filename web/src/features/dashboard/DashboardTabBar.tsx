@@ -168,6 +168,38 @@ export function DashboardTabBar({
               </svg>
             </button>
           )}
+          {editing && (
+            <>
+              <span className="w-px h-4 bg-border mx-1 shrink-0" />
+              <label
+                className="relative w-6 h-6 shrink-0 flex items-center justify-center rounded cursor-pointer hover:bg-bg-hover"
+                title="This dashboard's accent color"
+              >
+                <span
+                  className="w-3 h-3 rounded-full ring-1 ring-white/20"
+                  style={{ background: activeAccent || "var(--color-accent)" }}
+                />
+                <input
+                  type="color"
+                  value={activeAccent || "#818cf8"}
+                  onChange={(e) => onSetAccent(e.target.value)}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                />
+              </label>
+              {activeAccent && (
+                <button
+                  onClick={() => onSetAccent("")}
+                  title="Reset accent to theme default"
+                  className="w-5 h-5 shrink-0 flex items-center justify-center rounded text-text-muted hover:text-text"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                  </svg>
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -197,8 +229,19 @@ export function DashboardTabBar({
 
       {/* RIGHT — edit-mode actions + Done + menu */}
       <div className="flex items-center gap-1 justify-end min-w-0">
-        {/* Always-mounted so the general-menu Restore action can trigger it
-            even outside edit mode (and it survives the menu portal closing). */}
+        {/* Always-mounted file inputs — the menu's Import/Restore actions
+            trigger these from anywhere and they survive the menu portal closing. */}
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".json,application/json"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onImportFile(f);
+            e.target.value = "";
+          }}
+        />
         <input
           ref={restoreInputRef}
           type="file"
@@ -240,119 +283,6 @@ export function DashboardTabBar({
                 <path d="M3 17a9 9 0 0 1 15-6.7l3 2.7" />
               </svg>
             </IconButton>
-            <IconButton title="Export dashboard" onClick={onExport}>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-3.5 h-3.5"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
-              </svg>
-            </IconButton>
-            <IconButton title="Import dashboard (as new)" onClick={() => importInputRef.current?.click()}>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-3.5 h-3.5"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-            </IconButton>
-            <input
-              ref={importInputRef}
-              type="file"
-              accept=".json,application/json"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onImportFile(f);
-                e.target.value = ""; // allow re-importing the same file
-              }}
-            />
-            <label
-              className="relative w-7 h-7 flex items-center justify-center rounded cursor-pointer text-text-muted hover:text-text hover:bg-bg-hover"
-              title="Dashboard accent color"
-            >
-              <span
-                className="w-3.5 h-3.5 rounded-full ring-1 ring-white/20"
-                style={{ background: activeAccent || "var(--color-accent)" }}
-              />
-              <input
-                type="color"
-                value={activeAccent || "#818cf8"}
-                onChange={(e) => onSetAccent(e.target.value)}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
-            </label>
-            {activeAccent && (
-              <IconButton title="Reset accent to theme default" onClick={() => onSetAccent("")}>
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-3.5 h-3.5"
-                >
-                  <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                  <path d="M3 3v5h5" />
-                </svg>
-              </IconButton>
-            )}
-            <div className="w-px h-4 bg-border mx-1" />
-            <button
-              onClick={onManageServices}
-              className="px-2.5 py-1 text-[12px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted flex items-center gap-1.5"
-              title="Manage services and groups"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-3 h-3"
-              >
-                <rect x="3" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="3" width="7" height="7" rx="1" />
-                <rect x="3" y="14" width="7" height="7" rx="1" />
-                <rect x="14" y="14" width="7" height="7" rx="1" />
-              </svg>
-              Services
-            </button>
-            <button
-              onClick={onAddWidget}
-              className="px-2.5 py-1 text-[12px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted flex items-center gap-1.5"
-              title="Add widget"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="w-3 h-3"
-              >
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              Widget
-            </button>
           </>
         )}
         {editing && (
@@ -388,6 +318,35 @@ export function DashboardTabBar({
               className="fixed z-[300] w-[260px] bg-bg-elevated border border-border rounded-lg shadow-2xl ring-1 ring-white/5 py-1"
               style={{ top: menuPos.top, right: menuPos.right }}
             >
+              <MenuItem
+                label="Add widget"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onAddWidget();
+                }}
+              />
+              <MenuItem
+                label="Manage services"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onManageServices();
+                }}
+              />
+              <MenuItem
+                label="Export this dashboard"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onExport();
+                }}
+              />
+              <MenuItem
+                label="Import a dashboard…"
+                onClick={() => {
+                  setMenuOpen(false);
+                  importInputRef.current?.click();
+                }}
+              />
+              <div className="my-1 border-t border-border-subtle" />
               <MenuItem
                 label={editing ? "Done editing" : "Edit dashboard"}
                 icon={
