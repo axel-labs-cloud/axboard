@@ -27,7 +27,61 @@ type Service struct {
 type dockerContainer struct {
 	Names  []string          `json:"Names"`
 	Labels map[string]string `json:"Labels"`
+	Image  string            `json:"Image"`
 	State  string            `json:"State"`
+	Status string            `json:"Status"`
+}
+
+// Container is a running/stopped container surfaced by the container-status
+// widget.
+type Container struct {
+	Name   string `json:"name"`
+	Image  string `json:"image"`
+	State  string `json:"state"`  // running, exited, created, paused…
+	Status string `json:"status"` // human string, e.g. "Up 2 hours"
+}
+
+// Containers lists all containers (running + stopped) over the socket.
+func Containers(ctx context.Context, socketPath string) ([]Container, error) {
+	var raw []dockerContainer
+	if err := getJSON(ctx, socketPath, "http://d/v1.41/containers/json?all=1", &raw); err != nil {
+		return nil, err
+	}
+	out := make([]Container, 0, len(raw))
+	for _, c := range raw {
+		name := "unknown"
+		if len(c.Names) > 0 {
+			name = strings.TrimPrefix(c.Names[0], "/")
+		}
+		out = append(out, Container{Name: name, Image: c.Image, State: c.State, Status: c.Status})
+	}
+	return out, nil
+}
+
+func getJSON(ctx context.Context, socketPath, url string, dst any) error {
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, "unix", socketPath)
+			},
+		},
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("querying docker socket %s: %w", socketPath, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("docker socket returned %d", resp.StatusCode)
+	}
+	return json.NewDecoder(resp.Body).Decode(dst)
 }
 
 // Host(`foo.example.com`) or Host("foo.example.com") in a Traefik rule.

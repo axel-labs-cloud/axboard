@@ -83,6 +83,23 @@ export interface HistoryPoint {
 
 export type HistoryMap = Record<string, HistoryPoint[]>;
 
+export interface ContainerInfo {
+  name: string;
+  image: string;
+  state: string;
+  status: string;
+}
+
+export interface HostStats {
+  cpus: number;
+  load1: number;
+  load5: number;
+  load15: number;
+  mem_total: number;
+  mem_used: number;
+  uptime_sec: number;
+}
+
 export interface State {
   layouts?: Record<string, GridItem[]>;
   widgetConfigs?: Record<string, AnyWidgetConfig>;

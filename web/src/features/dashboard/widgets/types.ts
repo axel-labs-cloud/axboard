@@ -14,7 +14,13 @@ export type WidgetType =
   | "countdown"
   | "image"
   | "rss"
-  | "calendar";
+  | "calendar"
+  | "containers"
+  | "host"
+  | "sun"
+  | "pomodoro"
+  | "search"
+  | "section";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -152,6 +158,43 @@ export interface CalendarConfig {
   view?: "agenda" | "month";
 }
 
+/** Container-status widget — filter running containers by a name substring. */
+export interface ContainersConfig {
+  filter?: string;
+  runningOnly?: boolean;
+}
+
+/** Host-stats widget — no options yet. */
+export interface HostConfig {
+  showLoad?: boolean;
+}
+
+/** Sun widget — sunrise/sunset for a lat/lon (reuses weather-style geocoding). */
+export interface SunConfig {
+  city?: string;
+  lat?: number;
+  lon?: number;
+}
+
+/** Pomodoro widget — work/break lengths in minutes. */
+export interface PomodoroConfig {
+  work?: number;
+  break?: number;
+}
+
+/** Search widget — default engine + optional custom template with {q}. */
+export interface SearchConfig {
+  engine?: "google" | "duckduckgo" | "bing" | "custom";
+  customUrl?: string;
+  placeholder?: string;
+}
+
+/** Section-label widget — a heading/divider to organize the board. */
+export interface SectionConfig {
+  text?: string;
+  align?: "left" | "center";
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -167,6 +210,12 @@ export type WidgetConfigByType = {
   image: ImageConfig;
   rss: FeedConfig;
   calendar: CalendarConfig;
+  containers: ContainersConfig;
+  host: HostConfig;
+  sun: SunConfig;
+  pomodoro: PomodoroConfig;
+  search: SearchConfig;
+  section: SectionConfig;
 };
 
 export type AnyWidgetConfig = Partial<
@@ -183,7 +232,13 @@ export type AnyWidgetConfig = Partial<
     CountdownConfig &
     ImageConfig &
     FeedConfig &
-    CalendarConfig
+    CalendarConfig &
+    ContainersConfig &
+    HostConfig &
+    SunConfig &
+    PomodoroConfig &
+    SearchConfig &
+    SectionConfig
 >;
 
 export interface Widget {

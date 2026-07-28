@@ -1,4 +1,12 @@
-import type { Config, State, StatusMap, HistoryMap, DiscoveredService } from "./types";
+import type {
+  Config,
+  State,
+  StatusMap,
+  HistoryMap,
+  DiscoveredService,
+  ContainerInfo,
+  HostStats,
+} from "./types";
 
 async function jsonOk<T>(r: Response): Promise<T> {
   if (!r.ok) {
@@ -57,6 +65,9 @@ export const api = {
   getHistory: () => fetch("/api/apps/history").then(jsonOk<HistoryMap>),
   discover: () =>
     fetch("/api/discover").then(jsonOk<{ services: DiscoveredService[]; error?: string }>),
+  getContainers: () =>
+    fetch("/api/containers").then(jsonOk<{ containers: ContainerInfo[]; error?: string }>),
+  getHost: () => fetch("/api/host").then(jsonOk<HostStats>),
   forceCheck: (id: string) =>
     fetch(`/api/apps/${encodeURIComponent(id)}/check`, { method: "POST" }).then(
       jsonOk<{ status: string }>,

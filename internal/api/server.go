@@ -23,6 +23,7 @@ import (
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/config"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/discover"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/health"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/host"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/state"
 )
 
@@ -132,6 +133,8 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Get("/apps/status", s.handleStatus)
 		r.Get("/apps/history", s.handleHistory)
 		r.Get("/discover", s.handleDiscover)
+		r.Get("/containers", s.handleContainers)
+		r.Get("/host", s.handleHost)
 		r.Get("/proxy", s.handleProxy)
 		r.Post("/icons", s.handleUploadIcon)
 		r.Get("/icons/{name}", s.handleGetIcon)
@@ -279,6 +282,26 @@ func (s *Server) handlePutState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, &next)
+}
+
+// handleContainers lists containers over the Docker/Podman socket for the
+// container-status widget.
+func (s *Server) handleContainers(w http.ResponseWriter, r *http.Request) {
+	socket := "/var/run/docker.sock"
+	if c := s.getConfig(); c != nil && c.Discovery.DockerSocket != "" {
+		socket = c.Discovery.DockerSocket
+	}
+	list, err := discover.Containers(r.Context(), socket)
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"containers": []discover.Container{}, "error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"containers": list})
+}
+
+// handleHost returns a shallow host snapshot (load/memory/uptime).
+func (s *Server) handleHost(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, http.StatusOK, host.Snapshot())
 }
 
 // handleProxy fetches an http(s) URL server-side so browser widgets (RSS,
