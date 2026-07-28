@@ -54,12 +54,16 @@ interface ServerDashboard {
   default?: boolean;
   accent?: string;
   background?: BackgroundDef;
-  barStyle?: string;
-  header?: HeaderDef;
   widgets?: ServerWidget[];
 }
 
+interface ServerTopBar {
+  barStyle?: string;
+  header?: HeaderDef;
+}
+
 interface ConfigPayload {
+  topBar?: ServerTopBar;
   dashboards?: ServerDashboard[];
 }
 
@@ -578,13 +582,19 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     (bg: BackgroundDef | undefined) => patchActiveDashboard({ background: bg }),
     [patchActiveDashboard],
   );
+  // Top bar is global: patch cfg.topBar (not the active dashboard).
+  const patchTopBar = useCallback(
+    (patch: Partial<ServerTopBar>) =>
+      writeConfigDebounced((cfg) => ({ ...cfg, topBar: { ...(cfg.topBar ?? {}), ...patch } })),
+    [writeConfigDebounced],
+  );
   const handleSetBarStyle = useCallback(
-    (style: string) => patchActiveDashboard({ barStyle: style || undefined }),
-    [patchActiveDashboard],
+    (style: string) => patchTopBar({ barStyle: style || undefined }),
+    [patchTopBar],
   );
   const handleSetHeader = useCallback(
-    (header: HeaderDef | undefined) => patchActiveDashboard({ header }),
-    [patchActiveDashboard],
+    (header: HeaderDef | undefined) => patchTopBar({ header }),
+    [patchTopBar],
   );
 
   // Reorder dashboards (drag a tab onto another): move `fromId` to `toId`'s slot.
@@ -1045,8 +1055,9 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const activeDash = dashboards.find((d) => d.id === activeDashboardId);
   const activeAccent = activeDash?.accent;
   const activeBackground = activeDash?.background;
-  const activeBarStyle = activeDash?.barStyle;
-  const activeHeader = activeDash?.header;
+  // Top bar (style + header) is global — shared across all dashboards.
+  const activeBarStyle = fullConfig?.topBar?.barStyle;
+  const activeHeader = fullConfig?.topBar?.header;
 
   // Arrow keys nudge the selected widget by one grid cell in edit mode.
   useEffect(() => {

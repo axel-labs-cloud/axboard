@@ -15,7 +15,15 @@ type Config struct {
 	Discovery  DiscoveryConfig `yaml:"discovery,omitempty" json:"discovery,omitempty"`
 	Apps       []App           `yaml:"apps,omitempty" json:"apps,omitempty"`
 	Groups     []Group         `yaml:"groups,omitempty" json:"groups,omitempty"`
+	TopBar     *TopBar         `yaml:"topBar,omitempty" json:"topBar,omitempty"`
 	Dashboards []Dashboard     `yaml:"dashboards,omitempty" json:"dashboards,omitempty"`
+}
+
+// TopBar is global (shared across all dashboards): the bar style and the header
+// configuration (branding, search, widgets, bookmarks, flush mode).
+type TopBar struct {
+	BarStyle string  `yaml:"barStyle,omitempty" json:"barStyle,omitempty"`
+	Header   *Header `yaml:"header,omitempty" json:"header,omitempty"`
 }
 
 // DiscoveryConfig configures the auto-discover feature. When a Docker/Podman
@@ -87,8 +95,6 @@ type Dashboard struct {
 	Default    bool        `yaml:"default,omitempty" json:"default,omitempty"`
 	Accent     string      `yaml:"accent,omitempty" json:"accent,omitempty"`
 	Background *Background `yaml:"background,omitempty" json:"background,omitempty"`
-	BarStyle   string      `yaml:"barStyle,omitempty" json:"barStyle,omitempty"`
-	Header     *Header     `yaml:"header,omitempty" json:"header,omitempty"`
 	Widgets    []Widget    `yaml:"widgets,omitempty" json:"widgets,omitempty"`
 }
 

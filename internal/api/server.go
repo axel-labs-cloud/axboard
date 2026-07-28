@@ -172,8 +172,6 @@ type dashboardOut struct {
 	Default    bool               `json:"default,omitempty"`
 	Accent     string             `json:"accent,omitempty"`
 	Background *config.Background `json:"background,omitempty"`
-	BarStyle   string             `json:"barStyle,omitempty"`
-	Header     *config.Header     `json:"header,omitempty"`
 	Widgets    []widgetOut        `json:"widgets,omitempty"`
 }
 
@@ -188,6 +186,7 @@ type configOut struct {
 	Server     config.ServerConfig `json:"server"`
 	Apps       []config.App        `json:"apps,omitempty"`
 	Groups     []config.Group      `json:"groups,omitempty"`
+	TopBar     *config.TopBar      `json:"topBar,omitempty"`
 	Dashboards []dashboardOut      `json:"dashboards,omitempty"`
 }
 
@@ -201,6 +200,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
 		Server:     c.Server,
 		Apps:       c.Apps,
 		Groups:     c.Groups,
+		TopBar:     c.TopBar,
 		Dashboards: make([]dashboardOut, 0, len(c.Dashboards)),
 	}
 	for _, d := range c.Dashboards {
@@ -210,8 +210,6 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
 			Default:    d.Default,
 			Accent:     d.Accent,
 			Background: d.Background,
-			BarStyle:   d.BarStyle,
-			Header:     d.Header,
 			Widgets:    make([]widgetOut, 0, len(d.Widgets)),
 		}
 		for _, w := range d.Widgets {

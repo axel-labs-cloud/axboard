@@ -63,14 +63,17 @@ export interface HeaderDef {
   barFlush?: boolean;
 }
 
+export interface TopBarDef {
+  barStyle?: string;
+  header?: HeaderDef;
+}
+
 export interface DashboardDef {
   id: string;
   name: string;
   default?: boolean;
   accent?: string;
   background?: BackgroundDef;
-  barStyle?: string;
-  header?: HeaderDef;
   widgets?: WidgetDef[];
 }
 
@@ -82,6 +85,7 @@ export interface Config {
   server?: ServerConfig;
   apps?: AppDef[];
   groups?: GroupDef[];
+  topBar?: TopBarDef;
   dashboards?: DashboardDef[];
 }
 
