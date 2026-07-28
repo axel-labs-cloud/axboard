@@ -17,23 +17,52 @@ function lbTone(status: string): string {
   return "bg-down";
 }
 
+function hostOf(url?: string): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
 function AxlbdComponent({ config }: WidgetProps<AxServiceConfig>) {
   const { data, error, loading } = useAxService(config?.baseUrl, config?.username, config?.password, PATHS);
+  const host = hostOf(config?.baseUrl);
+
+  const header = (
+    <div className="flex items-center gap-1.5 px-3 pt-2 shrink-0">
+      <span className="text-accent shrink-0">{LbIcon}</span>
+      <span className="text-[12px] font-semibold text-text-secondary">axlbd</span>
+      {host && <span className="text-[10px] text-text-muted font-mono truncate ml-auto">{host}</span>}
+    </div>
+  );
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
-        {error}
+      <div className="h-full flex flex-col">
+        {header}
+        <div className="flex-1 flex items-center justify-center text-text-muted/70 text-[11px] px-3 text-center">
+          {error}
+        </div>
       </div>
     );
   }
-  if (loading) return <SkeletonLines rows={3} />;
+  if (loading) {
+    return (
+      <div className="h-full flex flex-col">
+        {header}
+        <div className="flex-1 px-1"><SkeletonLines rows={3} /></div>
+      </div>
+    );
+  }
 
   const lbs = envelopeItems(data[PATHS[0]]);
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-baseline gap-1.5 px-3 pt-2.5 pb-1 shrink-0">
+      {header}
+      <div className="flex items-baseline gap-1.5 px-3 pt-1 pb-1 shrink-0">
         <span className="text-2xl font-mono tabular-nums text-text leading-none">{lbs.length}</span>
         <span className="text-[12px] text-text-muted">load balancer{lbs.length === 1 ? "" : "s"}</span>
       </div>

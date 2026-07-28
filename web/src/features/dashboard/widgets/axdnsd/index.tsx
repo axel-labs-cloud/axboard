@@ -23,17 +23,47 @@ function Stat({ label, value, tone = "text-text" }: { label: string; value: stri
   );
 }
 
+function ServiceHeader({ host }: { host?: string }) {
+  return (
+    <div className="flex items-center gap-1.5 px-3 pt-2 shrink-0">
+      <span className="text-accent shrink-0">{DnsIcon}</span>
+      <span className="text-[12px] font-semibold text-text-secondary">axdnsd</span>
+      {host && <span className="text-[10px] text-text-muted font-mono truncate ml-auto">{host}</span>}
+    </div>
+  );
+}
+
+function hostOf(url?: string): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).host;
+  } catch {
+    return url;
+  }
+}
+
 function AxdnsdComponent({ config }: WidgetProps<AxServiceConfig>) {
   const { data, error, loading } = useAxService(config?.baseUrl, config?.username, config?.password, PATHS);
+  const host = hostOf(config?.baseUrl);
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
-        {error}
+      <div className="h-full flex flex-col">
+        <ServiceHeader host={host} />
+        <div className="flex-1 flex items-center justify-center text-text-muted/70 text-[11px] px-3 text-center">
+          {error}
+        </div>
       </div>
     );
   }
-  if (loading) return <SkeletonLines rows={2} />;
+  if (loading) {
+    return (
+      <div className="h-full flex flex-col">
+        <ServiceHeader host={host} />
+        <div className="flex-1 px-1"><SkeletonLines rows={2} /></div>
+      </div>
+    );
+  }
 
   const zones = envelopeCount(data[PATHS[0]]);
   const hcs = envelopeItems(data[PATHS[1]]);
@@ -41,14 +71,17 @@ function AxdnsdComponent({ config }: WidgetProps<AxServiceConfig>) {
   const hcTone = hcs.length === 0 ? "text-text" : hcUp === hcs.length ? "text-up" : "text-degraded";
 
   return (
-    <div className="h-full flex flex-col justify-center gap-2 px-3 py-3">
-      <div className="grid grid-cols-2 gap-2">
-        <Stat label="Zones" value={String(zones)} />
-        <Stat
-          label="Health checks"
-          value={hcs.length ? `${hcUp}/${hcs.length}` : "—"}
-          tone={hcTone}
-        />
+    <div className="h-full flex flex-col">
+      <ServiceHeader host={host} />
+      <div className="flex-1 flex flex-col justify-center gap-2 px-3 py-2">
+        <div className="grid grid-cols-2 gap-2">
+          <Stat label="Zones" value={String(zones)} />
+          <Stat
+            label="Health checks"
+            value={hcs.length ? `${hcUp}/${hcs.length}` : "—"}
+            tone={hcTone}
+          />
+        </div>
       </div>
     </div>
   );
