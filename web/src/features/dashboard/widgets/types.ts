@@ -228,6 +228,8 @@ export interface MarketsConfig {
   ids?: string[];
   vs?: string;
   stocks?: string[];
+  /** History window for charts: 1d | 1w | 1m | 3m | 1y | 5y. */
+  period?: string;
 }
 
 /** Release-watch — "gh:owner/repo" / "gl:group/project" latest releases. */
