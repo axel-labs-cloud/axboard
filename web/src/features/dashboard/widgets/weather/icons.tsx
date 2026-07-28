@@ -1,15 +1,25 @@
-// Inline SVG weather icons mapped from WMO codes. Plain styling so they pick
-// up currentColor in the theme — no emoji, per the no-emoji UI rule.
+// Inline SVG weather icons mapped from WMO codes. Each icon carries its own
+// weather-appropriate colors (sun amber, clouds slate, rain sky-blue, snow
+// white, storm bolt amber) rather than a single theme color, so a sunny day
+// reads yellow and a rainy one reads blue at a glance. No emoji, per the rule.
 
 import type { JSX } from "react";
 
 type IconProps = { className?: string; isDay?: boolean };
 
+const SUN = "#fbbf24"; // amber-400
+const MOON = "#cbd5e1"; // slate-300
+const CLOUD = "#94a3b8"; // slate-400
+const CLOUD_LIGHT = "#cbd5e1"; // slate-300
+const RAIN = "#38bdf8"; // sky-400
+const SNOW = "#e2e8f0"; // slate-200
+const BOLT = "#fbbf24";
+
 export function SunIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <circle cx="12" cy="12" r="4.5" fill="currentColor" />
-      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="12" cy="12" r="4.5" fill={SUN} />
+      <g stroke={SUN} strokeWidth="2" strokeLinecap="round">
         <line x1="12" y1="2" x2="12" y2="4.5" />
         <line x1="12" y1="19.5" x2="12" y2="22" />
         <line x1="2" y1="12" x2="4.5" y2="12" />
@@ -26,10 +36,7 @@ export function SunIcon({ className }: IconProps) {
 export function MoonIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <path
-        d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.5 6.5 0 0 0 11 11z"
-        fill="currentColor"
-      />
+      <path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a6.5 6.5 0 0 0 11 11z" fill={MOON} />
     </svg>
   );
 }
@@ -39,8 +46,8 @@ export function PartlyCloudyIcon({ className, isDay = true }: IconProps) {
     <svg viewBox="0 0 24 24" fill="none" className={className}>
       {isDay ? (
         <>
-          <circle cx="8" cy="8" r="3" fill="currentColor" />
-          <g stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <circle cx="8" cy="8" r="3" fill={SUN} />
+          <g stroke={SUN} strokeWidth="1.5" strokeLinecap="round">
             <line x1="8" y1="2" x2="8" y2="3.5" />
             <line x1="2.5" y1="8" x2="4" y2="8" />
             <line x1="4.1" y1="4.1" x2="5.2" y2="5.2" />
@@ -48,12 +55,11 @@ export function PartlyCloudyIcon({ className, isDay = true }: IconProps) {
           </g>
         </>
       ) : (
-        <path d="M16 6.5A4 4 0 1 1 11.5 11a3.5 3.5 0 0 0 4.5-4.5z" fill="currentColor" />
+        <path d="M16 6.5A4 4 0 1 1 11.5 11a3.5 3.5 0 0 0 4.5-4.5z" fill={MOON} />
       )}
       <path
         d="M17 19H8a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 19z"
-        fill="currentColor"
-        opacity="0.85"
+        fill={CLOUD_LIGHT}
       />
     </svg>
   );
@@ -62,10 +68,7 @@ export function PartlyCloudyIcon({ className, isDay = true }: IconProps) {
 export function CloudIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <path
-        d="M17 19H7a4.5 4.5 0 0 1 0-9 5.5 5.5 0 0 1 10.4 1.6A3.5 3.5 0 0 1 17 19z"
-        fill="currentColor"
-      />
+      <path d="M17 19H7a4.5 4.5 0 0 1 0-9 5.5 5.5 0 0 1 10.4 1.6A3.5 3.5 0 0 1 17 19z" fill={CLOUD} />
     </svg>
   );
 }
@@ -73,8 +76,8 @@ export function CloudIcon({ className }: IconProps) {
 export function FogIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M17 11H7a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 11z" fill="currentColor" />
-      <g stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+      <path d="M17 11H7a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 11z" fill={CLOUD} />
+      <g stroke={CLOUD_LIGHT} strokeWidth="1.8" strokeLinecap="round">
         <line x1="4" y1="15" x2="20" y2="15" />
         <line x1="3" y1="18.5" x2="14" y2="18.5" />
         <line x1="10" y1="22" x2="21" y2="22" />
@@ -86,8 +89,8 @@ export function FogIcon({ className }: IconProps) {
 export function DrizzleIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M17 13H7a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 13z" fill="currentColor" />
-      <g stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
+      <path d="M17 13H7a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 13z" fill={CLOUD} />
+      <g stroke={RAIN} strokeWidth="1.6" strokeLinecap="round">
         <line x1="8" y1="17" x2="7" y2="20" />
         <line x1="13" y1="17" x2="12" y2="20" />
         <line x1="18" y1="17" x2="17" y2="20" />
@@ -99,8 +102,8 @@ export function DrizzleIcon({ className }: IconProps) {
 export function RainIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M17 13H7a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 13z" fill="currentColor" />
-      <g stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <path d="M17 13H7a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 13z" fill={CLOUD} />
+      <g stroke={RAIN} strokeWidth="2" strokeLinecap="round">
         <line x1="8" y1="16" x2="6.5" y2="21" />
         <line x1="13" y1="16" x2="11.5" y2="21" />
         <line x1="18" y1="16" x2="16.5" y2="21" />
@@ -112,8 +115,8 @@ export function RainIcon({ className }: IconProps) {
 export function SnowIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M17 13H7a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 13z" fill="currentColor" />
-      <g fill="currentColor">
+      <path d="M17 13H7a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 13z" fill={CLOUD} />
+      <g fill={SNOW}>
         <circle cx="8" cy="18.5" r="1.2" />
         <circle cx="13" cy="20" r="1.2" />
         <circle cx="18" cy="18.5" r="1.2" />
@@ -125,8 +128,8 @@ export function SnowIcon({ className }: IconProps) {
 export function ThunderIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M17 12H7a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 12z" fill="currentColor" />
-      <path d="M13 13l-3 5h3l-1.5 4 4-6h-3l1.5-3z" fill="currentColor" />
+      <path d="M17 12H7a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 0 1 17 12z" fill={CLOUD} />
+      <path d="M13 13l-3 5h3l-1.5 4 4-6h-3l1.5-3z" fill={BOLT} />
     </svg>
   );
 }
@@ -138,9 +141,7 @@ export function ThunderIcon({ className }: IconProps) {
 export function wmoIcon(code: number, isDay: boolean): { Icon: (p: IconProps) => JSX.Element; label: string } {
   switch (code) {
     case 0:
-      return isDay
-        ? { Icon: SunIcon, label: "Clear" }
-        : { Icon: MoonIcon, label: "Clear" };
+      return isDay ? { Icon: SunIcon, label: "Clear" } : { Icon: MoonIcon, label: "Clear" };
     case 1:
     case 2:
       return { Icon: (p) => <PartlyCloudyIcon {...p} isDay={isDay} />, label: "Partly cloudy" };

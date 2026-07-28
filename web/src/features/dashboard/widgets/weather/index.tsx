@@ -132,19 +132,38 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
   const wi = wmoIcon(current.weather_code, isDay);
   const Icon = wi.Icon;
 
-  // Breakpoints scaled 2x from the original sketch — the widget now starts
-  // at 2x2 and runs up to 6x4. "wide" kicks in at 3, the bigger hero at 4.
   const wide = w >= 3;
-  const extraWide = w >= 5;
   const tall = h >= 3;
   const veryTall = h >= 4;
-  const numForecast = extraWide ? 7 : wide ? 5 : 4;
+  const veryWide = w >= 5;
+  // Show the details strip only when there's genuine vertical room, and forecast
+  // day-count scales with width. Everything stacks vertically so nothing is ever
+  // squeezed/clipped horizontally.
+  const showDetails = veryTall || (wide && !tall);
+  const numForecast = veryWide ? 7 : wide ? 5 : 4;
 
-  const Header = (
-    <div className="flex items-center justify-between gap-2 shrink-0">
-      <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold truncate">
-        {city || "Weather"}
-      </span>
+  const Header = city ? (
+    <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold truncate shrink-0">
+      {city}
+    </div>
+  ) : null;
+
+  const Hero = (
+    <div className="flex items-center gap-3 shrink-0 min-w-0">
+      <div className={`shrink-0 ${veryTall ? "w-16 h-16" : "w-14 h-14"}`}>
+        <Icon className="w-full h-full" />
+      </div>
+      <div className="min-w-0">
+        <div
+          className={`font-mono font-semibold tabular-nums text-text leading-none ${
+            veryTall ? "text-5xl" : "text-4xl"
+          }`}
+        >
+          {Math.round(current.temperature_2m)}
+          {unitLabel}
+        </div>
+        <div className="text-text-muted truncate mt-1 text-[12px]">{wi.label}</div>
+      </div>
     </div>
   );
 
@@ -159,40 +178,38 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
     </div>
   );
 
-  const HeroBlock = (size: "sm" | "md" | "lg") => (
-    <div className="flex items-center gap-4 shrink-0">
-      <div
-        className={`text-accent ${
-          size === "lg" ? "w-20 h-20" : size === "md" ? "w-16 h-16" : "w-14 h-14"
-        }`}
-      >
-        <Icon className="w-full h-full" />
-      </div>
-      <div className="min-w-0">
-        <div
-          className={`font-mono font-semibold tabular-nums text-text leading-none ${
-            size === "lg" ? "text-5xl" : size === "md" ? "text-4xl" : "text-3xl"
-          }`}
-        >
-          {Math.round(current.temperature_2m)}
-          {unitLabel}
-        </div>
-        <div
-          className={`text-text-muted truncate mt-1 ${
-            size === "lg" ? "text-[14px]" : "text-[12px]"
-          }`}
-        >
-          {wi.label}
-        </div>
-      </div>
+  const ForecastRow = (
+    <div className="flex-1 flex gap-1.5 min-h-0">
+      {(data.daily?.time ?? []).slice(0, numForecast).map((d, i) => {
+        const F = wmoIcon(data.daily!.weather_code[i], true).Icon;
+        return (
+          <div
+            key={d}
+            className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 rounded-md bg-bg-card/40 px-1 py-1.5"
+          >
+            <span className="text-[10.5px] text-text-muted truncate max-w-full">{dayLabel(d, i)}</span>
+            <div className="w-6 h-6 shrink-0">
+              <F className="w-full h-full" />
+            </div>
+            <div className="flex items-baseline gap-1">
+              <span className="text-[12px] font-mono font-semibold tabular-nums text-text">
+                {Math.round(data.daily!.temperature_2m_max[i])}°
+              </span>
+              <span className="text-[11px] font-mono tabular-nums text-text-muted">
+                {Math.round(data.daily!.temperature_2m_min[i])}°
+              </span>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 
-  // 2×2 — minimum size, just hero centered
+  // 2×2 — compact, everything centered.
   if (!wide && !tall) {
     return (
-      <div className="h-full flex flex-col items-center justify-center gap-1.5 p-3">
-        <div className="text-accent w-16 h-16">
+      <div className="h-full flex flex-col items-center justify-center gap-1 p-3 overflow-hidden">
+        <div className="w-16 h-16">
           <Icon className="w-full h-full" />
         </div>
         <div className="text-3xl font-mono font-semibold tabular-nums text-text leading-none">
@@ -209,47 +226,30 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
     );
   }
 
-  // wide & short — hero + details on one row
-  if (wide && !tall) {
-    return (
-      <div className="h-full flex flex-col gap-2 p-3">
-        {Header}
-        <div className="flex-1 flex items-center gap-5 min-h-0">
-          {HeroBlock("md")}
-          <div className="flex-1 min-w-0">{Details}</div>
-        </div>
-      </div>
-    );
-  }
-
-  // narrow & tall — vertical: hero on top, forecast list below
+  // Narrow & tall (w=2, h≥3) — hero on top, vertical forecast list below.
   if (!wide && tall) {
     return (
-      <div className="h-full flex flex-col gap-2.5 p-3">
+      <div className="h-full flex flex-col gap-2 p-3 overflow-hidden">
         {Header}
-        {HeroBlock("md")}
+        {Hero}
         <div className="flex-1 flex flex-col min-h-0 gap-0.5 overflow-hidden">
           {(data.daily?.time ?? []).slice(0, veryTall ? 7 : 5).map((d, i) => {
-            const code = data.daily!.weather_code[i];
-            const max = data.daily!.temperature_2m_max[i];
-            const min = data.daily!.temperature_2m_min[i];
-            const f = wmoIcon(code, true);
-            const F = f.Icon;
+            const F = wmoIcon(data.daily!.weather_code[i], true).Icon;
             return (
               <div
                 key={d}
                 className="flex items-center gap-2 py-1 border-t border-border-subtle first:border-0"
               >
                 <span className="text-[11px] text-text-muted w-12 shrink-0">{dayLabel(d, i)}</span>
-                <div className="text-text-secondary w-5 h-5 shrink-0">
+                <div className="w-5 h-5 shrink-0">
                   <F className="w-full h-full" />
                 </div>
                 <span className="flex-1" />
                 <span className="text-[12px] font-mono tabular-nums text-text">
-                  {Math.round(max)}°
+                  {Math.round(data.daily!.temperature_2m_max[i])}°
                 </span>
                 <span className="text-[12px] font-mono tabular-nums text-text-muted">
-                  {Math.round(min)}°
+                  {Math.round(data.daily!.temperature_2m_min[i])}°
                 </span>
               </div>
             );
@@ -259,42 +259,14 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
     );
   }
 
-  // wide & tall — hero + details + forecast cards row
+  // Wide — everything stacked vertically (never side-by-side, so nothing clips):
+  // header · hero · [details] · [forecast].
   return (
-    <div className="h-full flex flex-col gap-2.5 p-4">
+    <div className="h-full flex flex-col gap-2 p-3 overflow-hidden">
       {Header}
-      <div className="flex items-center justify-between gap-4 shrink-0">
-        {HeroBlock(veryTall ? "lg" : "md")}
-        {wide && Details}
-      </div>
-      <div className="flex-1 flex gap-2 min-h-0">
-        {(data.daily?.time ?? []).slice(0, numForecast).map((d, i) => {
-          const code = data.daily!.weather_code[i];
-          const max = data.daily!.temperature_2m_max[i];
-          const min = data.daily!.temperature_2m_min[i];
-          const f = wmoIcon(code, true);
-          const F = f.Icon;
-          return (
-            <div
-              key={d}
-              className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 rounded-md bg-bg-card/40 px-1.5 py-2"
-            >
-              <span className="text-[11px] text-text-muted">{dayLabel(d, i)}</span>
-              <div className="text-text-secondary w-7 h-7">
-                <F className="w-full h-full" />
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-[13px] font-mono font-semibold tabular-nums text-text">
-                  {Math.round(max)}°
-                </span>
-                <span className="text-[12px] font-mono tabular-nums text-text-muted">
-                  {Math.round(min)}°
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {Hero}
+      {showDetails && Details}
+      {tall && ForecastRow}
     </div>
   );
 }
