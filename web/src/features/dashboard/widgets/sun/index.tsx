@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { wmoIcon } from "../weather/icons";
 import type {
@@ -37,12 +37,47 @@ function hhmm(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
+function fmtDur(ms: number): string {
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+// Arc geometry — a top semi-ellipse in a 0..100 × 0..48 viewBox. theta sweeps
+// 0 (left foot = sunrise) → π (right foot = sunset), so the marker travels the
+// natural left-to-right through the day.
+const ARC = { cx: 50, cy: 40, rx: 42, ry: 31 };
+function arcPoint(frac: number): { x: number; y: number } {
+  const t = Math.PI * frac;
+  return { x: ARC.cx - ARC.rx * Math.cos(t), y: ARC.cy - ARC.ry * Math.sin(t) };
+}
+function arcPath(from: number, to: number): string {
+  const a = arcPoint(from);
+  const b = arcPoint(to);
+  return `M${a.x.toFixed(2)} ${a.y.toFixed(2)} A${ARC.rx} ${ARC.ry} 0 0 1 ${b.x.toFixed(2)} ${b.y.toFixed(2)}`;
+}
+
+function RiseIcon({ className, style }: { className?: string; style?: CSSProperties }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+      <path d="M12 3v6M8 7l4-4 4 4M3 18h18M6 18a6 6 0 0 1 12 0" />
+    </svg>
+  );
+}
+function SetIcon({ className, style }: { className?: string; style?: CSSProperties }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={style}>
+      <path d="M12 9V3M8 5l4 4 4-4M3 18h18M6 18a6 6 0 0 1 12 0" />
+    </svg>
+  );
+}
+
 function SunComponent({ config }: WidgetProps<SunConfig>) {
   const lat = config?.lat;
   const lon = config?.lon;
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000);
+    const id = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(id);
   }, []);
 
@@ -73,72 +108,83 @@ function SunComponent({ config }: WidgetProps<SunConfig>) {
   const set = new Date(data.daily.sunset[0]).getTime();
   const frac = Math.max(0, Math.min(1, (now - rise) / (set - rise)));
   const isDay = now >= rise && now <= set;
-  const dayMs = set - rise;
-  const dayH = Math.floor(dayMs / 3600000);
-  const dayM = Math.floor((dayMs % 3600000) / 60000);
 
-  // Live weather icon rides the arc (falls back to a clear sun/moon).
+  // Live countdown to the next event.
+  const hero =
+    now < rise
+      ? { label: "until sunrise", value: fmtDur(rise - now) }
+      : now <= set
+        ? { label: "until sunset", value: fmtDur(set - now) }
+        : { label: "daylight", value: fmtDur(set - rise) };
+
   const wi = wmoIcon(data.current?.weather_code ?? 0, data.current?.is_day !== 0);
   const MarkerIcon = wi.Icon;
-
-  // Marker position on a semicircle arc (viewBox 0..100 x, 0..44 y). We also
-  // place an HTML icon overlay at the same spot as a percentage of the box.
-  const angle = Math.PI * (1 - frac); // pi at sunrise (left) → 0 at sunset (right)
-  const mx = 50 - 42 * Math.cos(angle);
-  const my = 40 - 32 * Math.sin(angle);
+  const m = arcPoint(frac);
 
   return (
-    <div className="h-full flex flex-col justify-center px-3.5 py-2.5 gap-2">
-      <div className="relative">
-        <svg viewBox="0 0 100 44" className="w-full">
+    <div className="h-full flex flex-col p-3">
+      {/* arc */}
+      <div className="relative w-full">
+        <svg viewBox="0 0 100 48" className="w-full block">
           <defs>
             <linearGradient id="sun-sky" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="var(--color-accent)" stopOpacity="0.16" />
-              <stop offset="1" stopColor="var(--color-accent)" stopOpacity="0" />
+              <stop offset="0" stopColor="#fbbf24" stopOpacity="0.14" />
+              <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
             </linearGradient>
             <linearGradient id="sun-arc" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="#fbbf24" stopOpacity="0.5" />
-              <stop offset="0.5" stopColor="var(--color-accent)" stopOpacity="0.7" />
-              <stop offset="1" stopColor="#fbbf24" stopOpacity="0.5" />
+              <stop offset="0" stopColor="#f59e0b" />
+              <stop offset="1" stopColor="#fbbf24" />
             </linearGradient>
           </defs>
-          {/* filled sky under the arc */}
-          <path d="M8 40 A42 32 0 0 1 92 40 Z" fill="url(#sun-sky)" />
-          {/* arc line */}
-          <path d="M8 40 A42 32 0 0 1 92 40" fill="none" stroke="url(#sun-arc)" strokeWidth="1.5" strokeLinecap="round" />
+          {/* sky fill under the full arc */}
+          <path d={`${arcPath(0, 1)} L8 40 Z`} fill="url(#sun-sky)" />
+          {/* remaining (faint) full arc */}
+          <path d={arcPath(0, 1)} fill="none" stroke="var(--color-border)" strokeWidth="1.5" strokeDasharray="2 2.5" strokeLinecap="round" />
+          {/* elapsed (bright) arc up to the sun */}
+          {isDay && frac > 0.001 && (
+            <path d={arcPath(0, frac)} fill="none" stroke="url(#sun-arc)" strokeWidth="2" strokeLinecap="round" />
+          )}
           {/* horizon */}
           <line x1="4" y1="40" x2="96" y2="40" stroke="var(--color-border-subtle)" strokeWidth="1" />
-          {/* progress dot on the horizon markers */}
-          <circle cx="8" cy="40" r="1.6" fill="var(--color-text-muted)" />
-          <circle cx="92" cy="40" r="1.6" fill="var(--color-text-muted)" />
+          <circle cx="8" cy="40" r="1.5" fill="var(--color-text-muted)" />
+          <circle cx="92" cy="40" r="1.5" fill="var(--color-text-muted)" />
         </svg>
         {/* live weather icon on the arc */}
         <div
-          className="absolute w-7 h-7 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+          className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
           style={{
-            left: `${mx}%`,
-            top: `${(my / 44) * 100}%`,
-            filter: isDay ? "drop-shadow(0 0 5px rgba(251,191,36,0.55))" : "none",
-            opacity: isDay ? 1 : 0.85,
+            left: `${m.x}%`,
+            top: `${(m.y / 48) * 100}%`,
+            filter: isDay ? "drop-shadow(0 0 6px rgba(251,191,36,0.6))" : "none",
+            opacity: isDay ? 1 : 0.6,
           }}
         >
           <MarkerIcon className="w-full h-full" />
         </div>
+        {/* countdown hero, floated in the arc's open mouth (above the horizon) */}
+        <div
+          className="absolute inset-x-0 flex flex-col items-center pointer-events-none"
+          style={{ top: "56%" }}
+        >
+          <span className="font-mono tabular-nums text-text text-[15px] leading-none">{hero.value}</span>
+          <span className="text-text-muted text-[9px] uppercase tracking-[0.12em] mt-0.5">{hero.label}</span>
+        </div>
       </div>
-      <div className="flex items-center justify-between text-[11px]">
-        <div className="flex flex-col">
-          <span className="text-text-muted text-[9px] uppercase tracking-wider">Rise</span>
-          <span className="font-mono tabular-nums text-text-secondary">{hhmm(data.daily.sunrise[0])}</span>
+      {/* footer: rise / set anchored under the arc feet */}
+      <div className="mt-auto flex items-end justify-between">
+        <div className="flex items-center gap-1.5">
+          <RiseIcon className="w-3.5 h-3.5 shrink-0" style={{ color: "#fbbf24" }} />
+          <div className="flex flex-col leading-tight">
+            <span className="text-text-muted text-[8.5px] uppercase tracking-[0.1em]">Rise</span>
+            <span className="font-mono tabular-nums text-text-secondary text-[12px]">{hhmm(data.daily.sunrise[0])}</span>
+          </div>
         </div>
-        <div className="flex flex-col items-center">
-          <span className="text-text-muted text-[9px] uppercase tracking-wider">Daylight</span>
-          <span className="font-mono tabular-nums text-text-secondary">
-            {dayH}h {dayM}m
-          </span>
-        </div>
-        <div className="flex flex-col items-end">
-          <span className="text-text-muted text-[9px] uppercase tracking-wider">Set</span>
-          <span className="font-mono tabular-nums text-text-secondary">{hhmm(data.daily.sunset[0])}</span>
+        <div className="flex items-center gap-1.5">
+          <div className="flex flex-col leading-tight text-right">
+            <span className="text-text-muted text-[8.5px] uppercase tracking-[0.1em]">Set</span>
+            <span className="font-mono tabular-nums text-text-secondary text-[12px]">{hhmm(data.daily.sunset[0])}</span>
+          </div>
+          <SetIcon className="w-3.5 h-3.5 shrink-0" style={{ color: "#f97316" }} />
         </div>
       </div>
     </div>
