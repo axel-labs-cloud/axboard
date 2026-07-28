@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import type {
@@ -56,9 +57,101 @@ function parseICS(text: string): CalEvent[] {
   return events;
 }
 
-function CalendarComponent({ config }: WidgetProps<CalendarConfig>) {
+const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
+
+function MonthView({
+  events,
+  offset,
+  onOffset,
+}: {
+  events: CalEvent[];
+  offset: number;
+  onOffset: (o: number) => void;
+}) {
+  const base = new Date();
+  base.setDate(1);
+  base.setMonth(base.getMonth() + offset);
+  const year = base.getFullYear();
+  const month = base.getMonth();
+  const today = new Date();
+  const isThisMonth = today.getFullYear() === year && today.getMonth() === month;
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const counts: Record<number, number> = {};
+  for (const e of events) {
+    if (e.start.getFullYear() === year && e.start.getMonth() === month) {
+      counts[e.start.getDate()] = (counts[e.start.getDate()] ?? 0) + 1;
+    }
+  }
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const NavBtn = ({ dir, label }: { dir: number; label: string }) => (
+    <button
+      onClick={() => onOffset(offset + dir)}
+      className="w-6 h-6 flex items-center justify-center rounded text-text-muted hover:text-text hover:bg-bg-hover"
+      title={dir < 0 ? "Previous month" : "Next month"}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="h-full flex flex-col p-2.5 gap-1.5 overflow-hidden">
+      <div className="flex items-center justify-between shrink-0">
+        <NavBtn dir={-1} label="‹" />
+        <button
+          onClick={() => onOffset(0)}
+          className="text-[12px] font-medium text-text hover:text-accent"
+          title="Back to today"
+        >
+          {base.toLocaleDateString(undefined, { month: "long", year: "numeric" })}
+        </button>
+        <NavBtn dir={1} label="›" />
+      </div>
+      <div className="grid grid-cols-7 gap-0.5 shrink-0">
+        {WEEKDAYS.map((wd, i) => (
+          <div key={i} className="text-center text-[9px] text-text-muted uppercase">
+            {wd}
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-7 gap-0.5 flex-1 min-h-0">
+        {cells.map((d, i) => {
+          const isToday = isThisMonth && d === today.getDate();
+          return (
+            <div
+              key={i}
+              className={`flex flex-col items-center justify-center rounded text-[11px] tabular-nums ${
+                d == null
+                  ? ""
+                  : isToday
+                    ? "bg-accent/15 text-accent font-semibold ring-1 ring-accent/30"
+                    : "text-text-secondary"
+              }`}
+            >
+              {d && <span>{d}</span>}
+              {d != null && (
+                <span
+                  className={`w-1 h-1 rounded-full mt-0.5 ${counts[d] ? "bg-accent" : "bg-transparent"}`}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CalendarComponent({ config, w, h }: WidgetProps<CalendarConfig>) {
   const url = config?.url?.trim();
   const count = config?.count ?? 6;
+  const view = config?.view ?? "agenda";
+  const [monthOffset, setMonthOffset] = useState(0);
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["calendar", url],
@@ -87,6 +180,10 @@ function CalendarComponent({ config }: WidgetProps<CalendarConfig>) {
         {(error as Error)?.message ?? "Could not load calendar."}
       </div>
     );
+  }
+
+  if (view === "month" && w >= 3 && h >= 3) {
+    return <MonthView events={data} offset={monthOffset} onOffset={setMonthOffset} />;
   }
 
   const now = new Date();
@@ -139,7 +236,29 @@ function CalendarConfigPanel({ config, save }: WidgetConfigProps<CalendarConfig>
       </div>
       <div className="space-y-1.5">
         <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-          Events to show
+          View
+        </label>
+        <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card/40">
+          {(["agenda", "month"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => save({ view: v })}
+              className={`px-3 py-1 text-[11px] rounded capitalize transition-colors ${
+                (config?.view ?? "agenda") === v
+                  ? "bg-bg-elevated text-text shadow-sm"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10.5px] text-text-muted">Month view needs at least a 3×3 widget.</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+          Events to show (agenda)
         </label>
         <input
           type="number"

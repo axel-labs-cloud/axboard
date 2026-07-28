@@ -148,6 +148,8 @@ export interface FeedConfig {
 export interface CalendarConfig {
   url?: string;
   count?: number;
+  /** "agenda" = upcoming list (default), "month" = month grid with event dots. */
+  view?: "agenda" | "month";
 }
 
 export type WidgetConfigByType = {
