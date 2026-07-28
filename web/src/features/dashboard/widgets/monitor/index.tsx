@@ -51,9 +51,10 @@ function MonitorComponent({ config }: WidgetProps<MonitorConfig>) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-baseline gap-1.5 px-3 pt-2.5 pb-1 shrink-0">
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1 shrink-0">
+        <span className="text-text-muted shrink-0">{MonitorIcon}</span>
         <span className="text-2xl font-mono tabular-nums text-up leading-none">{up}</span>
-        <span className="text-[12px] text-text-muted">/ {targets.length} up</span>
+        <span className="text-[12px] text-text-muted">/ {targets.length} endpoints up</span>
       </div>
       <div className="flex-1 min-h-0 overflow-auto px-2 pb-2 divide-y divide-border-subtle">
         {rows.map(({ t, r }) => (

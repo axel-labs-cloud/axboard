@@ -223,10 +223,11 @@ export interface PublicIPConfig {
   expectIsp?: string;
 }
 
-/** Markets ticker — crypto (CoinGecko) ids in a chosen currency. */
+/** Markets ticker — crypto (CoinGecko) ids + stock/ETF tickers (Yahoo). */
 export interface MarketsConfig {
   ids?: string[];
   vs?: string;
+  stocks?: string[];
 }
 
 /** Release-watch — "gh:owner/repo" / "gl:group/project" latest releases. */

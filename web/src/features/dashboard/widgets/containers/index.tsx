@@ -55,9 +55,10 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex items-baseline gap-1.5 px-3 pt-2.5 pb-1.5 shrink-0">
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5 shrink-0">
+        <span className="text-text-muted shrink-0">{ContainersIcon}</span>
         <span className="text-2xl font-mono tabular-nums text-up leading-none">{running}</span>
-        <span className="text-[12px] text-text-muted">/ {total} up</span>
+        <span className="text-[12px] text-text-muted">/ {total} containers up</span>
       </div>
       <div className="flex-1 min-h-0 overflow-auto px-2 pb-2 divide-y divide-border-subtle">
         {list.length === 0 && (
