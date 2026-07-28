@@ -8,6 +8,7 @@ const ReactGridLayout = RGL as unknown as React.ComponentType<any>;
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { DashboardTabBar } from "./DashboardTabBar";
 import { useDashboards } from "./useDashboards";
+import { useConfig } from "../../hooks/useConfig";
 import { useDashboardHistory } from "./useDashboardHistory";
 import { useDashboardShortcuts } from "./useDashboardShortcuts";
 import { createEmptyLayout } from "./layoutMigrations";
@@ -23,6 +24,8 @@ import { THEMES } from "../../hooks/themes";
 import { ConfigEditorModal } from "./ConfigEditorModal";
 import { TemplatePickerModal } from "./TemplatePickerModal";
 import type { DashboardTemplate } from "./templates";
+import type { BackgroundDef, HeaderDef } from "../../api/types";
+import { backgroundLayerStyle } from "./appearance";
 import type {
   AnyWidgetConfig,
   DashboardLayout,
@@ -50,6 +53,9 @@ interface ServerDashboard {
   name: string;
   default?: boolean;
   accent?: string;
+  background?: BackgroundDef;
+  barStyle?: string;
+  header?: HeaderDef;
   widgets?: ServerWidget[];
 }
 
@@ -126,6 +132,8 @@ interface DashboardPageProps {
 export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const qc = useQueryClient();
   const { dashboards } = useDashboards();
+  const { data: fullConfig } = useConfig();
+  const appIds = useMemo(() => (fullConfig?.apps ?? []).map((a) => a.id), [fullConfig]);
 
   // Kiosk mode — hide all chrome and lock to view mode, for a wall display.
   // Toggleable from the menu; also honored via the ?kiosk=1 URL param.
@@ -526,6 +534,33 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       }));
     },
     [activeDashboardId, writeConfigAndRefresh],
+  );
+
+  // Patch appearance fields on the active dashboard (background / bar style /
+  // header widgets) through the same config write-path the accent picker uses.
+  const patchActiveDashboard = useCallback(
+    (patch: Partial<ServerDashboard>) => {
+      if (!activeDashboardId) return;
+      writeConfigAndRefresh((cfg) => ({
+        ...cfg,
+        dashboards: (cfg.dashboards ?? []).map((d) =>
+          d.id === activeDashboardId ? { ...d, ...patch } : d,
+        ),
+      }));
+    },
+    [activeDashboardId, writeConfigAndRefresh],
+  );
+  const handleSetBackground = useCallback(
+    (bg: BackgroundDef | undefined) => patchActiveDashboard({ background: bg }),
+    [patchActiveDashboard],
+  );
+  const handleSetBarStyle = useCallback(
+    (style: string) => patchActiveDashboard({ barStyle: style || undefined }),
+    [patchActiveDashboard],
+  );
+  const handleSetHeader = useCallback(
+    (header: HeaderDef | undefined) => patchActiveDashboard({ header }),
+    [patchActiveDashboard],
   );
 
   // Reorder dashboards (drag a tab onto another): move `fromId` to `toId`'s slot.
@@ -983,7 +1018,11 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const isStacked = containerW > 0 && containerW < 900;
   const stackColumns = containerW < 560 ? 1 : 2;
   const isEmpty = layout.widgets.length === 0;
-  const activeAccent = dashboards.find((d) => d.id === activeDashboardId)?.accent;
+  const activeDash = dashboards.find((d) => d.id === activeDashboardId);
+  const activeAccent = activeDash?.accent;
+  const activeBackground = activeDash?.background;
+  const activeBarStyle = activeDash?.barStyle;
+  const activeHeader = activeDash?.header;
 
   // Arrow keys nudge the selected widget by one grid cell in edit mode.
   useEffect(() => {
@@ -1036,15 +1075,25 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing, dashboards, setTheme, handleBackup]);
 
+  const bgBase = backgroundLayerStyle(activeBackground, "base");
+  const bgDim = backgroundLayerStyle(activeBackground, "dim");
+
   return (
     <div
       className={`${
         kiosk ? "p-3" : density === "compact" ? "p-3" : density === "spacious" ? "p-8" : "p-6"
-      } h-full flex flex-col min-h-0`}
+      } h-full flex flex-col min-h-0 relative`}
       // Per-dashboard accent overrides the theme --color-accent for everything
       // inside this subtree (all `*-accent` utilities read the variable).
       style={activeAccent ? ({ "--color-accent": activeAccent } as React.CSSProperties) : undefined}
     >
+      {/* Per-dashboard background layer(s) behind the grid. */}
+      {bgBase && (
+        <div aria-hidden className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+          <div className="absolute" style={{ inset: 0, ...bgBase }} />
+          {bgDim && <div className="absolute inset-0" style={bgDim} />}
+        </div>
+      )}
       {!kiosk && (
       <DashboardTabBar
         dashboards={dashboards.map((d) => ({
@@ -1066,6 +1115,13 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onRestoreFile={handleRestoreFile}
         activeAccent={activeAccent}
         onSetAccent={handleSetAccent}
+        background={activeBackground}
+        onSetBackground={handleSetBackground}
+        barStyle={activeBarStyle}
+        onSetBarStyle={handleSetBarStyle}
+        header={activeHeader}
+        onSetHeader={handleSetHeader}
+        apps={appIds}
         onReorderDashboards={handleReorderDashboards}
         onEditConfig={() => setConfigEditorOpen(true)}
         onNewFromTemplate={() => setTemplatePickerOpen(true)}

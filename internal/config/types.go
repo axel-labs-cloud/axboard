@@ -82,11 +82,34 @@ type Group struct {
 }
 
 type Dashboard struct {
-	ID      string   `yaml:"id" json:"id"`
-	Name    string   `yaml:"name" json:"name"`
-	Default bool     `yaml:"default,omitempty" json:"default,omitempty"`
-	Accent  string   `yaml:"accent,omitempty" json:"accent,omitempty"`
-	Widgets []Widget `yaml:"widgets,omitempty" json:"widgets,omitempty"`
+	ID         string      `yaml:"id" json:"id"`
+	Name       string      `yaml:"name" json:"name"`
+	Default    bool        `yaml:"default,omitempty" json:"default,omitempty"`
+	Accent     string      `yaml:"accent,omitempty" json:"accent,omitempty"`
+	Background *Background `yaml:"background,omitempty" json:"background,omitempty"`
+	BarStyle   string      `yaml:"barStyle,omitempty" json:"barStyle,omitempty"`
+	Header     *Header     `yaml:"header,omitempty" json:"header,omitempty"`
+	Widgets    []Widget    `yaml:"widgets,omitempty" json:"widgets,omitempty"`
+}
+
+// Background is the per-dashboard page backdrop behind the widget grid.
+type Background struct {
+	Type     string `yaml:"type,omitempty" json:"type,omitempty"` // color | gradient | image
+	Color    string `yaml:"color,omitempty" json:"color,omitempty"`
+	Gradient string `yaml:"gradient,omitempty" json:"gradient,omitempty"` // full CSS gradient value
+	Image    string `yaml:"image,omitempty" json:"image,omitempty"`       // URL or data: URI
+	Blur     int    `yaml:"blur,omitempty" json:"blur,omitempty"`         // px, image only
+	Dim      int    `yaml:"dim,omitempty" json:"dim,omitempty"`           // 0-100 dark overlay
+}
+
+// Header configures the small widgets shown in the top bar.
+type Header struct {
+	Clock       bool    `yaml:"clock,omitempty" json:"clock,omitempty"`
+	Weather     bool    `yaml:"weather,omitempty" json:"weather,omitempty"`
+	AppsUp      bool    `yaml:"appsUp,omitempty" json:"appsUp,omitempty"`
+	WeatherCity string  `yaml:"weatherCity,omitempty" json:"weatherCity,omitempty"`
+	WeatherLat  float64 `yaml:"weatherLat,omitempty" json:"weatherLat,omitempty"`
+	WeatherLon  float64 `yaml:"weatherLon,omitempty" json:"weatherLon,omitempty"`
 }
 
 type Widget struct {

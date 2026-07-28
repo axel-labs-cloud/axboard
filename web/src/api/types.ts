@@ -39,11 +39,32 @@ export interface WidgetDef {
   config?: AnyWidgetConfig;
 }
 
+export interface BackgroundDef {
+  type?: "color" | "gradient" | "image";
+  color?: string;
+  gradient?: string;
+  image?: string;
+  blur?: number;
+  dim?: number;
+}
+
+export interface HeaderDef {
+  clock?: boolean;
+  weather?: boolean;
+  appsUp?: boolean;
+  weatherCity?: string;
+  weatherLat?: number;
+  weatherLon?: number;
+}
+
 export interface DashboardDef {
   id: string;
   name: string;
   default?: boolean;
   accent?: string;
+  background?: BackgroundDef;
+  barStyle?: string;
+  header?: HeaderDef;
   widgets?: WidgetDef[];
 }
 

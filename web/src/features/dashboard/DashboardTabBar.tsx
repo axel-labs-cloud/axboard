@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { THEMES } from "../../hooks/themes";
+import type { BackgroundDef, HeaderDef } from "../../api/types";
+import { barStyleClass } from "./appearance";
+import { HeaderWidgets } from "./HeaderWidgets";
+import { AppearancePanel } from "./AppearancePanel";
 
 interface Dashboard {
   id: string;
@@ -24,6 +28,13 @@ interface Props {
   onRestoreFile: (file: File) => void;
   activeAccent?: string;
   onSetAccent: (color: string) => void;
+  background?: BackgroundDef;
+  onSetBackground: (bg: BackgroundDef | undefined) => void;
+  barStyle?: string;
+  onSetBarStyle: (style: string) => void;
+  header?: HeaderDef;
+  onSetHeader: (header: HeaderDef | undefined) => void;
+  apps: string[];
   onReorderDashboards: (fromId: string, toId: string) => void;
   onEditConfig: () => void;
   onNewFromTemplate: () => void;
@@ -58,6 +69,13 @@ export function DashboardTabBar({
   onRestoreFile,
   activeAccent,
   onSetAccent,
+  background,
+  onSetBackground,
+  barStyle,
+  onSetBarStyle,
+  header,
+  onSetHeader,
+  apps,
   onReorderDashboards,
   onEditConfig,
   onNewFromTemplate,
@@ -81,6 +99,7 @@ export function DashboardTabBar({
   const restoreInputRef = useRef<HTMLInputElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -108,7 +127,7 @@ export function DashboardTabBar({
   }, [menuOpen]);
 
   return (
-    <div className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-border-subtle bg-bg-card/40 backdrop-blur-sm px-6 py-2 gap-3">
+    <div className={`grid grid-cols-[1fr_auto_1fr] items-center px-6 py-2 gap-3 ${barStyleClass(barStyle)}`}>
       {/* LEFT — logo + dashboard tabs */}
       <div className="flex items-center gap-3 min-w-0">
         <div className="flex items-center gap-2 shrink-0 select-none">
@@ -227,8 +246,12 @@ export function DashboardTabBar({
         </kbd>
       </button>
 
-      {/* RIGHT — edit-mode actions + Done + menu */}
-      <div className="flex items-center gap-1 justify-end min-w-0">
+      {/* RIGHT — header widgets + edit-mode actions + Done + menu */}
+      <div className="flex items-center gap-2 justify-end min-w-0">
+        {/* homepage-style header widgets (clock / weather / services-up) */}
+        <div className="hidden sm:block mr-1">
+          <HeaderWidgets header={header} apps={apps} />
+        </div>
         {/* Always-mounted file inputs — the menu's Import/Restore actions
             trigger these from anywhere and they survive the menu portal closing. */}
         <input
@@ -368,6 +391,20 @@ export function DashboardTabBar({
                   onToggleEdit();
                 }}
               />
+              <MenuItem
+                label="Appearance…"
+                icon={
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                    <circle cx="13.5" cy="6.5" r="2.5" />
+                    <circle cx="6.5" cy="12" r="2.5" />
+                    <path d="M12 2a10 10 0 1 0 0 20a3 3 0 0 0 0-6h-1a2 2 0 0 1 0-4h3a5 5 0 0 0 5-5a5 5 0 0 0-9-3" />
+                  </svg>
+                }
+                onClick={() => {
+                  setMenuOpen(false);
+                  setAppearanceOpen(true);
+                }}
+              />
               <div className="my-1 border-t border-border-subtle" />
               <MenuItem
                 label="New dashboard from template…"
@@ -464,6 +501,17 @@ export function DashboardTabBar({
             document.body,
           )}
       </div>
+
+      <AppearancePanel
+        open={appearanceOpen}
+        onClose={() => setAppearanceOpen(false)}
+        background={background}
+        onSetBackground={onSetBackground}
+        barStyle={barStyle}
+        onSetBarStyle={onSetBarStyle}
+        header={header}
+        onSetHeader={onSetHeader}
+      />
     </div>
   );
 }
