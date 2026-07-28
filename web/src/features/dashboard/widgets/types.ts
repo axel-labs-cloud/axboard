@@ -25,7 +25,9 @@ export type WidgetType =
   | "publicip"
   | "markets"
   | "releases"
-  | "customapi";
+  | "customapi"
+  | "axdnsd"
+  | "axlbd";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -244,6 +246,13 @@ export interface CustomApiConfig {
   refreshMin?: number;
 }
 
+/** Credentials for an Axel-Labs service (axdnsd/axlbd) — same auth as concentus. */
+export interface AxServiceConfig {
+  baseUrl?: string;
+  username?: string;
+  password?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -270,6 +279,8 @@ export type WidgetConfigByType = {
   markets: MarketsConfig;
   releases: ReleasesConfig;
   customapi: CustomApiConfig;
+  axdnsd: AxServiceConfig;
+  axlbd: AxServiceConfig;
 };
 
 export type AnyWidgetConfig = Partial<
@@ -297,7 +308,8 @@ export type AnyWidgetConfig = Partial<
     PublicIPConfig &
     MarketsConfig &
     ReleasesConfig &
-    CustomApiConfig
+    CustomApiConfig &
+    AxServiceConfig
 >;
 
 export interface Widget {

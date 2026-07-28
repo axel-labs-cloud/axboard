@@ -1,0 +1,81 @@
+import { SkeletonLines } from "../../../../components/Skeleton";
+import type { AxServiceConfig, WidgetDefinition, WidgetProps } from "../types";
+import { useAxService, envelopeCount, envelopeItems } from "../ax/useAxService";
+import { AxConfigPanel } from "../ax/AxConfigPanel";
+
+// ---------------------------------------------------------------------------
+// AXDNSD widget — zones + health-check status from an axdnsd instance.
+// ---------------------------------------------------------------------------
+
+const PATHS = ["/api/v1/zones?limit=1", "/api/v1/health-checks?limit=200"];
+
+function isHealthy(hc: Record<string, unknown>): boolean {
+  const s = String(hc.status ?? hc.state ?? hc.last_status ?? "").toLowerCase();
+  return hc.healthy === true || ["healthy", "up", "passing", "ok"].includes(s);
+}
+
+function Stat({ label, value, tone = "text-text" }: { label: string; value: string; tone?: string }) {
+  return (
+    <div className="rounded-md bg-bg-card/40 px-3 py-2 min-w-0">
+      <div className="text-[10px] text-text-muted uppercase tracking-wider truncate">{label}</div>
+      <div className={`text-2xl font-mono tabular-nums leading-none mt-0.5 ${tone}`}>{value}</div>
+    </div>
+  );
+}
+
+function AxdnsdComponent({ config }: WidgetProps<AxServiceConfig>) {
+  const { data, error, loading } = useAxService(config?.baseUrl, config?.username, config?.password, PATHS);
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
+        {error}
+      </div>
+    );
+  }
+  if (loading) return <SkeletonLines rows={2} />;
+
+  const zones = envelopeCount(data[PATHS[0]]);
+  const hcs = envelopeItems(data[PATHS[1]]);
+  const hcUp = hcs.filter(isHealthy).length;
+  const hcTone = hcs.length === 0 ? "text-text" : hcUp === hcs.length ? "text-up" : "text-degraded";
+
+  return (
+    <div className="h-full flex flex-col justify-center gap-2 px-3 py-3">
+      <div className="grid grid-cols-2 gap-2">
+        <Stat label="Zones" value={String(zones)} />
+        <Stat
+          label="Health checks"
+          value={hcs.length ? `${hcUp}/${hcs.length}` : "—"}
+          tone={hcTone}
+        />
+      </div>
+    </div>
+  );
+}
+
+const DnsIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+    <circle cx="12" cy="12" r="10" />
+    <path d="M2 12h20M12 2a15 15 0 0 1 0 20a15 15 0 0 1 0-20z" />
+  </svg>
+);
+
+const definition: WidgetDefinition<AxServiceConfig> = {
+  type: "axdnsd",
+  title: "axdnsd",
+  icon: DnsIcon,
+  category: "infrastructure",
+  description: "Zones + health-check status from an axdnsd instance.",
+  minW: 2,
+  minH: 2,
+  maxW: 5,
+  maxH: 3,
+  defaultW: 3,
+  defaultH: 2,
+  defaultConfig: {},
+  Component: AxdnsdComponent,
+  ConfigPanel: AxConfigPanel,
+};
+
+export default definition;

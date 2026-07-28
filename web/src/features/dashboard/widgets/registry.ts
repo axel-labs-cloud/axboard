@@ -24,6 +24,8 @@ import publicip from "./publicip";
 import markets from "./markets";
 import releases from "./releases";
 import customapi from "./customapi";
+import axdnsd from "./axdnsd";
+import axlbd from "./axlbd";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -51,6 +53,8 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   markets,
   releases,
   customapi,
+  axdnsd,
+  axlbd,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {
