@@ -57,7 +57,8 @@ export interface HeaderDef {
   weatherLon?: number;
   links?: string[];
   hideSearch?: boolean;
-  hideBrand?: boolean;
+  hideLogo?: boolean;
+  hideName?: boolean;
   brandText?: string;
   brandLogo?: string;
   barFlush?: boolean;

@@ -13,6 +13,7 @@ import {
   type CustomTheme,
 } from "../../hooks/customThemes";
 import { loadWidgetStyle, saveWidgetStyle, type WidgetStyle } from "../../hooks/widgetStyle";
+import { FONT_OPTIONS, loadFont, saveFont } from "../../hooks/fontStyle";
 
 // ---------------------------------------------------------------------------
 // AppearancePanel — a right-side drawer (transparent scrim so the live
@@ -70,6 +71,32 @@ const RADIUS_PRESETS: { label: string; value: number }[] = [
   { label: "Rounded", value: 12 },
   { label: "Pill", value: 20 },
 ];
+
+function FontSection() {
+  const [font, setFont] = useState<string>(() => loadFont());
+  const pick = (id: string) => {
+    setFont(id);
+    saveFont(id);
+  };
+  return (
+    <Section title="Font">
+      <div className="grid grid-cols-3 gap-1.5">
+        {FONT_OPTIONS.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => pick(f.id)}
+            style={f.stack ? { fontFamily: f.stack } : undefined}
+            className={`px-2 py-2 rounded text-[12px] border transition-colors ${
+              font === f.id ? "bg-accent/15 border-accent text-accent" : "bg-bg-elevated border-border text-text-muted hover:text-text"
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+    </Section>
+  );
+}
 
 function WidgetStyleSection() {
   const [ws, setWs] = useState<WidgetStyle>(() => loadWidgetStyle());
@@ -205,6 +232,7 @@ function ThemesTab({ theme, setTheme }: { theme: string; setTheme: (t: string) =
         )}
       </Section>
 
+      <FontSection />
       <WidgetStyleSection />
     </div>
   );
@@ -380,23 +408,26 @@ export function AppearancePanel(props: Props) {
           {/* -------- Branding -------- */}
           <Section title="Branding">
             <div className="space-y-2.5">
-              <Check label="Hide logo & name" checked={!!hdr.hideBrand} onChange={(v) => patchHeader({ hideBrand: v })} />
-              {!hdr.hideBrand && (
-                <>
-                  <input value={hdr.brandText ?? ""} onChange={(e) => patchHeader({ brandText: e.target.value })} placeholder="axboard (custom name)" className="w-full px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text focus:outline-none focus:border-accent" />
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded border border-border-subtle bg-bg-elevated flex items-center justify-center overflow-hidden shrink-0">
-                      {hdr.brandLogo ? <img src={hdr.brandLogo} alt="" className="w-full h-full object-contain" /> : <span className="text-[9px] text-text-muted">logo</span>}
-                    </div>
-                    <label className={`px-3 py-1.5 text-[11px] rounded border border-border cursor-pointer ${logoBusy ? "opacity-50" : "text-text-secondary hover:text-text"}`}>
-                      {logoBusy ? "…" : hdr.brandLogo ? "Replace" : "Upload logo"}
-                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ""; }} />
-                    </label>
-                    {hdr.brandLogo && (
-                      <button onClick={() => patchHeader({ brandLogo: undefined })} className="text-[11px] text-text-muted hover:text-danger">Remove</button>
-                    )}
+              <div className="flex gap-4">
+                <Check label="Hide logo" checked={!!hdr.hideLogo} onChange={(v) => patchHeader({ hideLogo: v })} />
+                <Check label="Hide name" checked={!!hdr.hideName} onChange={(v) => patchHeader({ hideName: v })} />
+              </div>
+              {!hdr.hideName && (
+                <input value={hdr.brandText ?? ""} onChange={(e) => patchHeader({ brandText: e.target.value })} placeholder="axboard (custom name)" className="w-full px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text focus:outline-none focus:border-accent" />
+              )}
+              {!hdr.hideLogo && (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded border border-border-subtle bg-bg-elevated flex items-center justify-center overflow-hidden shrink-0">
+                    {hdr.brandLogo ? <img src={hdr.brandLogo} alt="" className="w-full h-full object-contain" /> : <span className="text-[9px] text-text-muted">logo</span>}
                   </div>
-                </>
+                  <label className={`px-3 py-1.5 text-[11px] rounded border border-border cursor-pointer ${logoBusy ? "opacity-50" : "text-text-secondary hover:text-text"}`}>
+                    {logoBusy ? "…" : hdr.brandLogo ? "Replace" : "Upload logo"}
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ""; }} />
+                  </label>
+                  {hdr.brandLogo && (
+                    <button onClick={() => patchHeader({ brandLogo: undefined })} className="text-[11px] text-text-muted hover:text-danger">Remove</button>
+                  )}
+                </div>
               )}
               <Check label="Show search bar" checked={!hdr.hideSearch} onChange={(v) => patchHeader({ hideSearch: !v })} />
             </div>

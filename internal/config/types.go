@@ -119,7 +119,8 @@ type Header struct {
 	WeatherLon  float64  `yaml:"weatherLon,omitempty" json:"weatherLon,omitempty"`
 	Links       []string `yaml:"links,omitempty" json:"links,omitempty"` // app ids shown as bookmark icons
 	HideSearch  bool     `yaml:"hideSearch,omitempty" json:"hideSearch,omitempty"`
-	HideBrand   bool     `yaml:"hideBrand,omitempty" json:"hideBrand,omitempty"`
+	HideLogo    bool     `yaml:"hideLogo,omitempty" json:"hideLogo,omitempty"`
+	HideName    bool     `yaml:"hideName,omitempty" json:"hideName,omitempty"`
 	BrandText   string   `yaml:"brandText,omitempty" json:"brandText,omitempty"`
 	BrandLogo   string   `yaml:"brandLogo,omitempty" json:"brandLogo,omitempty"` // custom logo image URL
 	BarFlush    bool     `yaml:"barFlush,omitempty" json:"barFlush,omitempty"`   // edge-to-edge top bar

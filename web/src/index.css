@@ -302,8 +302,16 @@
 .theme-terminal body,
 .theme-mono body,
 .theme-brutalist body {
-  font-family:
-    ui-monospace, "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: var(
+    --font-ui,
+    ui-monospace,
+    "JetBrains Mono",
+    "Fira Code",
+    "SFMono-Regular",
+    Menlo,
+    Consolas,
+    monospace
+  );
 }
 
 /* Themeable widget card surface. Driven by --widget-* custom props (set
@@ -336,7 +344,8 @@
     color: var(--color-text);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    font-family:
+    font-family: var(
+      --font-ui,
       ui-sans-serif,
       system-ui,
       -apple-system,
@@ -344,7 +353,8 @@
       Roboto,
       "Helvetica Neue",
       Arial,
-      sans-serif;
+      sans-serif
+    );
   }
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { DEFAULT_THEME, LEGACY_THEME } from "./themes";
 import { injectCustomThemes } from "./customThemes";
 import { applyWidgetStyle, loadWidgetStyle } from "./widgetStyle";
+import { applyFont, loadFont } from "./fontStyle";
 
 export type Theme = string;
 
@@ -20,6 +21,7 @@ export function useTheme(): [Theme, (t: Theme) => void] {
     // Make sure any saved custom-theme rules + widget style exist before paint.
     injectCustomThemes();
     applyWidgetStyle(loadWidgetStyle());
+    applyFont(loadFont());
     const stored = window.localStorage.getItem(STORAGE_KEY) ?? "";
     const migrated = LEGACY_THEME[stored] ?? stored;
     return migrated || DEFAULT_THEME;
