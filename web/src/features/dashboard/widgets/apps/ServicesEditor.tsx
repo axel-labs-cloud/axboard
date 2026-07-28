@@ -85,6 +85,7 @@ export function ServicesEditor({ open, onClose }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
   const [search, setSearch] = useState("");
+  const [groupFilter, setGroupFilter] = useState<string | null>(null); // null=all, "__none"=ungrouped
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [bulkText, setBulkText] = useState<string | null>(null);
   const [discoverOpen, setDiscoverOpen] = useState(false);
@@ -256,14 +257,17 @@ export function ServicesEditor({ open, onClose }: Props) {
   const selected = selectedKey !== null ? apps.find((a) => a._key === selectedKey) : null;
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return apps;
-    return apps.filter(
-      (a) =>
+    return apps.filter((a) => {
+      if (groupFilter === "__none" && a.group) return false;
+      if (groupFilter && groupFilter !== "__none" && a.group !== groupFilter) return false;
+      if (!q) return true;
+      return (
         a.name.toLowerCase().includes(q) ||
         a.url.toLowerCase().includes(q) ||
-        a.id.toLowerCase().includes(q),
-    );
-  }, [apps, search]);
+        a.id.toLowerCase().includes(q)
+      );
+    });
+  }, [apps, search, groupFilter]);
 
   if (!open) return null;
 
@@ -464,6 +468,23 @@ export function ServicesEditor({ open, onClose }: Props) {
           />
         )}
 
+        {/* Group filter chips */}
+        {groups.length > 0 && (
+          <div className="flex items-center gap-1.5 px-5 py-2 border-b border-border-subtle overflow-x-auto">
+            <FilterChip active={groupFilter === null} onClick={() => setGroupFilter(null)}>
+              All
+            </FilterChip>
+            {groups.map((g) => (
+              <FilterChip key={g.id} active={groupFilter === g.id} onClick={() => setGroupFilter(g.id)} color={g.color}>
+                {g.name}
+              </FilterChip>
+            ))}
+            <FilterChip active={groupFilter === "__none"} onClick={() => setGroupFilter("__none")}>
+              Ungrouped
+            </FilterChip>
+          </div>
+        )}
+
         {/* Card grid */}
         <div className="flex-1 overflow-auto p-5">
           {filtered.length === 0 ? (
@@ -500,8 +521,8 @@ export function ServicesEditor({ open, onClose }: Props) {
         {selected && (
           <>
             <div className="absolute inset-0 bg-black/30 z-20" onClick={() => setSelectedKey(null)} />
-            <div className="absolute inset-y-0 right-0 w-[420px] max-w-[92%] bg-bg-elevated border-l border-border shadow-2xl shadow-black/50 z-30 flex flex-col animate-slide-in-right">
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle bg-bg-card/40">
+            <div className="absolute top-3 right-3 w-[400px] max-w-[92%] max-h-[calc(100%-1.5rem)] bg-bg-elevated border border-border rounded-xl shadow-2xl shadow-black/50 z-30 flex flex-col animate-slide-in-right overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle bg-bg-card/40 shrink-0">
                 <span className="text-[13px] font-semibold text-text">Edit service</span>
                 <button
                   onClick={() => setSelectedKey(null)}
@@ -514,7 +535,7 @@ export function ServicesEditor({ open, onClose }: Props) {
                   </svg>
                 </button>
               </div>
-              <div className="flex-1 overflow-auto p-5">
+              <div className="flex-1 min-h-0 overflow-auto p-5">
                 <ServiceForm
                   app={selected}
                   groups={groups}
@@ -926,6 +947,32 @@ function ToolbarToggle({
           : "border-border text-text-secondary hover:text-text hover:border-text-muted"
       }`}
     >
+      {children}
+    </button>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  color,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  color?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] rounded-full border transition-colors ${
+        active
+          ? "border-accent/40 bg-accent/10 text-accent"
+          : "border-border-subtle text-text-muted hover:text-text-secondary hover:border-border"
+      }`}
+    >
+      {color && <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />}
       {children}
     </button>
   );
