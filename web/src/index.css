@@ -306,6 +306,22 @@
     ui-monospace, "JetBrains Mono", "Fira Code", "SFMono-Regular", Menlo, Consolas, monospace;
 }
 
+/* Themeable widget card surface. Driven by --widget-* custom props (set
+   globally by the Widget style controls) with fallbacks matching the previous
+   fixed look, so an unconfigured board is unchanged. */
+.widget-card {
+  background: color-mix(in srgb, var(--color-bg-card) var(--widget-opacity, 100%), transparent);
+  border-radius: var(--widget-radius, 0.5rem);
+  border-width: var(--widget-border-width, 1px);
+  border-style: solid;
+  /* border-color comes from the Tailwind border-* utility on the element
+     (selection highlight / hover), so it isn't set here. */
+}
+.widget-card--blur {
+  backdrop-filter: blur(var(--widget-blur, 0px));
+  -webkit-backdrop-filter: blur(var(--widget-blur, 0px));
+}
+
 @layer base {
   html,
   body,

@@ -132,19 +132,23 @@ export function DashboardTabBar({
       <div className="flex items-center gap-3 min-w-0">
         {!header?.hideBrand && (
           <div className="flex items-center gap-2 shrink-0 select-none">
-            <svg viewBox="0 0 64 64" className="w-5 h-5" aria-hidden>
-              <defs>
-                <linearGradient id="axboard-logo-g" x1="14" y1="48" x2="50" y2="16" gradientUnits="userSpaceOnUse">
-                  <stop offset="0" stopColor="#22d3ee" />
-                  <stop offset="0.5" stopColor="#6366f1" />
-                  <stop offset="1" stopColor="#ec4899" />
-                </linearGradient>
-              </defs>
-              <rect x="0.5" y="0.5" width="63" height="63" rx="14" fill="#13151f" stroke="rgba(255,255,255,0.07)" />
-              <circle cx="18" cy="44" r="6.2" fill="url(#axboard-logo-g)" />
-              <circle cx="32" cy="32" r="6.2" fill="url(#axboard-logo-g)" />
-              <circle cx="46" cy="20" r="6.2" fill="url(#axboard-logo-g)" />
-            </svg>
+            {header?.brandLogo ? (
+              <img src={header.brandLogo} alt="" className="w-5 h-5 rounded object-contain" />
+            ) : (
+              <svg viewBox="0 0 64 64" className="w-5 h-5" aria-hidden>
+                <defs>
+                  <linearGradient id="axboard-logo-g" x1="14" y1="48" x2="50" y2="16" gradientUnits="userSpaceOnUse">
+                    <stop offset="0" stopColor="#22d3ee" />
+                    <stop offset="0.5" stopColor="#6366f1" />
+                    <stop offset="1" stopColor="#ec4899" />
+                  </linearGradient>
+                </defs>
+                <rect x="0.5" y="0.5" width="63" height="63" rx="14" fill="#13151f" stroke="rgba(255,255,255,0.07)" />
+                <circle cx="18" cy="44" r="6.2" fill="url(#axboard-logo-g)" />
+                <circle cx="32" cy="32" r="6.2" fill="url(#axboard-logo-g)" />
+                <circle cx="46" cy="20" r="6.2" fill="url(#axboard-logo-g)" />
+              </svg>
+            )}
             <span className="text-[12px] font-semibold tracking-wide text-text">{header?.brandText || "axboard"}</span>
             <span className="w-px h-4 bg-border" />
           </div>

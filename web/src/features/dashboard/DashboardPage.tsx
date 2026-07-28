@@ -25,7 +25,7 @@ import { ConfigEditorModal } from "./ConfigEditorModal";
 import { TemplatePickerModal } from "./TemplatePickerModal";
 import type { DashboardTemplate } from "./templates";
 import type { BackgroundDef, HeaderDef } from "../../api/types";
-import { backgroundLayerStyle, isFlushBar } from "./appearance";
+import { backgroundLayerStyle } from "./appearance";
 import type {
   AnyWidgetConfig,
   DashboardLayout,
@@ -1102,8 +1102,9 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const bgBase = backgroundLayerStyle(activeBackground, "base");
   const bgDim = backgroundLayerStyle(activeBackground, "dim");
   const padN = kiosk ? 3 : density === "compact" ? 3 : density === "spacious" ? 8 : 6;
-  // Flush bar breaks out of the page padding to touch the window edges + top.
-  const flushBar = isFlushBar(activeBarStyle);
+  // Flush is a mode (independent of bar style): break out of the page padding
+  // to touch the window edges + top.
+  const flushBar = !!activeHeader?.barFlush;
   const flushWrap = flushBar
     ? padN === 3
       ? "-mx-3 -mt-3 mb-3"
@@ -1244,7 +1245,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
                 <div
                   key={widget.i}
                   onContextMenu={(e) => onWidgetContextMenu(widget.i, e)}
-                  className={`group/w relative rounded-lg border overflow-hidden bg-bg-card transition-[border-color,box-shadow] shadow-[0_1px_2px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.03)] ${
+                  className={`group/w widget-card widget-card--blur relative overflow-hidden transition-[border-color,box-shadow] shadow-[0_1px_2px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.03)] ${
                     selected
                       ? "border-accent ring-1 ring-accent/40"
                       : editing
@@ -1394,7 +1395,7 @@ function ResponsiveStack({
         return (
           <div
             key={widget.i}
-            className="rounded-lg border border-border-subtle bg-bg-card/80 backdrop-blur-sm overflow-hidden shadow-sm shadow-black/20"
+            className="widget-card widget-card--blur border-border-subtle overflow-hidden shadow-sm shadow-black/20"
             style={{ gridColumn: `span ${span}`, height: Math.max(120, h * 64) }}
           >
             <WidgetSurface

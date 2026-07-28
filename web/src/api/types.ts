@@ -59,6 +59,8 @@ export interface HeaderDef {
   hideSearch?: boolean;
   hideBrand?: boolean;
   brandText?: string;
+  brandLogo?: string;
+  barFlush?: boolean;
 }
 
 export interface DashboardDef {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DEFAULT_THEME, LEGACY_THEME } from "./themes";
 import { injectCustomThemes } from "./customThemes";
+import { applyWidgetStyle, loadWidgetStyle } from "./widgetStyle";
 
 export type Theme = string;
 
@@ -16,8 +17,9 @@ const STORAGE_KEY = "axboard-theme";
 export function useTheme(): [Theme, (t: Theme) => void] {
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === "undefined") return DEFAULT_THEME;
-    // Make sure any saved custom-theme rules exist before we apply the class.
+    // Make sure any saved custom-theme rules + widget style exist before paint.
     injectCustomThemes();
+    applyWidgetStyle(loadWidgetStyle());
     const stored = window.localStorage.getItem(STORAGE_KEY) ?? "";
     const migrated = LEGACY_THEME[stored] ?? stored;
     return migrated || DEFAULT_THEME;

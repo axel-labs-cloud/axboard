@@ -24,15 +24,7 @@ export const BAR_STYLES: { id: string; label: string; className: string }[] = [
   { id: "solid", label: "Solid", className: "bg-bg-card border-b border-border" },
   { id: "contrast", label: "Contrast", className: "bg-black/45 backdrop-blur-md border-b border-white/10" },
   { id: "transparent", label: "Transparent", className: "bg-transparent" },
-  // Flush = full-bleed: sits at the very top, touching the window edges (the
-  // page cancels its padding around it — see DashboardPage flush handling).
-  { id: "flush", label: "Flush (edge)", className: "bg-bg-card border-b border-border" },
 ];
-
-/** True for the full-bleed bar that should break out of the page padding. */
-export function isFlushBar(id: string | undefined): boolean {
-  return id === "flush";
-}
 
 export function barStyleClass(id: string | undefined): string {
   return (BAR_STYLES.find((s) => s.id === id) ?? BAR_STYLES[0]).className;

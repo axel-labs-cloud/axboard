@@ -12,6 +12,7 @@ import {
   saveCustomThemes,
   type CustomTheme,
 } from "../../hooks/customThemes";
+import { loadWidgetStyle, saveWidgetStyle, type WidgetStyle } from "../../hooks/widgetStyle";
 
 // ---------------------------------------------------------------------------
 // AppearancePanel — a right-side drawer (transparent scrim so the live
@@ -60,6 +61,47 @@ function Check({ label, checked, onChange }: { label: string; checked: boolean; 
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-accent" />
       {label}
     </label>
+  );
+}
+
+const RADIUS_PRESETS: { label: string; value: number }[] = [
+  { label: "Square", value: 0 },
+  { label: "Soft", value: 6 },
+  { label: "Rounded", value: 12 },
+  { label: "Pill", value: 20 },
+];
+
+function WidgetStyleSection() {
+  const [ws, setWs] = useState<WidgetStyle>(() => loadWidgetStyle());
+  const update = (p: Partial<WidgetStyle>) => {
+    const next = { ...ws, ...p };
+    setWs(next);
+    saveWidgetStyle(next); // applies + persists immediately (live preview)
+  };
+  return (
+    <Section title="Widget style">
+      <div className="space-y-3">
+        <div>
+          <Label>Opacity · {ws.opacity}%</Label>
+          <input type="range" min={20} max={100} value={ws.opacity} onChange={(e) => update({ opacity: Number(e.target.value) })} className="w-full accent-accent" />
+        </div>
+        <div>
+          <Label>Backdrop blur · {ws.blur}px</Label>
+          <input type="range" min={0} max={24} value={ws.blur} onChange={(e) => update({ blur: Number(e.target.value) })} className="w-full accent-accent" />
+        </div>
+        <div>
+          <Label>Corners</Label>
+          <div className="grid grid-cols-4 gap-1.5">
+            {RADIUS_PRESETS.map((r) => (
+              <button key={r.value} onClick={() => update({ radius: r.value })} className={`px-2 py-1.5 text-[11px] border transition-colors ${ws.radius === r.value ? "bg-accent/15 border-accent text-accent" : "bg-bg-elevated border-border text-text-muted hover:text-text"}`} style={{ borderRadius: Math.min(r.value, 8) }}>
+                {r.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Check label="Show widget border" checked={ws.border} onChange={(v) => update({ border: v })} />
+      </div>
+    </Section>
   );
 }
 
@@ -162,6 +204,8 @@ function ThemesTab({ theme, setTheme }: { theme: string; setTheme: (t: string) =
           </button>
         )}
       </Section>
+
+      <WidgetStyleSection />
     </div>
   );
 }
@@ -193,6 +237,17 @@ export function AppearancePanel(props: Props) {
       alert(`Upload failed: ${e instanceof Error ? e.message : e}`);
     } finally {
       setUploading(false);
+    }
+  };
+  const [logoBusy, setLogoBusy] = useState(false);
+  const uploadLogo = async (file: File) => {
+    setLogoBusy(true);
+    try {
+      patchHeader({ brandLogo: await api.uploadIcon(file) });
+    } catch (e) {
+      alert(`Upload failed: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setLogoBusy(false);
     }
   };
 
@@ -281,7 +336,17 @@ export function AppearancePanel(props: Props) {
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBg(f); e.target.value = ""; }} />
                   </label>
                 </div>
-                {bg.image && <div className="h-16 rounded border border-border-subtle bg-cover bg-center" style={{ backgroundImage: `url("${bg.image}")` }} />}
+                {bg.image && (
+                  <div className="relative h-16 rounded border border-border-subtle bg-cover bg-center" style={{ backgroundImage: `url("${bg.image}")` }}>
+                    <button
+                      onClick={() => patchBg({ image: undefined })}
+                      title="Remove image"
+                      className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center rounded bg-black/60 text-white/90 hover:bg-black/80 text-sm leading-none"
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
                 <div>
                   <Label>Blur · {bg.blur ?? 0}px</Label>
                   <input type="range" min={0} max={20} value={bg.blur ?? 0} onChange={(e) => patchBg({ blur: Number(e.target.value) })} className="w-full accent-accent" />
@@ -306,14 +371,32 @@ export function AppearancePanel(props: Props) {
                 );
               })}
             </div>
+            <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer mt-2.5">
+              <input type="checkbox" checked={!!hdr.barFlush} onChange={(e) => patchHeader({ barFlush: e.target.checked })} className="accent-accent" />
+              Flush (edge-to-edge)
+            </label>
           </Section>
 
           {/* -------- Branding -------- */}
           <Section title="Branding">
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               <Check label="Hide logo & name" checked={!!hdr.hideBrand} onChange={(v) => patchHeader({ hideBrand: v })} />
               {!hdr.hideBrand && (
-                <input value={hdr.brandText ?? ""} onChange={(e) => patchHeader({ brandText: e.target.value })} placeholder="axboard (custom name)" className="w-full px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text focus:outline-none focus:border-accent" />
+                <>
+                  <input value={hdr.brandText ?? ""} onChange={(e) => patchHeader({ brandText: e.target.value })} placeholder="axboard (custom name)" className="w-full px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text focus:outline-none focus:border-accent" />
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded border border-border-subtle bg-bg-elevated flex items-center justify-center overflow-hidden shrink-0">
+                      {hdr.brandLogo ? <img src={hdr.brandLogo} alt="" className="w-full h-full object-contain" /> : <span className="text-[9px] text-text-muted">logo</span>}
+                    </div>
+                    <label className={`px-3 py-1.5 text-[11px] rounded border border-border cursor-pointer ${logoBusy ? "opacity-50" : "text-text-secondary hover:text-text"}`}>
+                      {logoBusy ? "…" : hdr.brandLogo ? "Replace" : "Upload logo"}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); e.target.value = ""; }} />
+                    </label>
+                    {hdr.brandLogo && (
+                      <button onClick={() => patchHeader({ brandLogo: undefined })} className="text-[11px] text-text-muted hover:text-danger">Remove</button>
+                    )}
+                  </div>
+                </>
               )}
               <Check label="Show search bar" checked={!hdr.hideSearch} onChange={(v) => patchHeader({ hideSearch: !v })} />
             </div>
