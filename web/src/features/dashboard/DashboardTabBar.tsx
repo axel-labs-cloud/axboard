@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { THEMES } from "../../hooks/themes";
 import type { AppDef, BackgroundDef, HeaderDef } from "../../api/types";
 import { barStyleClass } from "./appearance";
 import { HeaderWidgets } from "./HeaderWidgets";
@@ -409,27 +408,7 @@ export function DashboardTabBar({
                     ))}
                   </div>
                 </div>
-                <div className="px-3 py-1.5">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-2">Theme</div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {THEMES.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => setTheme(t.id)}
-                        title={t.label}
-                        className={`flex flex-col items-center gap-1 rounded-md p-1.5 border transition-colors ${
-                          theme === t.id ? "border-accent/50 bg-accent/10" : "border-border-subtle hover:border-border hover:bg-bg-hover"
-                        }`}
-                      >
-                        <span className="w-full h-6 rounded flex items-center justify-end px-1 ring-1 ring-black/20" style={{ background: t.bg }}>
-                          <span className="w-2.5 h-2.5 rounded-full" style={{ background: t.accent }} />
-                          <span className="w-2.5 h-4 rounded-sm ml-0.5" style={{ background: t.surface }} />
-                        </span>
-                        <span className="text-[10px] text-text-secondary truncate max-w-full">{t.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <MenuItem label="Themes & appearance…" onClick={() => { setMenuOpen(false); setAppearanceOpen(true); }} />
               </MenuGroup>
             </div>,
             document.body,
@@ -446,6 +425,8 @@ export function DashboardTabBar({
         header={header}
         onSetHeader={onSetHeader}
         apps={apps}
+        theme={theme}
+        setTheme={setTheme}
       />
     </div>
   );

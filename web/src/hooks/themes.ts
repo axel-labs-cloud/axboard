@@ -22,6 +22,7 @@ export const THEMES: ThemeMeta[] = [
   { id: "gruvbox", label: "Gruvbox", dark: true, bg: "#1d2021", surface: "#3c3836", accent: "#fabd2f" },
   { id: "rosepine", label: "Rosé Pine", dark: true, bg: "#191724", surface: "#26233a", accent: "#c4a7e7" },
   { id: "solarized", label: "Solarized", dark: true, bg: "#002b36", surface: "#073642", accent: "#268bd2" },
+  { id: "cyber", label: "Cyber", dark: true, bg: "#05060d", surface: "#0a0e1a", accent: "#00e5ff" },
   { id: "paper", label: "Paper", dark: false, bg: "#f5f3ee", surface: "#fffdf8", accent: "#b45309" },
   // Square-cornered / structurally distinct styles (also switch to a mono UI font).
   { id: "terminal", label: "Terminal", dark: true, bg: "#08120a", surface: "#122415", accent: "#22c55e" },

@@ -4,6 +4,14 @@ import type { AppDef, BackgroundDef, HeaderDef } from "../../api/types";
 import { api } from "../../api/client";
 import { SimpleIcon } from "./SimpleIcon";
 import { BAR_STYLES, GRADIENT_PRESETS } from "./appearance";
+import { THEMES } from "../../hooks/themes";
+import {
+  CUSTOM_VARS,
+  DEFAULT_CUSTOM_VARS,
+  loadCustomThemes,
+  saveCustomThemes,
+  type CustomTheme,
+} from "../../hooks/customThemes";
 
 // ---------------------------------------------------------------------------
 // AppearancePanel — a right-side drawer (transparent scrim so the live
@@ -22,6 +30,8 @@ interface Props {
   header?: HeaderDef;
   onSetHeader: (header: HeaderDef | undefined) => void;
   apps: AppDef[];
+  theme: string;
+  setTheme: (t: string) => void;
 }
 
 const BG_TYPES: { id: BackgroundDef["type"] | "none"; label: string }[] = [
@@ -53,8 +63,112 @@ function Check({ label, checked, onChange }: { label: string; checked: boolean; 
   );
 }
 
+function ThemesTab({ theme, setTheme }: { theme: string; setTheme: (t: string) => void }) {
+  const [customs, setCustoms] = useState<CustomTheme[]>(() => loadCustomThemes());
+  const [draft, setDraft] = useState<CustomTheme | null>(null);
+
+  const persist = (next: CustomTheme[]) => {
+    setCustoms(next);
+    saveCustomThemes(next);
+  };
+  const startNew = () =>
+    setDraft({ id: `custom-${Date.now().toString(36)}`, label: "My theme", vars: { ...DEFAULT_CUSTOM_VARS } });
+  const startEdit = (t: CustomTheme) => setDraft({ ...t, vars: { ...DEFAULT_CUSTOM_VARS, ...t.vars } });
+  const saveDraft = () => {
+    if (!draft) return;
+    const exists = customs.some((c) => c.id === draft.id);
+    persist(exists ? customs.map((c) => (c.id === draft.id ? draft : c)) : [...customs, draft]);
+    setTheme(draft.id); // apply immediately
+    setDraft(null);
+  };
+  const remove = (id: string) => {
+    persist(customs.filter((c) => c.id !== id));
+    if (theme === id) setTheme("midnight");
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <Section title="Built-in themes">
+        <div className="grid grid-cols-3 gap-1.5">
+          {THEMES.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTheme(t.id)}
+              title={t.label}
+              className={`flex flex-col items-center gap-1 rounded-md p-1.5 border transition-colors ${
+                theme === t.id ? "border-accent/50 bg-accent/10" : "border-border-subtle hover:border-border hover:bg-bg-hover"
+              }`}
+            >
+              <span className="w-full h-6 rounded flex items-center justify-end px-1 ring-1 ring-black/20" style={{ background: t.bg }}>
+                <span className="w-2.5 h-2.5 rounded-full" style={{ background: t.accent }} />
+                <span className="w-2.5 h-4 rounded-sm ml-0.5" style={{ background: t.surface }} />
+              </span>
+              <span className="text-[10px] text-text-secondary truncate max-w-full">{t.label}</span>
+            </button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Custom themes">
+        {customs.length > 0 && (
+          <div className="grid grid-cols-3 gap-1.5 mb-2">
+            {customs.map((t) => (
+              <div key={t.id} className={`relative rounded-md p-1.5 border ${theme === t.id ? "border-accent/50 bg-accent/10" : "border-border-subtle"}`}>
+                <button onClick={() => setTheme(t.id)} title={t.label} className="w-full flex flex-col items-center gap-1">
+                  <span className="w-full h-6 rounded flex items-center justify-end px-1 ring-1 ring-black/20" style={{ background: t.vars["--color-bg"] }}>
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: t.vars["--color-accent"] }} />
+                    <span className="w-2.5 h-4 rounded-sm ml-0.5" style={{ background: t.vars["--color-bg-card"] }} />
+                  </span>
+                  <span className="text-[10px] text-text-secondary truncate max-w-full">{t.label}</span>
+                </button>
+                <div className="flex justify-center gap-2 mt-1">
+                  <button onClick={() => startEdit(t)} className="text-[10px] text-text-muted hover:text-text">edit</button>
+                  <button onClick={() => remove(t.id)} className="text-[10px] text-text-muted hover:text-danger">delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {draft ? (
+          <div className="rounded-lg border border-border p-3 space-y-3 bg-bg-elevated/40">
+            <input
+              value={draft.label}
+              onChange={(e) => setDraft({ ...draft, label: e.target.value })}
+              placeholder="Theme name"
+              className="w-full px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text focus:outline-none focus:border-accent"
+            />
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+              {CUSTOM_VARS.map((v) => (
+                <label key={v.key} className="flex items-center gap-2 text-[11px] text-text-secondary">
+                  <input
+                    type="color"
+                    value={draft.vars[v.key] ?? "#000000"}
+                    onChange={(e) => setDraft({ ...draft, vars: { ...draft.vars, [v.key]: e.target.value } })}
+                    className="w-6 h-6 rounded bg-transparent border border-border cursor-pointer shrink-0"
+                  />
+                  <span className="truncate">{v.label}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={saveDraft} className="flex-1 px-2 py-1.5 rounded bg-accent/15 border border-accent text-accent text-[12px]">Save & apply</button>
+              <button onClick={() => setDraft(null)} className="px-3 py-1.5 rounded border border-border text-text-muted hover:text-text text-[12px]">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <button onClick={startNew} className="w-full px-2 py-2 rounded border border-dashed border-border text-text-muted hover:text-text hover:border-text-muted text-[12px] transition-colors">
+            + New custom theme
+          </button>
+        )}
+      </Section>
+    </div>
+  );
+}
+
 export function AppearancePanel(props: Props) {
-  const { open, onClose, background, onSetBackground, barStyle, onSetBarStyle, header, onSetHeader, apps } = props;
+  const { open, onClose, background, onSetBackground, barStyle, onSetBarStyle, header, onSetHeader, apps, theme, setTheme } = props;
+  const [tab, setTab] = useState<"dashboard" | "themes">("dashboard");
   const bg = background ?? {};
   const type = bg.type ?? "none";
   const hdr = header ?? {};
@@ -98,12 +212,29 @@ export function AppearancePanel(props: Props) {
       }}
     >
       <div className="absolute right-0 top-0 h-full w-[360px] max-w-[92vw] bg-bg-card/95 backdrop-blur-sm border-l border-border shadow-2xl overflow-auto flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle sticky top-0 bg-bg-card/95 z-10">
-          <h2 className="text-[14px] font-semibold text-text">Appearance</h2>
-          <button onClick={onClose} className="text-text-muted hover:text-text text-lg leading-none px-1">×</button>
+        <div className="sticky top-0 bg-bg-card/95 z-10 border-b border-border-subtle">
+          <div className="flex items-center justify-between px-4 py-3">
+            <h2 className="text-[14px] font-semibold text-text">Appearance</h2>
+            <button onClick={onClose} className="text-text-muted hover:text-text text-lg leading-none px-1">×</button>
+          </div>
+          <div className="flex px-2 gap-1">
+            {(["dashboard", "themes"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-3 py-1.5 text-[12px] rounded-t border-b-2 -mb-px transition-colors capitalize ${
+                  tab === t ? "border-accent text-accent" : "border-transparent text-text-muted hover:text-text"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="p-4 space-y-4">
+        {tab === "themes" && <ThemesTab theme={theme} setTheme={setTheme} />}
+
+        <div className={`p-4 space-y-4 ${tab === "dashboard" ? "" : "hidden"}`}>
           {/* -------- Background -------- */}
           <Section title="Background">
             <div className="flex gap-1 mb-3">
