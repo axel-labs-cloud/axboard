@@ -1,9 +1,17 @@
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import { api } from "../../api/client";
 import type { Config } from "../../api/types";
 import { listWidgetDefinitions } from "./widgets/registry";
 import type { WidgetType } from "./widgets/types";
+
+const CATEGORY_LABELS: Record<string, string> = {
+  system: "System",
+  infrastructure: "Infrastructure",
+  productivity: "Productivity",
+  external: "External",
+};
 
 interface Props {
   open: boolean;
@@ -15,6 +23,8 @@ interface Props {
 export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props) {
   const qc = useQueryClient();
   const cached = qc.getQueryData<Config>(["config"]);
+  const [cat, setCat] = useState<string>("all");
+  const [q, setQ] = useState("");
 
   const add = useMutation({
     mutationFn: async (type: WidgetType) => {
@@ -55,6 +65,13 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
   if (!open) return null;
 
   const defs = listWidgetDefinitions();
+  const categories = ["all", ...Array.from(new Set(defs.map((d) => d.category)))];
+  const term = q.trim().toLowerCase();
+  const filtered = defs.filter((d) => {
+    if (cat !== "all" && d.category !== cat) return false;
+    if (term && !`${d.title} ${d.description}`.toLowerCase().includes(term)) return false;
+    return true;
+  });
 
   return createPortal(
     <div
@@ -62,37 +79,55 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
       onClick={onClose}
     >
       <div
-        className="animate-pop-in bg-bg-elevated border border-border rounded-lg shadow-2xl w-full max-w-2xl ring-1 ring-white/5"
+        className="animate-pop-in bg-bg-elevated border border-border rounded-lg shadow-2xl w-full max-w-4xl max-h-[85vh] flex flex-col ring-1 ring-white/5"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle shrink-0">
           <span className="text-[13px] font-semibold text-text">Add widget</span>
           <button
             onClick={onClose}
             className="text-text-muted hover:text-text w-6 h-6 flex items-center justify-center"
           >
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-4 h-4"
-            >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
 
-        <div className="p-4 grid grid-cols-2 gap-2.5">
-          {defs.map((def) => (
+        {/* Filter row: category tabs + search */}
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border-subtle shrink-0 flex-wrap">
+          <div className="flex gap-1 flex-wrap">
+            {categories.map((c) => (
+              <button
+                key={c}
+                onClick={() => setCat(c)}
+                className={`px-2.5 py-1 rounded text-[11px] border transition-colors capitalize ${
+                  cat === c ? "bg-accent/15 border-accent text-accent" : "bg-bg-card/40 border-border-subtle text-text-muted hover:text-text"
+                }`}
+              >
+                {c === "all" ? "All" : CATEGORY_LABELS[c] ?? c}
+              </button>
+            ))}
+          </div>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search widgets…"
+            className="ml-auto flex-1 min-w-[140px] max-w-[220px] px-2.5 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
+          />
+        </div>
+
+        <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-2.5 overflow-y-auto">
+          {filtered.length === 0 && (
+            <div className="col-span-full text-center text-[12px] text-text-muted py-8">No widgets match.</div>
+          )}
+          {filtered.map((def) => (
             <button
               key={def.type}
               onClick={() => add.mutate(def.type)}
               disabled={add.isPending || !dashboardId}
-              className="text-left flex items-start gap-3 p-3 rounded border border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="text-left flex items-start gap-3 p-3 rounded-lg border border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">
                 {def.icon}
@@ -108,12 +143,12 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
         </div>
 
         {add.isError && (
-          <div className="px-4 py-2 bg-rose-950/40 border-t border-rose-700/40 text-[11px] text-rose-200">
+          <div className="px-4 py-2 bg-rose-950/40 border-t border-rose-700/40 text-[11px] text-rose-200 shrink-0">
             {(add.error as Error).message}
           </div>
         )}
 
-        <div className="px-4 py-2.5 border-t border-border-subtle text-[10.5px] text-text-muted">
+        <div className="px-4 py-2.5 border-t border-border-subtle text-[10.5px] text-text-muted shrink-0">
           Adds an instance to the current dashboard. Writes{" "}
           <span className="font-mono text-text-secondary">config.yaml</span> — comments and
           formatting will be lost on save.

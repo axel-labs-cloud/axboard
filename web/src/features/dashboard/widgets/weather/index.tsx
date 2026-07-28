@@ -192,16 +192,18 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
     const nowMs = Date.now();
     let start = hr.time.findIndex((t) => new Date(t).getTime() >= nowMs - 30 * 60_000);
     if (start < 0) start = 0;
-    const slice = hr.time.slice(start, start + 12);
+    // Fit the hours to the widget width instead of scrolling.
+    const count = veryWide ? 12 : wide ? 8 : 5;
+    const slice = hr.time.slice(start, start + count);
     return (
-      <div className="shrink-0 flex gap-1.5 overflow-x-auto pb-0.5">
+      <div className="shrink-0 flex gap-1">
         {slice.map((t, k) => {
           const idx = start + k;
           const H = wmoIcon(hr.weather_code[idx], true).Icon;
           const hour = new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", hour12: false }).slice(0, 2);
           return (
-            <div key={t} className="shrink-0 w-11 flex flex-col items-center gap-0.5 rounded-md bg-bg-card/40 px-1 py-1.5">
-              <span className="text-[10px] text-text-muted tabular-nums">{k === 0 ? "now" : `${hour}h`}</span>
+            <div key={t} className="flex-1 min-w-0 flex flex-col items-center gap-0.5 rounded-md bg-bg-card/40 px-0.5 py-1.5">
+              <span className="text-[9.5px] text-text-muted tabular-nums">{k === 0 ? "now" : `${hour}h`}</span>
               <div className="w-5 h-5"><H className="w-full h-full" /></div>
               <span className="text-[11px] font-mono tabular-nums text-text">{Math.round(hr.temperature_2m[idx])}°</span>
             </div>

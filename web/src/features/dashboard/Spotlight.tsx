@@ -86,7 +86,7 @@ export function Spotlight({ open, onClose, actions = [] }: Props) {
       })
       .filter(({ s }) => s > 0)
       .sort((x, y) => y.s - x.s);
-    return scored.slice(0, 8).map<Result>(({ a }) => ({
+    return scored.slice(0, q ? 8 : 24).map<Result>(({ a }) => ({
       kind: "app",
       label: a.name,
       subtitle: a.description,
@@ -151,29 +151,33 @@ export function Spotlight({ open, onClose, actions = [] }: Props) {
   }, [query]);
 
   // Command actions (theme, add widget, jump dashboard…) — matched by label.
+  // With an empty query we surface the top commands so the palette isn't bare.
   const actionResults = useMemo<Result[]>(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return [];
-    return actions
-      .map((a) => ({ a, s: score(a.label, q) }))
-      .filter(({ s }) => s > 0)
-      .sort((x, y) => y.s - x.s)
-      .slice(0, 8)
-      .map<Result>(({ a }) => ({
-        kind: "action",
-        label: a.label,
-        subtitle: a.subtitle,
-        run: a.run,
-      }));
+    const list = q
+      ? actions
+          .map((a) => ({ a, s: score(a.label, q) }))
+          .filter(({ s }) => s > 0)
+          .sort((x, y) => y.s - x.s)
+          .map(({ a }) => a)
+      : actions;
+    return list.slice(0, q ? 8 : 12).map<Result>((a) => ({
+      kind: "action",
+      label: a.label,
+      subtitle: a.subtitle,
+      run: a.run,
+    }));
   }, [actions, query]);
 
   const results = useMemo(() => {
-    const m = query.trim().match(/^!?([a-z]+)\s+.+$/i);
+    const q = query.trim();
+    const m = q.match(/^!?([a-z]+)\s+.+$/i);
     const bangActive = !!m && !!BANGS[m[1].toLowerCase()];
     // With an explicit bang, the engine jump is the intent → put it first.
-    return bangActive
-      ? [...engineResults, ...actionResults, ...appResults, ...bookmarkResults]
-      : [...actionResults, ...appResults, ...bookmarkResults, ...engineResults];
+    if (bangActive) return [...engineResults, ...actionResults, ...appResults, ...bookmarkResults];
+    // Empty query: apps first (primary launch targets), then commands.
+    if (!q) return [...appResults, ...actionResults];
+    return [...actionResults, ...appResults, ...bookmarkResults, ...engineResults];
   }, [query, actionResults, appResults, bookmarkResults, engineResults]);
 
   useEffect(() => setSelected(0), [query]);

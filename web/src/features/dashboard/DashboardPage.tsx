@@ -1059,6 +1059,15 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const activeBarStyle = fullConfig?.topBar?.barStyle;
   const activeHeader = fullConfig?.topBar?.header;
 
+  // Apply the active dashboard's accent to the document root so it overrides
+  // the theme's --color-accent everywhere — including portalled UI (drawer,
+  // modals, spotlight), which the page-root style wouldn't reach.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (activeAccent) root.style.setProperty("--color-accent", activeAccent);
+    else root.style.removeProperty("--color-accent");
+  }, [activeAccent]);
+
   // Arrow keys nudge the selected widget by one grid cell in edit mode.
   useEffect(() => {
     if (!editing) return;
