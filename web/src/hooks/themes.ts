@@ -23,9 +23,10 @@ export const THEMES: ThemeMeta[] = [
   { id: "rosepine", label: "Rosé Pine", dark: true, bg: "#191724", surface: "#26233a", accent: "#c4a7e7" },
   { id: "solarized", label: "Solarized", dark: true, bg: "#002b36", surface: "#073642", accent: "#268bd2" },
   { id: "paper", label: "Paper", dark: false, bg: "#f5f3ee", surface: "#fffdf8", accent: "#b45309" },
-  // Square-cornered / structurally distinct styles.
+  // Square-cornered / structurally distinct styles (also switch to a mono UI font).
   { id: "terminal", label: "Terminal", dark: true, bg: "#08120a", surface: "#122415", accent: "#22c55e" },
   { id: "mono", label: "Mono", dark: true, bg: "#0a0a0a", surface: "#1c1c1c", accent: "#a3a3a3" },
+  { id: "brutalist", label: "Brutalist", dark: true, bg: "#0a0a0a", surface: "#161616", accent: "#facc15" },
 ];
 
 export const THEME_IDS = THEMES.map((t) => t.id);
