@@ -517,11 +517,16 @@ export function ServicesEditor({ open, onClose }: Props) {
           )}
         </div>
 
-        {/* Slide-over editor */}
+        {/* Centered editor dialog */}
         {selected && (
-          <>
-            <div className="absolute inset-0 bg-black/30 z-20" onClick={() => setSelectedKey(null)} />
-            <div className="absolute top-3 right-3 w-[400px] max-w-[92%] max-h-[calc(100%-1.5rem)] bg-bg-elevated border border-border rounded-xl shadow-2xl shadow-black/50 z-30 flex flex-col animate-slide-in-right overflow-hidden">
+          <div
+            className="absolute inset-0 z-20 bg-black/45 flex items-center justify-center p-6"
+            onClick={() => setSelectedKey(null)}
+          >
+            <div
+              className="w-[460px] max-w-full max-h-full bg-bg-elevated border border-border rounded-xl shadow-2xl shadow-black/50 flex flex-col animate-pop-in overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle bg-bg-card/40 shrink-0">
                 <span className="text-[13px] font-semibold text-text">Edit service</span>
                 <button
@@ -544,7 +549,7 @@ export function ServicesEditor({ open, onClose }: Props) {
                 />
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
 
@@ -619,25 +624,25 @@ function ServiceForm({
   const healthType = (app.health?.type ?? "none") as HealthType;
 
   return (
-    <div className="space-y-4 max-w-xl">
-      <div className="flex items-center gap-3">
+    <div className="space-y-4">
+      <div className="flex items-end gap-3">
         <button
           onClick={onPickIcon}
-          className="w-14 h-14 rounded-md border border-border-subtle bg-bg-card/40 flex items-center justify-center hover:border-accent/40 transition-colors group/icon"
+          className="w-11 h-11 shrink-0 rounded-md border border-border-subtle bg-bg-card/40 flex items-center justify-center overflow-hidden hover:border-accent/40 transition-colors"
           title="Change icon"
         >
           {app.icon ? (
             <SimpleIcon slug={app.icon} fill />
           ) : (
             <div
-              className="w-10 h-10 rounded-sm text-[11px] font-semibold flex items-center justify-center text-text"
+              className="w-full h-full text-[11px] font-semibold flex items-center justify-center text-text"
               style={{ background: hashColor(app.name || "?") }}
             >
               {(app.name.slice(0, 2) || "??").toUpperCase()}
             </div>
           )}
         </button>
-        <div className="flex-1 min-w-0 space-y-1">
+        <div className="flex-1 min-w-0">
           <Field label="Name">
             <input
               value={app.name}
@@ -658,7 +663,7 @@ function ServiceForm({
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="ID" hint="stable; used in layouts. Lowercase, kebab-case.">
+        <Field label="ID" hint="lowercase, stable">
           <input
             value={app.id}
             onChange={(e) => onPatch({ id: slugify(e.target.value) || e.target.value })}
@@ -690,7 +695,7 @@ function ServiceForm({
         />
       </Field>
 
-      <Field label="Icon" hint="simple-icons (si:), selfh.st (sh:), URL, or empty for initials.">
+      <Field label="Icon" hint="si: · sh: · URL · or Upload">
         <div className="flex gap-2">
           <input
             value={app.icon ?? ""}

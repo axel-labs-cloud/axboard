@@ -164,10 +164,24 @@ function CalendarComponent({ config, w, h }: WidgetProps<CalendarConfig>) {
     },
   });
 
+  // Month view renders the calendar grid even without a feed — the dots (events)
+  // are a bonus that appear once an iCal URL is set.
+  if (view === "month") {
+    if (w < 3 || h < 3) {
+      return (
+        <div className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
+          Month view needs at least a 3×3 widget.
+        </div>
+      );
+    }
+    return <MonthView events={data ?? []} offset={monthOffset} onOffset={setMonthOffset} />;
+  }
+
+  // Agenda view needs a feed.
   if (!url) {
     return (
       <div className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
-        Set an iCal (.ics) URL in config.
+        Set an iCal (.ics) URL in config, or switch to month view.
       </div>
     );
   }
@@ -180,10 +194,6 @@ function CalendarComponent({ config, w, h }: WidgetProps<CalendarConfig>) {
         {(error as Error)?.message ?? "Could not load calendar."}
       </div>
     );
-  }
-
-  if (view === "month" && w >= 3 && h >= 3) {
-    return <MonthView events={data} offset={monthOffset} onOffset={setMonthOffset} />;
   }
 
   const now = new Date();
