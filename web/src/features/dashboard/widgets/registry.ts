@@ -19,6 +19,11 @@ import sun from "./sun";
 import pomodoro from "./pomodoro";
 import search from "./search";
 import section from "./section";
+import monitor from "./monitor";
+import publicip from "./publicip";
+import markets from "./markets";
+import releases from "./releases";
+import customapi from "./customapi";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -41,6 +46,11 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   pomodoro,
   search,
   section,
+  monitor,
+  publicip,
+  markets,
+  releases,
+  customapi,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

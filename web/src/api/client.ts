@@ -68,6 +68,14 @@ export const api = {
   getContainers: () =>
     fetch("/api/containers").then(jsonOk<{ containers: ContainerInfo[]; error?: string }>),
   getHost: () => fetch("/api/host").then(jsonOk<HostStats>),
+  ping: (url: string) =>
+    fetch(`/api/ping?url=${encodeURIComponent(url)}`).then(
+      jsonOk<{ ok: boolean; status?: number; ms?: number; error?: string }>,
+    ),
+  getPublicIp: () =>
+    fetch("/api/publicip").then(
+      jsonOk<{ ip?: string; city?: string; country?: string; isp?: string; org?: string }>,
+    ),
   forceCheck: (id: string) =>
     fetch(`/api/apps/${encodeURIComponent(id)}/check`, { method: "POST" }).then(
       jsonOk<{ status: string }>,

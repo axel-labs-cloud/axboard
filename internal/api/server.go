@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -35,6 +36,13 @@ const maxBodyBytes = 8 << 20 // 8 MiB
 // proxyClient serves the RSS/calendar widget fetch proxy. Redirects are
 // followed (feeds commonly 301) and the timeout is set per-request via context.
 var proxyClient = &http.Client{Timeout: 15 * time.Second}
+
+// pingClient backs the uptime-monitor widget. Self-signed certs are tolerated
+// (homelab liveness, not auth).
+var pingClient = &http.Client{
+	Timeout:   10 * time.Second,
+	Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+}
 
 // Server holds the runtime references the HTTP handlers need.
 type Server struct {
@@ -135,6 +143,8 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Get("/discover", s.handleDiscover)
 		r.Get("/containers", s.handleContainers)
 		r.Get("/host", s.handleHost)
+		r.Get("/ping", s.handleUptimePing)
+		r.Get("/publicip", s.handlePublicIP)
 		r.Get("/proxy", s.handleProxy)
 		r.Post("/icons", s.handleUploadIcon)
 		r.Get("/icons/{name}", s.handleGetIcon)
@@ -302,6 +312,51 @@ func (s *Server) handleContainers(w http.ResponseWriter, r *http.Request) {
 // handleHost returns a shallow host snapshot (load/memory/uptime).
 func (s *Server) handleHost(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, host.Snapshot())
+}
+
+// handleUptimePing checks one URL for the uptime-monitor widget and returns
+// {ok, status, ms}. Never errors the HTTP request — the failure is the payload.
+func (s *Server) handleUptimePing(w http.ResponseWriter, r *http.Request) {
+	target := r.URL.Query().Get("url")
+	u, err := url.Parse(target)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "invalid url"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 9*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	req.Header.Set("User-Agent", "axboard")
+	start := time.Now()
+	resp, err := pingClient.Do(req)
+	ms := time.Since(start).Milliseconds()
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "ms": ms, "error": err.Error()})
+		return
+	}
+	_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+	resp.Body.Close()
+	writeJSON(w, http.StatusOK, map[string]any{"ok": resp.StatusCode < 400, "status": resp.StatusCode, "ms": ms})
+}
+
+// handlePublicIP returns axboard's egress (WAN) IP + coarse geo/ISP via a free
+// lookup, for the public-IP / VPN-status widget.
+func (s *Server) handlePublicIP(w http.ResponseWriter, r *http.Request) {
+	ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet,
+		"http://ip-api.com/json/?fields=query,city,country,isp,org", nil)
+	resp, err := proxyClient.Do(req)
+	if err != nil {
+		writeErr(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	defer resp.Body.Close()
+	var d map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&d)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ip": d["query"], "city": d["city"], "country": d["country"], "isp": d["isp"], "org": d["org"],
+	})
 }
 
 // handleProxy fetches an http(s) URL server-side so browser widgets (RSS,

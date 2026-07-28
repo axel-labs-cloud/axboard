@@ -20,7 +20,12 @@ export type WidgetType =
   | "sun"
   | "pomodoro"
   | "search"
-  | "section";
+  | "section"
+  | "monitor"
+  | "publicip"
+  | "markets"
+  | "releases"
+  | "customapi";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -201,6 +206,44 @@ export interface SectionConfig {
   align?: "left" | "center";
 }
 
+/** Uptime-monitor widget — pings a list of URLs and shows up/down + latency. */
+export interface MonitorTarget {
+  name: string;
+  url: string;
+}
+export interface MonitorConfig {
+  targets?: MonitorTarget[];
+  refreshSec?: number;
+}
+
+/** Public-IP / VPN widget — shows WAN IP + geo; VPN "on" if isp matches. */
+export interface PublicIPConfig {
+  expectIsp?: string;
+}
+
+/** Markets ticker — crypto (CoinGecko) ids in a chosen currency. */
+export interface MarketsConfig {
+  ids?: string[];
+  vs?: string;
+}
+
+/** Release-watch — "gh:owner/repo" / "gl:group/project" latest releases. */
+export interface ReleasesConfig {
+  repos?: string[];
+}
+
+/** Custom-API — map any JSON endpoint (via proxy) to labeled fields. */
+export interface CustomApiField {
+  label: string;
+  path: string;
+}
+export interface CustomApiConfig {
+  url?: string;
+  title?: string;
+  fields?: CustomApiField[];
+  refreshMin?: number;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -222,6 +265,11 @@ export type WidgetConfigByType = {
   pomodoro: PomodoroConfig;
   search: SearchConfig;
   section: SectionConfig;
+  monitor: MonitorConfig;
+  publicip: PublicIPConfig;
+  markets: MarketsConfig;
+  releases: ReleasesConfig;
+  customapi: CustomApiConfig;
 };
 
 export type AnyWidgetConfig = Partial<
@@ -244,7 +292,12 @@ export type AnyWidgetConfig = Partial<
     SunConfig &
     PomodoroConfig &
     SearchConfig &
-    SectionConfig
+    SectionConfig &
+    MonitorConfig &
+    PublicIPConfig &
+    MarketsConfig &
+    ReleasesConfig &
+    CustomApiConfig
 >;
 
 export interface Widget {
