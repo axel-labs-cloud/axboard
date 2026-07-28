@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { THEMES } from "../../hooks/themes";
-import type { BackgroundDef, HeaderDef } from "../../api/types";
+import type { AppDef, BackgroundDef, HeaderDef } from "../../api/types";
 import { barStyleClass } from "./appearance";
 import { HeaderWidgets } from "./HeaderWidgets";
 import { AppearancePanel } from "./AppearancePanel";
@@ -34,7 +34,7 @@ interface Props {
   onSetBarStyle: (style: string) => void;
   header?: HeaderDef;
   onSetHeader: (header: HeaderDef | undefined) => void;
-  apps: string[];
+  apps: AppDef[];
   onReorderDashboards: (fromId: string, toId: string) => void;
   onEditConfig: () => void;
   onNewFromTemplate: () => void;
@@ -131,23 +131,25 @@ export function DashboardTabBar({
     <div className={`grid grid-cols-[1fr_auto_1fr] items-center px-6 py-2 gap-3 ${barStyleClass(barStyle)}`}>
       {/* LEFT — logo + dashboard tabs */}
       <div className="flex items-center gap-3 min-w-0">
-        <div className="flex items-center gap-2 shrink-0 select-none">
-          <svg viewBox="0 0 64 64" className="w-5 h-5" aria-hidden>
-            <defs>
-              <linearGradient id="axboard-logo-g" x1="14" y1="48" x2="50" y2="16" gradientUnits="userSpaceOnUse">
-                <stop offset="0" stopColor="#22d3ee" />
-                <stop offset="0.5" stopColor="#6366f1" />
-                <stop offset="1" stopColor="#ec4899" />
-              </linearGradient>
-            </defs>
-            <rect x="0.5" y="0.5" width="63" height="63" rx="14" fill="#13151f" stroke="rgba(255,255,255,0.07)" />
-            <circle cx="18" cy="44" r="6.2" fill="url(#axboard-logo-g)" />
-            <circle cx="32" cy="32" r="6.2" fill="url(#axboard-logo-g)" />
-            <circle cx="46" cy="20" r="6.2" fill="url(#axboard-logo-g)" />
-          </svg>
-          <span className="text-[12px] font-semibold tracking-wide text-text">axboard</span>
-          <span className="w-px h-4 bg-border" />
-        </div>
+        {!header?.hideBrand && (
+          <div className="flex items-center gap-2 shrink-0 select-none">
+            <svg viewBox="0 0 64 64" className="w-5 h-5" aria-hidden>
+              <defs>
+                <linearGradient id="axboard-logo-g" x1="14" y1="48" x2="50" y2="16" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stopColor="#22d3ee" />
+                  <stop offset="0.5" stopColor="#6366f1" />
+                  <stop offset="1" stopColor="#ec4899" />
+                </linearGradient>
+              </defs>
+              <rect x="0.5" y="0.5" width="63" height="63" rx="14" fill="#13151f" stroke="rgba(255,255,255,0.07)" />
+              <circle cx="18" cy="44" r="6.2" fill="url(#axboard-logo-g)" />
+              <circle cx="32" cy="32" r="6.2" fill="url(#axboard-logo-g)" />
+              <circle cx="46" cy="20" r="6.2" fill="url(#axboard-logo-g)" />
+            </svg>
+            <span className="text-[12px] font-semibold tracking-wide text-text">{header?.brandText || "axboard"}</span>
+            <span className="w-px h-4 bg-border" />
+          </div>
+        )}
         <div className="flex items-center gap-0.5 min-w-0 overflow-x-auto">
           {dashboards.map((db) => (
             <DashboardTab
@@ -224,28 +226,32 @@ export function DashboardTabBar({
       </div>
 
       {/* CENTER — dead-center search trigger */}
-      <button
-        onClick={onOpenSpotlight}
-        className="w-[min(420px,90vw)] flex items-center gap-2 px-3 py-1.5 rounded-md border border-border-subtle bg-bg-card/60 text-text-muted hover:text-text-secondary hover:border-border transition-colors"
-        title="Search apps, bookmarks, the web (⌘K)"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="w-3.5 h-3.5 shrink-0"
+      {header?.hideSearch ? (
+        <div />
+      ) : (
+        <button
+          onClick={onOpenSpotlight}
+          className="w-[min(420px,90vw)] flex items-center gap-2 px-3 py-1.5 rounded-md border border-border-subtle bg-bg-card/60 text-text-muted hover:text-text-secondary hover:border-border transition-colors"
+          title="Search apps, bookmarks, the web (⌘K)"
         >
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <span className="flex-1 text-left text-[12px] truncate">Search…</span>
-        <kbd className="px-1 py-0.5 rounded bg-bg-elevated border border-border-subtle font-mono text-[10px] shrink-0">
-          ⌘K
-        </kbd>
-      </button>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="w-3.5 h-3.5 shrink-0"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <span className="flex-1 text-left text-[12px] truncate">Search…</span>
+          <kbd className="px-1 py-0.5 rounded bg-bg-elevated border border-border-subtle font-mono text-[10px] shrink-0">
+            ⌘K
+          </kbd>
+        </button>
+      )}
 
       {/* RIGHT — header widgets + edit-mode actions + Done + menu */}
       <div className="flex items-center gap-2 justify-end min-w-0">
@@ -439,6 +445,7 @@ export function DashboardTabBar({
         onSetBarStyle={onSetBarStyle}
         header={header}
         onSetHeader={onSetHeader}
+        apps={apps}
       />
     </div>
   );

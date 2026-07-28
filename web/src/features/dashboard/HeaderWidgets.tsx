@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { HeaderDef } from "../../api/types";
+import type { AppDef, HeaderDef } from "../../api/types";
 import { wmoIcon } from "./widgets/weather/icons";
+import { SimpleIcon } from "./SimpleIcon";
 
 // ---------------------------------------------------------------------------
 // Small top-bar widgets (homepage-style header). Each is self-contained and
@@ -68,14 +69,14 @@ function HeaderWeather({ header }: { header: HeaderDef }) {
   );
 }
 
-function HeaderAppsUp({ apps }: { apps: string[] }) {
+function HeaderAppsUp({ apps }: { apps: AppDef[] }) {
   const { data } = useQuery({
     queryKey: ["apps-status"],
     queryFn: api.getStatus,
     refetchInterval: 15_000,
   });
   if (apps.length === 0) return null;
-  const statuses = apps.map((id) => data?.[id]?.status ?? "unknown");
+  const statuses = apps.map((a) => data?.[a.id]?.status ?? "unknown");
   const up = statuses.filter((s) => s === "healthy").length;
   const down = statuses.filter((s) => s === "down").length;
   const tone = down > 0 ? "text-down" : up === apps.length ? "text-up" : "text-degraded";
@@ -91,10 +92,33 @@ function HeaderAppsUp({ apps }: { apps: string[] }) {
   );
 }
 
+function HeaderBookmarks({ header, apps }: { header: HeaderDef; apps: AppDef[] }) {
+  const ids = header.links ?? [];
+  const chosen = ids.map((id) => apps.find((a) => a.id === id)).filter(Boolean) as AppDef[];
+  if (chosen.length === 0) return null;
+  return (
+    <div className="flex items-center gap-1">
+      {chosen.map((a) => (
+        <a
+          key={a.id}
+          href={a.url}
+          target="_blank"
+          rel="noreferrer"
+          title={a.name}
+          className="w-7 h-7 rounded-md flex items-center justify-center hover:bg-bg-hover transition-colors"
+        >
+          <SimpleIcon slug={a.icon || a.name} size={17} />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 /** Renders the enabled header widgets as a compact inline row. */
-export function HeaderWidgets({ header, apps }: { header?: HeaderDef; apps: string[] }) {
+export function HeaderWidgets({ header, apps }: { header?: HeaderDef; apps: AppDef[] }) {
   if (!header) return null;
   const items: ReactNode[] = [];
+  if ((header.links ?? []).length > 0) items.push(<HeaderBookmarks key="marks" header={header} apps={apps} />);
   if (header.appsUp) items.push(<HeaderAppsUp key="apps" apps={apps} />);
   if (header.weather) items.push(<HeaderWeather key="weather" header={header} />);
   if (header.clock) items.push(<HeaderClock key="clock" />);

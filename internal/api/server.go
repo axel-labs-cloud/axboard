@@ -414,7 +414,7 @@ func (s *Server) handleUploadIcon(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, "icon storage not configured")
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20) // 10 MiB — also used for background images
 	file, hdr, err := r.FormFile("file")
 	if err != nil {
 		writeErr(w, http.StatusBadRequest, "missing file field: "+err.Error())

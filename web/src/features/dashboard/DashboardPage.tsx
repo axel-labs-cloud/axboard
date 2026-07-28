@@ -25,7 +25,7 @@ import { ConfigEditorModal } from "./ConfigEditorModal";
 import { TemplatePickerModal } from "./TemplatePickerModal";
 import type { DashboardTemplate } from "./templates";
 import type { BackgroundDef, HeaderDef } from "../../api/types";
-import { backgroundLayerStyle } from "./appearance";
+import { backgroundLayerStyle, isFlushBar } from "./appearance";
 import type {
   AnyWidgetConfig,
   DashboardLayout,
@@ -133,7 +133,6 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const qc = useQueryClient();
   const { dashboards } = useDashboards();
   const { data: fullConfig } = useConfig();
-  const appIds = useMemo(() => (fullConfig?.apps ?? []).map((a) => a.id), [fullConfig]);
 
   // Kiosk mode — hide all chrome and lock to view mode, for a wall display.
   // Toggleable from the menu; also honored via the ?kiosk=1 URL param.
@@ -470,6 +469,31 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     [qc],
   );
 
+  // Appearance edits fire rapidly (sliders, color pickers). Instead of a PUT +
+  // full ["config"] invalidation per change (which refetches and re-renders the
+  // whole grid — janky), we update the cache instantly and debounce the PUT,
+  // and skip invalidation entirely (the optimistic cache is authoritative).
+  const putTimer = useRef<number | null>(null);
+  const writeConfigDebounced = useCallback(
+    (mutate: (cfg: ConfigPayload) => ConfigPayload) => {
+      const cur = qc.getQueryData<ConfigPayload>(["config"]);
+      if (!cur) return;
+      qc.setQueryData(["config"], mutate(cur));
+      if (putTimer.current) clearTimeout(putTimer.current);
+      putTimer.current = window.setTimeout(() => {
+        putTimer.current = null;
+        const body = qc.getQueryData<ConfigPayload>(["config"]);
+        if (!body) return;
+        fetch("/api/config", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        }).catch(() => qc.invalidateQueries({ queryKey: ["config"] }));
+      }, 350);
+    },
+    [qc],
+  );
+
   const handleAddDashboard = useCallback(() => {
     if (dashboards.length >= 5) {
       alert("Maximum 5 dashboards. Delete one before adding another.");
@@ -541,14 +565,14 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const patchActiveDashboard = useCallback(
     (patch: Partial<ServerDashboard>) => {
       if (!activeDashboardId) return;
-      writeConfigAndRefresh((cfg) => ({
+      writeConfigDebounced((cfg) => ({
         ...cfg,
         dashboards: (cfg.dashboards ?? []).map((d) =>
           d.id === activeDashboardId ? { ...d, ...patch } : d,
         ),
       }));
     },
-    [activeDashboardId, writeConfigAndRefresh],
+    [activeDashboardId, writeConfigDebounced],
   );
   const handleSetBackground = useCallback(
     (bg: BackgroundDef | undefined) => patchActiveDashboard({ background: bg }),
@@ -1077,6 +1101,16 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
 
   const bgBase = backgroundLayerStyle(activeBackground, "base");
   const bgDim = backgroundLayerStyle(activeBackground, "dim");
+  const padN = kiosk ? 3 : density === "compact" ? 3 : density === "spacious" ? 8 : 6;
+  // Flush bar breaks out of the page padding to touch the window edges + top.
+  const flushBar = isFlushBar(activeBarStyle);
+  const flushWrap = flushBar
+    ? padN === 3
+      ? "-mx-3 -mt-3 mb-3"
+      : padN === 8
+        ? "-mx-8 -mt-8 mb-5"
+        : "-mx-6 -mt-6 mb-4"
+    : "";
 
   return (
     <div
@@ -1095,6 +1129,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         </div>
       )}
       {!kiosk && (
+      <div className={flushWrap}>
       <DashboardTabBar
         dashboards={dashboards.map((d) => ({
           id: d.id,
@@ -1121,7 +1156,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onSetBarStyle={handleSetBarStyle}
         header={activeHeader}
         onSetHeader={handleSetHeader}
-        apps={appIds}
+        apps={fullConfig?.apps ?? []}
         onReorderDashboards={handleReorderDashboards}
         onEditConfig={() => setConfigEditorOpen(true)}
         onNewFromTemplate={() => setTemplatePickerOpen(true)}
@@ -1139,6 +1174,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         theme={theme}
         setTheme={setTheme}
       />
+      </div>
       )}
 
       <div

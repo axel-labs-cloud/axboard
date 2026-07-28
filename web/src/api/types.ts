@@ -55,6 +55,10 @@ export interface HeaderDef {
   weatherCity?: string;
   weatherLat?: number;
   weatherLon?: number;
+  links?: string[];
+  hideSearch?: boolean;
+  hideBrand?: boolean;
+  brandText?: string;
 }
 
 export interface DashboardDef {

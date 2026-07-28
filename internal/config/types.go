@@ -102,14 +102,19 @@ type Background struct {
 	Dim      int    `yaml:"dim,omitempty" json:"dim,omitempty"`           // 0-100 dark overlay
 }
 
-// Header configures the small widgets shown in the top bar.
+// Header configures the top bar: small widgets, bookmark launchers, and the
+// branding / search visibility.
 type Header struct {
-	Clock       bool    `yaml:"clock,omitempty" json:"clock,omitempty"`
-	Weather     bool    `yaml:"weather,omitempty" json:"weather,omitempty"`
-	AppsUp      bool    `yaml:"appsUp,omitempty" json:"appsUp,omitempty"`
-	WeatherCity string  `yaml:"weatherCity,omitempty" json:"weatherCity,omitempty"`
-	WeatherLat  float64 `yaml:"weatherLat,omitempty" json:"weatherLat,omitempty"`
-	WeatherLon  float64 `yaml:"weatherLon,omitempty" json:"weatherLon,omitempty"`
+	Clock       bool     `yaml:"clock,omitempty" json:"clock,omitempty"`
+	Weather     bool     `yaml:"weather,omitempty" json:"weather,omitempty"`
+	AppsUp      bool     `yaml:"appsUp,omitempty" json:"appsUp,omitempty"`
+	WeatherCity string   `yaml:"weatherCity,omitempty" json:"weatherCity,omitempty"`
+	WeatherLat  float64  `yaml:"weatherLat,omitempty" json:"weatherLat,omitempty"`
+	WeatherLon  float64  `yaml:"weatherLon,omitempty" json:"weatherLon,omitempty"`
+	Links       []string `yaml:"links,omitempty" json:"links,omitempty"` // app ids shown as bookmark icons
+	HideSearch  bool     `yaml:"hideSearch,omitempty" json:"hideSearch,omitempty"`
+	HideBrand   bool     `yaml:"hideBrand,omitempty" json:"hideBrand,omitempty"`
+	BrandText   string   `yaml:"brandText,omitempty" json:"brandText,omitempty"`
 }
 
 type Widget struct {

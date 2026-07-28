@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import type { BackgroundDef, HeaderDef } from "../../api/types";
+import type { AppDef, BackgroundDef, HeaderDef } from "../../api/types";
+import { api } from "../../api/client";
+import { SimpleIcon } from "./SimpleIcon";
 import { BAR_STYLES, GRADIENT_PRESETS } from "./appearance";
 
 // ---------------------------------------------------------------------------
-// AppearancePanel — modal for the active dashboard's background, top-bar style
-// and header widgets. All changes persist immediately via the callbacks
-// (same optimistic PUT /api/config path the accent picker uses).
+// AppearancePanel — a right-side drawer (transparent scrim so the live
+// background stays visible while you edit) for the active dashboard's
+// background, top-bar style, branding, header widgets and bookmark launchers.
+// Changes persist immediately (debounced) via the callbacks.
 // ---------------------------------------------------------------------------
 
 interface Props {
@@ -18,6 +21,7 @@ interface Props {
   onSetBarStyle: (style: string) => void;
   header?: HeaderDef;
   onSetHeader: (header: HeaderDef | undefined) => void;
+  apps: AppDef[];
 }
 
 const BG_TYPES: { id: BackgroundDef["type"] | "none"; label: string }[] = [
@@ -33,43 +37,68 @@ function Label({ children }: { children: React.ReactNode }) {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="border-t border-border-subtle pt-3 first:border-t-0 first:pt-0">
+    <div className="border-t border-border-subtle pt-3.5 first:border-t-0 first:pt-0">
       <div className="text-[12px] font-semibold text-text-secondary mb-2">{title}</div>
       {children}
     </div>
   );
 }
 
+function Check({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-accent" />
+      {label}
+    </label>
+  );
+}
+
 export function AppearancePanel(props: Props) {
-  const { open, onClose, background, onSetBackground, barStyle, onSetBarStyle, header, onSetHeader } = props;
+  const { open, onClose, background, onSetBackground, barStyle, onSetBarStyle, header, onSetHeader, apps } = props;
   const bg = background ?? {};
   const type = bg.type ?? "none";
+  const hdr = header ?? {};
   const patchBg = (p: Partial<BackgroundDef>) => onSetBackground({ ...bg, ...p });
-  const patchHeader = (p: Partial<HeaderDef>) => onSetHeader({ ...(header ?? {}), ...p });
+  const patchHeader = (p: Partial<HeaderDef>) => onSetHeader({ ...hdr, ...p });
 
-  // Weather city geocoding for the header weather widget.
-  const [cityQ, setCityQ] = useState(header?.weatherCity ?? "");
+  const [cityQ, setCityQ] = useState(hdr.weatherCity ?? "");
   const [cityHits, setCityHits] = useState<{ name: string; country?: string; latitude: number; longitude: number }[]>([]);
+  const [uploading, setUploading] = useState(false);
   const searchCity = async () => {
     if (!cityQ.trim()) return;
     const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityQ.trim())}&count=5`);
     const d = await r.json();
     setCityHits(d.results ?? []);
   };
+  const uploadBg = async (file: File) => {
+    setUploading(true);
+    try {
+      const url = await api.uploadIcon(file);
+      patchBg({ type: "image", image: url });
+    } catch (e) {
+      alert(`Upload failed: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const links = hdr.links ?? [];
+  const toggleLink = (id: string) =>
+    patchHeader({ links: links.includes(id) ? links.filter((x) => x !== id) : [...links, id] });
 
   if (!open) return null;
 
   return createPortal(
-    // Only a click that lands on the overlay itself (not a child) dismisses —
-    // this is robust against event-bubbling quirks with portals.
+    // Transparent scrim — no dim/blur so the live background is visible while
+    // editing. Clicking the scrim (not the drawer) closes.
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-[100]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="relative w-full max-w-md max-h-[85vh] overflow-auto rounded-xl border border-border bg-bg-card shadow-2xl">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle sticky top-0 bg-bg-card z-10">
+      <div className="absolute right-0 top-0 h-full w-[360px] max-w-[92vw] bg-bg-card/95 backdrop-blur-sm border-l border-border shadow-2xl overflow-auto flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle sticky top-0 bg-bg-card/95 z-10">
           <h2 className="text-[14px] font-semibold text-text">Appearance</h2>
           <button onClick={onClose} className="text-text-muted hover:text-text text-lg leading-none px-1">×</button>
         </div>
@@ -96,18 +125,8 @@ export function AppearancePanel(props: Props) {
 
             {type === "color" && (
               <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={bg.color ?? "#0b1120"}
-                  onChange={(e) => patchBg({ color: e.target.value })}
-                  className="w-10 h-8 rounded bg-transparent border border-border cursor-pointer"
-                />
-                <input
-                  value={bg.color ?? ""}
-                  onChange={(e) => patchBg({ color: e.target.value })}
-                  placeholder="#0b1120 or any CSS color"
-                  className="flex-1 px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent"
-                />
+                <input type="color" value={bg.color ?? "#0b1120"} onChange={(e) => patchBg({ color: e.target.value })} className="w-10 h-8 rounded bg-transparent border border-border cursor-pointer" />
+                <input value={bg.color ?? ""} onChange={(e) => patchBg({ color: e.target.value })} placeholder="#0b1120 or any CSS color" className="flex-1 px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent" />
               </div>
             )}
 
@@ -115,34 +134,23 @@ export function AppearancePanel(props: Props) {
               <div className="space-y-2">
                 <div className="grid grid-cols-4 gap-1.5">
                   {GRADIENT_PRESETS.map((g) => (
-                    <button
-                      key={g.name}
-                      onClick={() => patchBg({ gradient: g.value })}
-                      title={g.name}
-                      style={{ background: g.value }}
-                      className={`h-9 rounded border transition-transform hover:scale-105 ${
-                        bg.gradient === g.value ? "border-accent ring-1 ring-accent" : "border-border"
-                      }`}
-                    />
+                    <button key={g.name} onClick={() => patchBg({ gradient: g.value })} title={g.name} style={{ background: g.value }} className={`h-9 rounded border transition-transform hover:scale-105 ${bg.gradient === g.value ? "border-accent ring-1 ring-accent" : "border-border"}`} />
                   ))}
                 </div>
-                <input
-                  value={bg.gradient ?? ""}
-                  onChange={(e) => patchBg({ gradient: e.target.value })}
-                  placeholder="custom: linear-gradient(...)"
-                  className="w-full px-2 py-1.5 rounded bg-bg-elevated border border-border text-[11px] text-text font-mono focus:outline-none focus:border-accent"
-                />
+                <input value={bg.gradient ?? ""} onChange={(e) => patchBg({ gradient: e.target.value })} placeholder="custom: linear-gradient(...)" className="w-full px-2 py-1.5 rounded bg-bg-elevated border border-border text-[11px] text-text font-mono focus:outline-none focus:border-accent" />
               </div>
             )}
 
             {type === "image" && (
               <div className="space-y-2.5">
-                <input
-                  value={bg.image ?? ""}
-                  onChange={(e) => patchBg({ image: e.target.value })}
-                  placeholder="https://…/photo.jpg"
-                  className="w-full px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent"
-                />
+                <div className="flex gap-1.5">
+                  <input value={bg.image ?? ""} onChange={(e) => patchBg({ image: e.target.value })} placeholder="https://…/photo.jpg" className="flex-1 min-w-0 px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent" />
+                  <label className={`px-3 py-1.5 text-[11px] rounded border border-border cursor-pointer whitespace-nowrap ${uploading ? "opacity-50" : "text-text-secondary hover:text-text"}`}>
+                    {uploading ? "…" : "Upload"}
+                    <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBg(f); e.target.value = ""; }} />
+                  </label>
+                </div>
+                {bg.image && <div className="h-16 rounded border border-border-subtle bg-cover bg-center" style={{ backgroundImage: `url("${bg.image}")` }} />}
                 <div>
                   <Label>Blur · {bg.blur ?? 0}px</Label>
                   <input type="range" min={0} max={20} value={bg.blur ?? 0} onChange={(e) => patchBg({ blur: Number(e.target.value) })} className="w-full accent-accent" />
@@ -161,13 +169,7 @@ export function AppearancePanel(props: Props) {
               {BAR_STYLES.map((s) => {
                 const active = (barStyle ?? "default") === s.id;
                 return (
-                  <button
-                    key={s.id}
-                    onClick={() => onSetBarStyle(s.id)}
-                    className={`px-2 py-2 rounded text-[11px] border transition-colors ${
-                      active ? "bg-accent/15 border-accent text-accent" : "bg-bg-elevated border-border text-text-muted hover:text-text"
-                    }`}
-                  >
+                  <button key={s.id} onClick={() => onSetBarStyle(s.id)} className={`px-2 py-2 rounded text-[11px] border transition-colors ${active ? "bg-accent/15 border-accent text-accent" : "bg-bg-elevated border-border text-text-muted hover:text-text"}`}>
                     {s.label}
                   </button>
                 );
@@ -175,58 +177,60 @@ export function AppearancePanel(props: Props) {
             </div>
           </Section>
 
+          {/* -------- Branding -------- */}
+          <Section title="Branding">
+            <div className="space-y-2">
+              <Check label="Hide logo & name" checked={!!hdr.hideBrand} onChange={(v) => patchHeader({ hideBrand: v })} />
+              {!hdr.hideBrand && (
+                <input value={hdr.brandText ?? ""} onChange={(e) => patchHeader({ brandText: e.target.value })} placeholder="axboard (custom name)" className="w-full px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text focus:outline-none focus:border-accent" />
+              )}
+              <Check label="Show search bar" checked={!hdr.hideSearch} onChange={(v) => patchHeader({ hideSearch: !v })} />
+            </div>
+          </Section>
+
           {/* -------- Header widgets -------- */}
           <Section title="Top-bar widgets">
             <div className="space-y-2">
-              {([
-                ["appsUp", "Services up/total"],
-                ["clock", "Clock + date"],
-                ["weather", "Weather"],
-              ] as [keyof HeaderDef, string][]).map(([key, label]) => (
-                <label key={key} className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={!!header?.[key]}
-                    onChange={(e) => patchHeader({ [key]: e.target.checked } as Partial<HeaderDef>)}
-                    className="accent-accent"
-                  />
-                  {label}
-                </label>
-              ))}
+              <Check label="Services up/total" checked={!!hdr.appsUp} onChange={(v) => patchHeader({ appsUp: v })} />
+              <Check label="Clock + date" checked={!!hdr.clock} onChange={(v) => patchHeader({ clock: v })} />
+              <Check label="Weather" checked={!!hdr.weather} onChange={(v) => patchHeader({ weather: v })} />
             </div>
-
-            {header?.weather && (
+            {hdr.weather && (
               <div className="mt-3">
-                <Label>Weather city{header.weatherCity ? ` · ${header.weatherCity}` : ""}</Label>
+                <Label>Weather city{hdr.weatherCity ? ` · ${hdr.weatherCity}` : ""}</Label>
                 <div className="flex gap-1.5">
-                  <input
-                    value={cityQ}
-                    onChange={(e) => setCityQ(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchCity())}
-                    placeholder="e.g. Barcelona"
-                    className="flex-1 px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text focus:outline-none focus:border-accent"
-                  />
-                  <button onClick={searchCity} className="px-3 py-1.5 text-[11px] rounded border border-border text-text-secondary hover:text-text">
-                    Search
-                  </button>
+                  <input value={cityQ} onChange={(e) => setCityQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), searchCity())} placeholder="e.g. Barcelona" className="flex-1 px-2 py-1.5 rounded bg-bg-elevated border border-border text-[12px] text-text focus:outline-none focus:border-accent" />
+                  <button onClick={searchCity} className="px-3 py-1.5 text-[11px] rounded border border-border text-text-secondary hover:text-text">Search</button>
                 </div>
                 {cityHits.length > 0 && (
                   <div className="mt-1.5 rounded border border-border-subtle bg-bg-elevated max-h-40 overflow-auto">
                     {cityHits.map((r) => (
-                      <button
-                        key={`${r.latitude},${r.longitude}`}
-                        onClick={() => {
-                          patchHeader({ weatherCity: r.name, weatherLat: r.latitude, weatherLon: r.longitude });
-                          setCityHits([]);
-                        }}
-                        className="w-full text-left px-2 py-1 text-[12px] text-text-secondary hover:text-text hover:bg-bg-hover"
-                      >
+                      <button key={`${r.latitude},${r.longitude}`} onClick={() => { patchHeader({ weatherCity: r.name, weatherLat: r.latitude, weatherLon: r.longitude }); setCityHits([]); }} className="w-full text-left px-2 py-1 text-[12px] text-text-secondary hover:text-text hover:bg-bg-hover">
                         {r.name}
                         {r.country && <span className="text-text-muted text-[11px] ml-1">· {r.country}</span>}
                       </button>
                     ))}
                   </div>
                 )}
+              </div>
+            )}
+          </Section>
+
+          {/* -------- Bookmark launchers -------- */}
+          <Section title="Bar bookmarks">
+            <p className="text-[10px] text-text-muted mb-2 leading-snug">Pick services to pin as icon launchers in the top bar.</p>
+            {apps.length === 0 ? (
+              <p className="text-[11px] text-text-muted">No services defined.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {apps.map((a) => {
+                  const on = links.includes(a.id);
+                  return (
+                    <button key={a.id} onClick={() => toggleLink(a.id)} title={a.name} className={`w-9 h-9 rounded-lg border flex items-center justify-center transition-colors ${on ? "border-accent bg-accent/15" : "border-border bg-bg-elevated hover:border-text-muted opacity-60 hover:opacity-100"}`}>
+                      <SimpleIcon slug={a.icon || a.name} size={18} />
+                    </button>
+                  );
+                })}
               </div>
             )}
           </Section>
