@@ -82,11 +82,10 @@ export function ServicesEditor({ open, onClose }: Props) {
   const [groups, setGroups] = useState<WorkingGroup[]>([]);
   const [selectedKey, setSelectedKey] = useState<number | null>(null);
   const [iconPickerFor, setIconPickerFor] = useState<number | null>(null);
-  const [dragKey, setDragKey] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [pendingFocus, setPendingFocus] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [groupsOpen, setGroupsOpen] = useState(false);
   const [bulkText, setBulkText] = useState<string | null>(null);
   const [discoverOpen, setDiscoverOpen] = useState(false);
   const [discovered, setDiscovered] = useState<DiscoveredService[]>([]);
@@ -99,11 +98,10 @@ export function ServicesEditor({ open, onClose }: Props) {
     const seedApps = (cached?.apps ?? []).map(keyed);
     setApps(seedApps);
     setGroups(cached?.groups ?? []);
-    setSelectedKey(seedApps[0]?._key ?? null);
+    setSelectedKey(null);
     setError(null);
     setDirty(false);
-    setCollapsed(new Set());
-    setPendingFocus(null);
+    setSearch("");
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const save = useMutation({
@@ -136,25 +134,6 @@ export function ServicesEditor({ open, onClose }: Props) {
       setError(e instanceof Error ? e.message : String(e));
     },
   });
-
-  // Group services for the sidebar — include groups with services, then groups
-  // without, then ungrouped (null).
-  const groupedView = useMemo(() => {
-    const byGroup = new Map<string | null, WorkingApp[]>();
-    for (const a of apps) {
-      const key = a.group || null;
-      const arr = byGroup.get(key) ?? [];
-      arr.push(a);
-      byGroup.set(key, arr);
-    }
-    const sections: { group?: GroupDef; apps: WorkingApp[] }[] = [];
-    for (const g of groups) {
-      sections.push({ group: g, apps: byGroup.get(g.id) ?? [] });
-    }
-    const ungrouped = byGroup.get(null);
-    if (ungrouped && ungrouped.length) sections.push({ apps: ungrouped });
-    return sections;
-  }, [apps, groups]);
 
   const update = (key: number, patch: Partial<AppDef>) => {
     setApps((prev) => prev.map((a) => (a._key === key ? { ...a, ...patch } : a)));
@@ -237,23 +216,6 @@ export function ServicesEditor({ open, onClose }: Props) {
     setDirty(true);
   };
 
-  const moveTo = (sourceKey: number, targetKey: number) => {
-    setApps((prev) => {
-      const src = prev.findIndex((a) => a._key === sourceKey);
-      const dst = prev.findIndex((a) => a._key === targetKey);
-      if (src === -1 || dst === -1 || src === dst) return prev;
-      const next = [...prev];
-      const [moved] = next.splice(src, 1);
-      // Adopt the target's group on drop.
-      const target = prev[dst];
-      if (target.group !== moved.group) moved.group = target.group;
-      const insertAt = next.findIndex((a) => a._key === targetKey);
-      next.splice(insertAt, 0, moved);
-      return next;
-    });
-    setDirty(true);
-  };
-
   // ---- Group management ----
 
   const addGroup = () => {
@@ -266,19 +228,8 @@ export function ServicesEditor({ open, onClose }: Props) {
       color: ["#7c3aed", "#06b6d4", "#22c55e", "#ec4899", "#f59e0b", "#94a3b8"][groups.length % 6],
     };
     setGroups((prev) => [...prev, fresh]);
-    // Collapse every existing group so the new one is the only thing in view.
-    setCollapsed(new Set(groups.map((g) => g.id)));
-    setPendingFocus(fresh.id);
+    setGroupsOpen(true);
     setDirty(true);
-  };
-
-  const toggleCollapsed = (id: string) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   const updateGroup = (id: string, patch: Partial<GroupDef>) => {
@@ -286,18 +237,6 @@ export function ServicesEditor({ open, onClose }: Props) {
     setDirty(true);
   };
 
-  const renameGroupId = (oldId: string, newId: string) => {
-    const slug = slugify(newId);
-    if (!slug || slug === oldId) return;
-    if (groups.some((g) => g.id === slug)) {
-      alert(`Group id "${slug}" already exists.`);
-      return;
-    }
-    setGroups((prev) => prev.map((g) => (g.id === oldId ? { ...g, id: slug } : g)));
-    // Repoint apps that referenced the old id.
-    setApps((prev) => prev.map((a) => (a.group === oldId ? { ...a, group: slug } : a)));
-    setDirty(true);
-  };
 
   const removeGroup = (id: string) => {
     const inGroup = apps.filter((a) => a.group === id);
@@ -315,6 +254,16 @@ export function ServicesEditor({ open, onClose }: Props) {
   };
 
   const selected = selectedKey !== null ? apps.find((a) => a._key === selectedKey) : null;
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return apps;
+    return apps.filter(
+      (a) =>
+        a.name.toLowerCase().includes(q) ||
+        a.url.toLowerCase().includes(q) ||
+        a.id.toLowerCase().includes(q),
+    );
+  }, [apps, search]);
 
   if (!open) return null;
 
@@ -326,7 +275,7 @@ export function ServicesEditor({ open, onClose }: Props) {
       }}
     >
       <div
-        className="animate-pop-in bg-bg-elevated border border-border rounded-xl shadow-2xl shadow-black/50 w-full max-w-5xl h-[82vh] flex flex-col ring-1 ring-white/5 overflow-hidden"
+        className="animate-pop-in relative bg-bg-elevated border border-border rounded-xl shadow-2xl shadow-black/50 w-full max-w-5xl h-[82vh] flex flex-col ring-1 ring-white/5 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -386,197 +335,196 @@ export function ServicesEditor({ open, onClose }: Props) {
           UI edits.
         </div>
 
-        {/* Body */}
-        <div className="flex-1 grid grid-cols-[minmax(320px,380px)_1fr] min-h-0">
-          {/* Sidebar list */}
-          <div className="border-r border-border-subtle overflow-auto">
-            <div className="px-3 py-2 border-b border-border-subtle flex items-center justify-between gap-2 sticky top-0 bg-bg-elevated z-20">
-              <span className="text-[11px] text-text-muted min-w-0 truncate">
-                Drag the grip to reorder · drop on another group to move
-              </span>
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => {
-                    const next = !discoverOpen;
-                    setDiscoverOpen(next);
-                    if (next) void runDiscover();
-                  }}
-                  className={`px-2 py-1 text-[11px] rounded border whitespace-nowrap flex items-center gap-1 ${
-                    discoverOpen
-                      ? "border-accent/40 bg-accent/10 text-accent"
-                      : "border-border text-text-secondary hover:text-text hover:border-text-muted"
-                  }`}
-                  title="Auto-discover services from the Docker/Podman socket"
-                >
-                  Discover
-                </button>
-                <button
-                  onClick={() => setBulkText(bulkText == null ? "" : null)}
-                  className={`px-2 py-1 text-[11px] rounded border whitespace-nowrap flex items-center gap-1 ${
-                    bulkText != null
-                      ? "border-accent/40 bg-accent/10 text-accent"
-                      : "border-border text-text-secondary hover:text-text hover:border-text-muted"
-                  }`}
-                  title="Bulk import services"
-                >
-                  Bulk
-                </button>
-                <button
-                  onClick={addGroup}
-                  className="px-2 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted whitespace-nowrap flex items-center gap-1"
-                  title="Add a new group"
-                >
-                  <PlusIcon /> Group
-                </button>
-              </div>
-            </div>
-            {discoverOpen && (
-              <div className="px-3 py-2 border-b border-border-subtle bg-bg-card/40 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-                    Discovered {discovering ? "…" : `(${discovered.length})`}
-                  </span>
-                  <button
-                    onClick={runDiscover}
-                    disabled={discovering}
-                    className="text-[10px] text-text-muted hover:text-text-secondary disabled:opacity-40"
-                  >
-                    Refresh
-                  </button>
-                </div>
-                {discoverMsg && (
-                  <div className="text-[10.5px] text-text-muted leading-snug">{discoverMsg}</div>
-                )}
-                {discovered.length > 0 && (
-                  <>
-                    <div className="max-h-52 overflow-auto space-y-1">
-                      {discovered.map((svc) => (
-                        <div
-                          key={svc.url}
-                          className="flex items-center gap-2 px-2 py-1 rounded border border-border-subtle bg-bg-card/60"
-                        >
-                          <div className="min-w-0 flex-1">
-                            <div className="text-[12px] text-text truncate">{svc.name}</div>
-                            <div className="text-[10px] text-text-muted truncate font-mono">{svc.url}</div>
-                          </div>
-                          <button
-                            onClick={() => addDiscovered(svc)}
-                            className="px-2 py-0.5 text-[11px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 shrink-0"
-                          >
-                            Add
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => discovered.forEach(addDiscovered)}
-                      className="w-full px-2 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted"
-                    >
-                      Add all {discovered.length}
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
-            {bulkText != null && (
-              <div className="px-3 py-2 border-b border-border-subtle bg-bg-card/40 space-y-2">
-                <textarea
-                  value={bulkText}
-                  onChange={(e) => setBulkText(e.target.value)}
-                  rows={5}
-                  autoFocus
-                  placeholder={'Paste a JSON array of {name,url,...}\nor one "Name, URL" per line.'}
-                  className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[11px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono resize-y"
-                />
-                <div className="flex items-center justify-end gap-2">
-                  <button
-                    onClick={() => setBulkText(null)}
-                    className="px-2 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={importBulk}
-                    className="px-2 py-1 text-[11px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20"
-                  >
-                    Import
-                  </button>
-                </div>
-              </div>
-            )}
-            {groupedView.map((section, sIdx) => {
-              const sectionKey = section.group?.id ?? `__none_${sIdx}`;
-              const isCollapsed = section.group ? collapsed.has(section.group.id) : false;
-              return (
-                <div key={sectionKey} className="border-b border-border-subtle">
-                  {section.group ? (
-                    <GroupHeader
-                      group={section.group}
-                      count={section.apps.length}
-                      collapsed={isCollapsed}
-                      onToggleCollapsed={() => toggleCollapsed(section.group!.id)}
-                      autoFocus={pendingFocus === section.group.id}
-                      onAutoFocused={() => setPendingFocus(null)}
-                      onAddApp={() => addApp(section.group?.id)}
-                      onPatch={(patch) => updateGroup(section.group!.id, patch)}
-                      onRenameId={(newId) => renameGroupId(section.group!.id, newId)}
-                      onDelete={() => removeGroup(section.group!.id)}
-                    />
-                  ) : (
-                    <div className="flex items-center justify-between px-3 py-2 bg-bg-card/30">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-[10px] uppercase tracking-[0.08em] text-text-secondary font-semibold truncate">
-                          Ungrouped
-                        </span>
-                        <span className="text-[10px] text-text-muted">{section.apps.length}</span>
-                      </div>
-                      <button
-                        onClick={() => addApp(undefined)}
-                        title="Add ungrouped service"
-                        className="w-5 h-5 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
-                      >
-                        <PlusIcon />
-                      </button>
-                    </div>
-                  )}
-                  {!isCollapsed &&
-                    section.apps.map((app) => (
-                      <SidebarRow
-                        key={app._key}
-                        app={app}
-                        selected={selectedKey === app._key}
-                        onSelect={() => setSelectedKey(app._key)}
-                        onRemove={() => removeApp(app._key)}
-                        onDragStart={() => setDragKey(app._key)}
-                        onDragEnd={() => setDragKey(null)}
-                        onDrop={() => {
-                          if (dragKey !== null && dragKey !== app._key) moveTo(dragKey, app._key);
-                          setDragKey(null);
-                        }}
-                        isDragging={dragKey === app._key}
-                      />
-                    ))}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Form */}
-          <div className="overflow-auto p-5">
-            {selected ? (
-              <ServiceForm
-                app={selected}
-                groups={groups}
-                onPatch={(patch) => update(selected._key, patch)}
-                onPickIcon={() => setIconPickerFor(selected._key)}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-text-muted text-[12px]">
-                Select a service on the left, or add a new one.
-              </div>
-            )}
+        {/* Toolbar */}
+        <div className="flex items-center gap-2 px-5 py-2.5 border-b border-border-subtle flex-wrap">
+          <button
+            onClick={() => addApp()}
+            className="px-3 py-1.5 text-[12px] rounded-md border border-accent/40 bg-accent/15 text-accent hover:bg-accent/25 flex items-center gap-1.5 font-medium"
+          >
+            <PlusIcon /> Add service
+          </button>
+          <ToolbarToggle
+            active={discoverOpen}
+            onClick={() => {
+              const n = !discoverOpen;
+              setDiscoverOpen(n);
+              if (n) void runDiscover();
+            }}
+          >
+            Discover
+          </ToolbarToggle>
+          <ToolbarToggle active={bulkText != null} onClick={() => setBulkText(bulkText == null ? "" : null)}>
+            Bulk import
+          </ToolbarToggle>
+          <ToolbarToggle active={groupsOpen} onClick={() => setGroupsOpen((o) => !o)}>
+            Groups
+          </ToolbarToggle>
+          <div className="flex-1" />
+          <div className="relative">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-text-muted pointer-events-none"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search services…"
+              className="w-52 pl-8 pr-2 py-1.5 text-[12px] rounded-md bg-bg-card border border-border-subtle text-text placeholder:text-text-muted focus:outline-none focus:border-accent/50"
+            />
           </div>
         </div>
+
+        {/* Contextual panels */}
+        {discoverOpen && (
+          <div className="px-5 py-3 border-b border-border-subtle bg-bg-card/40 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-text-secondary font-medium">
+                Discovered from Docker/Podman {discovering ? "…" : `· ${discovered.length}`}
+              </span>
+              <button
+                onClick={runDiscover}
+                disabled={discovering}
+                className="text-[11px] text-text-muted hover:text-text-secondary disabled:opacity-40"
+              >
+                Refresh
+              </button>
+            </div>
+            {discoverMsg && <div className="text-[10.5px] text-text-muted leading-snug">{discoverMsg}</div>}
+            {discovered.length > 0 && (
+              <>
+                <div className="max-h-44 overflow-auto grid gap-1.5 grid-cols-2">
+                  {discovered.map((svc) => (
+                    <div
+                      key={svc.url}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-border-subtle bg-bg-card/60"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[12px] text-text truncate">{svc.name}</div>
+                        <div className="text-[10px] text-text-muted truncate font-mono">{svc.url}</div>
+                      </div>
+                      <button
+                        onClick={() => addDiscovered(svc)}
+                        className="px-2 py-0.5 text-[11px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 shrink-0"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => discovered.forEach(addDiscovered)}
+                  className="w-full px-2 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted"
+                >
+                  Add all {discovered.length}
+                </button>
+              </>
+            )}
+          </div>
+        )}
+        {bulkText != null && (
+          <div className="px-5 py-3 border-b border-border-subtle bg-bg-card/40 space-y-2">
+            <textarea
+              value={bulkText}
+              onChange={(e) => setBulkText(e.target.value)}
+              rows={4}
+              autoFocus
+              placeholder={'Paste a JSON array of {name,url,…}\nor one "Name, URL" per line.'}
+              className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[11px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono resize-y"
+            />
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setBulkText(null)}
+                className="px-2.5 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={importBulk}
+                className="px-2.5 py-1 text-[11px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20"
+              >
+                Import
+              </button>
+            </div>
+          </div>
+        )}
+        {groupsOpen && (
+          <GroupsManager
+            groups={groups}
+            onAdd={addGroup}
+            onPatch={updateGroup}
+            onDelete={removeGroup}
+          />
+        )}
+
+        {/* Card grid */}
+        <div className="flex-1 overflow-auto p-5">
+          {filtered.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-center gap-2 text-text-muted">
+              <span className="text-[13px]">{apps.length === 0 ? "No services yet" : "No matches"}</span>
+              {apps.length === 0 && (
+                <button onClick={() => addApp()} className="text-[12px] text-accent hover:underline">
+                  Add your first service
+                </button>
+              )}
+            </div>
+          ) : (
+            <div
+              className="grid gap-3"
+              style={{ gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))" }}
+            >
+              {filtered.map((app) => (
+                <ServiceCard
+                  key={app._key}
+                  app={app}
+                  group={groups.find((g) => g.id === app.group)}
+                  selected={selectedKey === app._key}
+                  onClick={() => setSelectedKey(app._key)}
+                  onRemove={() => {
+                    if (confirm(`Delete "${app.name}"?`)) removeApp(app._key);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Slide-over editor */}
+        {selected && (
+          <>
+            <div className="absolute inset-0 bg-black/30 z-20" onClick={() => setSelectedKey(null)} />
+            <div className="absolute inset-y-0 right-0 w-[420px] max-w-[92%] bg-bg-elevated border-l border-border shadow-2xl shadow-black/50 z-30 flex flex-col animate-slide-in-right">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle bg-bg-card/40">
+                <span className="text-[13px] font-semibold text-text">Edit service</span>
+                <button
+                  onClick={() => setSelectedKey(null)}
+                  className="text-text-muted hover:text-text w-6 h-6 flex items-center justify-center rounded hover:bg-bg-hover"
+                  title="Close"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+              <div className="flex-1 overflow-auto p-5">
+                <ServiceForm
+                  app={selected}
+                  groups={groups}
+                  onPatch={(patch) => update(selected._key, patch)}
+                  onPickIcon={() => setIconPickerFor(selected._key)}
+                />
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       <IconPicker
@@ -592,258 +540,39 @@ export function ServicesEditor({ open, onClose }: Props) {
   );
 }
 
-function GroupHeader({
-  group,
-  count,
-  collapsed,
-  autoFocus,
-  onToggleCollapsed,
-  onAutoFocused,
-  onAddApp,
-  onPatch,
-  onDelete,
-}: {
-  group: GroupDef;
-  count: number;
-  collapsed: boolean;
-  autoFocus: boolean;
-  onToggleCollapsed: () => void;
-  onAutoFocused: () => void;
-  onAddApp: () => void;
-  onPatch: (patch: Partial<GroupDef>) => void;
-  onRenameId: (newId: string) => void;
-  onDelete: () => void;
-}) {
-  const [colorOpen, setColorOpen] = useState(false);
-  const [name, setName] = useState(group.name);
-  const nameRef = useRef<HTMLInputElement>(null);
-  const colorBtnRef = useRef<HTMLButtonElement>(null);
-
-  // Keep local input in sync if the prop changes from elsewhere.
-  useEffect(() => setName(group.name), [group.name]);
-
-  // Auto-focus + select the name when this group was just created.
-  useEffect(() => {
-    if (autoFocus && nameRef.current) {
-      nameRef.current.focus();
-      nameRef.current.select();
-      onAutoFocused();
-    }
-  }, [autoFocus, onAutoFocused]);
-
-  // Close the color popover on outside click.
-  useEffect(() => {
-    if (!colorOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (colorBtnRef.current && !colorBtnRef.current.contains(e.target as Node)) {
-        setColorOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [colorOpen]);
-
-  const palette = [
-    "#7c3aed",
-    "#a855f7",
-    "#3b82f6",
-    "#06b6d4",
-    "#10b981",
-    "#22c55e",
-    "#eab308",
-    "#f59e0b",
-    "#ef4444",
-    "#ec4899",
-    "#94a3b8",
-    "#64748b",
-  ];
-
+function IconUpload({ onUploaded }: { onUploaded: (url: string) => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1.5 bg-bg-card/30 border-b border-border-subtle sticky top-[33px] z-10">
-      <button
-        onClick={onToggleCollapsed}
-        className="w-5 h-5 flex items-center justify-center text-text-muted hover:text-text shrink-0"
-        title={collapsed ? "Expand" : "Collapse"}
-      >
-        <ChevronIcon open={!collapsed} />
-      </button>
-
-      <button
-        ref={colorBtnRef}
-        onClick={() => setColorOpen((o) => !o)}
-        className="relative inline-flex items-center justify-center w-4 h-4 shrink-0 rounded ring-1 ring-white/10 hover:ring-white/30 transition-shadow"
-        style={{ background: group.color ?? "var(--color-border)" }}
-        title="Change group color"
-      >
-        {colorOpen && (
-          <div
-            className="absolute top-full left-0 mt-2 z-30 bg-bg-elevated border border-border rounded-lg p-3 shadow-2xl ring-1 ring-white/5 w-[200px]"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-2">
-              Color
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {palette.map((c) => (
-                <button
-                  key={c}
-                  onClick={() => {
-                    onPatch({ color: c });
-                    setColorOpen(false);
-                  }}
-                  className={`w-9 h-9 rounded-md transition-transform hover:scale-105 ${
-                    group.color === c ? "ring-2 ring-offset-2 ring-offset-bg-elevated ring-white" : ""
-                  }`}
-                  style={{ background: c }}
-                  title={c}
-                />
-              ))}
-            </div>
-            <button
-              onClick={() => {
-                onPatch({ color: undefined });
-                setColorOpen(false);
-              }}
-              className="block w-full mt-3 px-2 py-1.5 text-[11px] text-text-secondary hover:text-text rounded border border-border-subtle hover:border-text-muted/70 hover:bg-bg-hover transition-colors"
-            >
-              No color
-            </button>
-          </div>
-        )}
-      </button>
-
+    <>
       <input
-        ref={nameRef}
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onBlur={() => {
-          const v = name.trim();
-          if (v && v !== group.name) onPatch({ name: v });
-          else if (!v) setName(group.name);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.target as HTMLInputElement).blur();
-          if (e.key === "Escape") {
-            setName(group.name);
-            (e.target as HTMLInputElement).blur();
+        ref={ref}
+        type="file"
+        accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml,image/x-icon"
+        className="hidden"
+        onChange={async (e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (!f) return;
+          setBusy(true);
+          try {
+            onUploaded(await api.uploadIcon(f));
+          } catch (err) {
+            alert(`Upload failed: ${(err as Error).message}`);
+          } finally {
+            setBusy(false);
           }
         }}
-        className="flex-1 min-w-0 px-1.5 py-1 text-[12px] font-medium bg-transparent border border-transparent hover:border-border-subtle focus:border-accent/40 focus:bg-bg-card rounded text-text focus:outline-none transition-colors"
       />
-
-      <span className="text-[10px] text-text-muted shrink-0 tabular-nums px-0.5">{count}</span>
-
       <button
-        onClick={onAddApp}
-        title="Add service to this group"
-        className="w-6 h-6 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10"
+        onClick={() => ref.current?.click()}
+        disabled={busy}
+        className="px-3 py-1.5 text-[11px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted whitespace-nowrap disabled:opacity-50"
+        title="Upload an image file as the icon"
       >
-        <PlusIcon />
+        {busy ? "…" : "Upload"}
       </button>
-      <button
-        onClick={onDelete}
-        title="Delete group"
-        className="w-6 h-6 flex items-center justify-center rounded text-text-muted/50 hover:text-rose-400 hover:bg-rose-400/10"
-      >
-        <TrashIcon />
-      </button>
-    </div>
-  );
-}
-
-function ChevronIcon({ open }: { open: boolean }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={`w-3 h-3 transition-transform ${open ? "" : "-rotate-90"}`}
-    >
-      <polyline points="6 9 12 15 18 9" />
-    </svg>
-  );
-}
-
-function SidebarRow({
-  app,
-  selected,
-  onSelect,
-  onRemove,
-  onDragStart,
-  onDragEnd,
-  onDrop,
-  isDragging,
-}: {
-  app: WorkingApp;
-  selected: boolean;
-  onSelect: () => void;
-  onRemove: () => void;
-  onDragStart: () => void;
-  onDragEnd: () => void;
-  onDrop: () => void;
-  isDragging: boolean;
-}) {
-  const [dragOver, setDragOver] = useState(false);
-  return (
-    <div
-      draggable
-      onDragStart={onDragStart}
-      onDragEnd={() => {
-        onDragEnd();
-        setDragOver(false);
-      }}
-      onDragOver={(e) => {
-        e.preventDefault();
-        setDragOver(true);
-      }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setDragOver(false);
-        onDrop();
-      }}
-      className={`group/row flex items-center gap-2 px-3 py-1.5 cursor-pointer transition-colors ${
-        selected
-          ? "bg-accent/10 border-l-2 border-accent"
-          : dragOver
-            ? "bg-bg-hover border-l-2 border-accent/40"
-            : "border-l-2 border-transparent hover:bg-bg-card/40"
-      } ${isDragging ? "opacity-40" : ""}`}
-      onClick={onSelect}
-    >
-      <span className="text-text-muted/50 cursor-grab active:cursor-grabbing" title="Drag to reorder">
-        <GripIcon />
-      </span>
-      <div className="w-6 h-6 flex items-center justify-center shrink-0">
-        {app.icon ? (
-          <SimpleIcon slug={app.icon} fill />
-        ) : (
-          <div
-            className="w-full h-full rounded-sm text-[8px] font-semibold flex items-center justify-center text-text"
-            style={{ background: hashColor(app.name) }}
-          >
-            {(app.name.slice(0, 2) || "??").toUpperCase()}
-          </div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="text-[12px] text-text truncate">{app.name || "(unnamed)"}</div>
-        <div className="text-[10px] text-text-muted truncate font-mono">{app.id}</div>
-      </div>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          if (confirm(`Delete "${app.name}"?`)) onRemove();
-        }}
-        className="w-5 h-5 flex items-center justify-center rounded text-text-muted/40 hover:text-rose-400 hover:bg-rose-400/10 opacity-0 group-hover/row:opacity-100"
-        title="Delete service"
-      >
-        <TrashIcon />
-      </button>
-    </div>
+    </>
   );
 }
 
@@ -948,6 +677,7 @@ function ServiceForm({
             placeholder="sh:proxmox  ·  si:gitlab  ·  https://…"
             className="flex-1 px-2.5 py-1.5 text-[12.5px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50 font-mono"
           />
+          <IconUpload onUploaded={(url) => onPatch({ icon: url })} />
           <button
             onClick={onPickIcon}
             className="px-3 py-1.5 text-[11px] rounded border border-border text-text-secondary hover:text-text hover:border-text-muted whitespace-nowrap"
@@ -1142,19 +872,6 @@ function hostFromURL(url: string): string {
   }
 }
 
-function GripIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
-      <circle cx="9" cy="6" r="1.5" />
-      <circle cx="15" cy="6" r="1.5" />
-      <circle cx="9" cy="12" r="1.5" />
-      <circle cx="15" cy="12" r="1.5" />
-      <circle cx="9" cy="18" r="1.5" />
-      <circle cx="15" cy="18" r="1.5" />
-    </svg>
-  );
-}
-
 function PlusIcon() {
   return (
     <svg
@@ -1188,5 +905,155 @@ function TrashIcon() {
       <line x1="10" y1="11" x2="10" y2="17" />
       <line x1="14" y1="11" x2="14" y2="17" />
     </svg>
+  );
+}
+
+function ToolbarToggle({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-2.5 py-1.5 text-[12px] rounded-md border transition-colors ${
+        active
+          ? "border-accent/40 bg-accent/10 text-accent"
+          : "border-border text-text-secondary hover:text-text hover:border-text-muted"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ServiceCard({
+  app,
+  group,
+  selected,
+  onClick,
+  onRemove,
+}: {
+  app: WorkingApp;
+  group?: GroupDef;
+  selected: boolean;
+  onClick: () => void;
+  onRemove: () => void;
+}) {
+  let host = app.url;
+  try {
+    host = new URL(app.url).host || app.url;
+  } catch {
+    /* keep raw */
+  }
+  return (
+    <div
+      onClick={onClick}
+      className={`group/card relative cursor-pointer rounded-lg border p-3 bg-bg-card transition-[border-color,box-shadow] shadow-[0_1px_2px_rgba(0,0,0,0.25)] ${
+        selected ? "border-accent ring-1 ring-accent/40" : "border-border-subtle hover:border-border"
+      }`}
+    >
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        className="absolute top-1.5 right-1.5 w-5 h-5 flex items-center justify-center rounded text-text-muted/40 hover:text-danger hover:bg-danger/10 opacity-0 group-hover/card:opacity-100"
+        title="Delete service"
+      >
+        <TrashIcon />
+      </button>
+      <div className="flex items-start gap-2.5">
+        <div className="w-9 h-9 rounded-md bg-bg-elevated flex items-center justify-center shrink-0 overflow-hidden">
+          {app.icon ? (
+            <SimpleIcon slug={app.icon} fill />
+          ) : (
+            <div
+              className="w-full h-full flex items-center justify-center text-[11px] font-semibold text-text"
+              style={{ background: hashColor(app.name || "?") }}
+            >
+              {(app.name.slice(0, 2) || "??").toUpperCase()}
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 pr-4">
+          <div className="text-[12.5px] text-text font-medium truncate">{app.name || "(unnamed)"}</div>
+          <div className="text-[10.5px] text-text-muted truncate font-mono">{host}</div>
+        </div>
+      </div>
+      {group && (
+        <div className="mt-2.5 inline-flex items-center gap-1.5 text-[10px] text-text-muted">
+          <span
+            className="w-1.5 h-1.5 rounded-full"
+            style={{ background: group.color ?? "var(--color-border)" }}
+          />
+          {group.name}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GroupsManager({
+  groups,
+  onAdd,
+  onPatch,
+  onDelete,
+}: {
+  groups: GroupDef[];
+  onAdd: () => void;
+  onPatch: (id: string, patch: Partial<GroupDef>) => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="px-5 py-3 border-b border-border-subtle bg-bg-card/40">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[11px] text-text-secondary font-medium">Groups</span>
+        <button onClick={onAdd} className="text-[11px] text-accent hover:underline flex items-center gap-1">
+          <PlusIcon /> Add group
+        </button>
+      </div>
+      {groups.length === 0 ? (
+        <div className="text-[11px] text-text-muted">No groups yet.</div>
+      ) : (
+        <div className="grid gap-1.5 grid-cols-2">
+          {groups.map((g) => (
+            <div
+              key={g.id}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-md border border-border-subtle bg-bg-card/60"
+            >
+              <input
+                type="color"
+                value={g.color ?? "#7c3aed"}
+                onChange={(e) => onPatch(g.id, { color: e.target.value })}
+                className="w-5 h-5 rounded cursor-pointer bg-transparent border-0 p-0 shrink-0"
+                title="Group color"
+              />
+              <input
+                defaultValue={g.name}
+                onBlur={(e) => {
+                  const v = e.target.value.trim();
+                  if (v && v !== g.name) onPatch(g.id, { name: v });
+                }}
+                className="flex-1 min-w-0 bg-transparent text-[12px] text-text focus:outline-none"
+              />
+              <button
+                onClick={() => {
+                  if (confirm(`Delete group "${g.name}"? Its services become ungrouped.`)) onDelete(g.id);
+                }}
+                className="w-5 h-5 flex items-center justify-center rounded text-text-muted/50 hover:text-danger hover:bg-danger/10 shrink-0"
+                title="Delete group"
+              >
+                <TrashIcon />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
