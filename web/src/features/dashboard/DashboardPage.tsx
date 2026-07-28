@@ -20,6 +20,7 @@ import { WidgetContextMenu } from "./WidgetContextMenu";
 import { AddWidgetModal } from "./AddWidgetModal";
 import { ServicesEditor } from "./widgets/apps/ServicesEditor";
 import { Spotlight, type SpotlightAction } from "./Spotlight";
+import { ShortcutsOverlay } from "./ShortcutsOverlay";
 import { THEMES } from "../../hooks/themes";
 import { ConfigEditorModal } from "./ConfigEditorModal";
 import { TemplatePickerModal } from "./TemplatePickerModal";
@@ -175,6 +176,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const [addWidgetOpen, setAddWidgetOpen] = useState(false);
   const [manageServicesOpen, setManageServicesOpen] = useState(false);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [configEditorOpen, setConfigEditorOpen] = useState(false);
   const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
   const [alertsEnabled, setAlertsEnabled] = useState(
@@ -208,20 +210,21 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     }
   }, [alertsEnabled]);
 
-  // Cmd/Ctrl+K opens the spotlight from anywhere on the dashboard.
+  // Cmd/Ctrl+K opens the spotlight; `?` opens the shortcuts cheat sheet.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const isCmdK = (e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K");
-      if (!isCmdK) return;
-      // Don't intercept when the user is typing in an input that's not the
-      // spotlight itself — e.g. service editor URL field.
       const tgt = e.target as HTMLElement | null;
       const inInput =
         tgt &&
         (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable);
       if (inInput) return;
-      e.preventDefault();
-      setSpotlightOpen(true);
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setSpotlightOpen(true);
+      } else if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -1234,7 +1237,11 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
           />
         )}
         {isEmpty ? (
-          <EmptyDashboard editing={editing} onAddWidget={() => setAddWidgetOpen(true)} />
+          <EmptyDashboard
+            onAddWidget={() => setAddWidgetOpen(true)}
+            onNewFromTemplate={() => setTemplatePickerOpen(true)}
+            onManageServices={() => setManageServicesOpen(true)}
+          />
         ) : cell > 0 ? (
           <ReactGridLayout
             layout={decoratedGridItems}
@@ -1348,6 +1355,8 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         </button>
       )}
 
+      <ShortcutsOverlay open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+
       <Spotlight
         open={spotlightOpen}
         onClose={() => setSpotlightOpen(false)}
@@ -1392,7 +1401,7 @@ function ResponsiveStack({
   columns: number;
 }) {
   if (widgets.length === 0) {
-    return <EmptyDashboard editing={false} onAddWidget={() => {}} />;
+    return <EmptyDashboard onAddWidget={() => {}} onNewFromTemplate={() => {}} onManageServices={() => {}} />;
   }
   // Order by grid position so the stack matches the on-screen arrangement.
   const ordered = [...widgets].sort((a, b) => {
@@ -1434,41 +1443,75 @@ function ResponsiveStack({
 }
 
 function EmptyDashboard({
-  editing,
   onAddWidget,
+  onNewFromTemplate,
+  onManageServices,
 }: {
-  editing: boolean;
   onAddWidget: () => void;
+  onNewFromTemplate: () => void;
+  onManageServices: () => void;
 }) {
+  const cards: { label: string; desc: string; icon: React.ReactNode; onClick: () => void; primary?: boolean }[] = [
+    {
+      label: "Add a widget",
+      desc: "Clock, apps grid, weather, charts…",
+      onClick: onAddWidget,
+      primary: true,
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+          <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" /><path d="M17.5 14.5v6M14.5 17.5h6" />
+        </svg>
+      ),
+    },
+    {
+      label: "Start from a template",
+      desc: "A ready-made starter layout.",
+      onClick: onNewFromTemplate,
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+          <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+        </svg>
+      ),
+    },
+    {
+      label: "Add services",
+      desc: "Health-checked app cards.",
+      onClick: onManageServices,
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+          <rect x="2" y="4" width="20" height="7" rx="2" /><rect x="2" y="13" width="20" height="7" rx="2" />
+          <path d="M6 7.5h.01M6 16.5h.01" />
+        </svg>
+      ),
+    },
+  ];
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-3 px-6">
-      <svg
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        className="w-8 h-8 text-text-muted/50"
-      >
-        <rect x="3" y="3" width="7" height="7" rx="1" />
-        <rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" />
-        <rect x="14" y="14" width="7" height="7" rx="1" />
-      </svg>
-      <div className="text-text-secondary text-[13px] font-medium">No widgets on this dashboard yet</div>
-      {editing ? (
-        <button
-          onClick={onAddWidget}
-          className="px-3 py-1.5 text-[12px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
-        >
-          Add your first widget
-        </button>
-      ) : (
-        <div className="text-text-muted text-[12px]">
-          Press <kbd className="px-1 py-0.5 rounded bg-bg-elevated border border-border-subtle font-mono text-[10px]">⌘E</kbd> to edit, then add one.
-        </div>
-      )}
+    <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-5 px-6">
+      <div>
+        <div className="text-text text-[15px] font-semibold">Let's build your dashboard</div>
+        <div className="text-text-muted text-[12px] mt-1">Pick a starting point — everything's drag-and-drop.</div>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full max-w-lg">
+        {cards.map((c) => (
+          <button
+            key={c.label}
+            onClick={c.onClick}
+            className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-colors ${
+              c.primary
+                ? "border-accent/40 bg-accent/10 text-accent hover:bg-accent/20"
+                : "border-border-subtle bg-bg-card/40 text-text-secondary hover:border-border hover:text-text"
+            }`}
+          >
+            {c.icon}
+            <span className="text-[12px] font-medium">{c.label}</span>
+            <span className="text-[10.5px] text-text-muted leading-snug">{c.desc}</span>
+          </button>
+        ))}
+      </div>
+      <div className="text-text-muted/70 text-[11px]">
+        Tip: press <kbd className="px-1 py-0.5 rounded bg-bg-elevated border border-border-subtle font-mono text-[10px]">?</kbd> for shortcuts
+      </div>
     </div>
   );
 }

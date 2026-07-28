@@ -330,6 +330,21 @@
   -webkit-backdrop-filter: blur(var(--widget-blur, 0px));
 }
 
+/* Smooth the palette swap when switching themes (respects reduced-motion). */
+@media (prefers-reduced-motion: no-preference) {
+  body {
+    transition:
+      background-color 0.3s ease,
+      color 0.25s ease;
+  }
+  .widget-card {
+    transition:
+      background-color 0.25s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+}
+
 @layer base {
   html,
   body,
