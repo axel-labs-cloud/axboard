@@ -15,22 +15,31 @@ import type {
 // ---------------------------------------------------------------------------
 
 interface SunResponse {
-  current?: { weather_code: number; is_day: number };
-  daily?: { sunrise: string[]; sunset: string[] };
+  current?: { weather_code: number; is_day: number; uv_index?: number };
+  daily?: { sunrise: string[]; sunset: string[]; uv_index_max?: number[] };
 }
 
 async function fetchSun(lat: number, lon: number): Promise<SunResponse> {
   const p = new URLSearchParams({
     latitude: String(lat),
     longitude: String(lon),
-    current: "weather_code,is_day",
-    daily: "sunrise,sunset",
+    current: "weather_code,is_day,uv_index",
+    daily: "sunrise,sunset,uv_index_max",
     timezone: "auto",
     forecast_days: "1",
   });
   const r = await fetch(`https://api.open-meteo.com/v1/forecast?${p}`);
   if (!r.ok) throw new Error(`Sun API: ${r.status}`);
   return r.json();
+}
+
+// UV bands per WHO — value → label + colour.
+function uvBand(uv: number): { label: string; color: string } {
+  if (uv < 3) return { label: "Low", color: "#22c55e" };
+  if (uv < 6) return { label: "Moderate", color: "#eab308" };
+  if (uv < 8) return { label: "High", color: "#f97316" };
+  if (uv < 11) return { label: "Very high", color: "#ef4444" };
+  return { label: "Extreme", color: "#a855f7" };
 }
 
 function hhmm(iso: string): string {
@@ -121,57 +130,66 @@ function SunComponent({ config }: WidgetProps<SunConfig>) {
   const MarkerIcon = wi.Icon;
   const m = arcPoint(frac);
 
+  const uv = data.current?.uv_index;
+  const uvMax = data.daily?.uv_index_max?.[0];
+  const uvNow = uv ?? uvMax;
+  const uvInfo = uvNow != null ? uvBand(uvNow) : null;
+
   return (
-    <div className="h-full flex flex-col p-3">
-      {/* arc */}
-      <div className="relative w-full">
-        <svg viewBox="0 0 100 48" className="w-full block">
-          <defs>
-            <linearGradient id="sun-sky" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#fbbf24" stopOpacity="0.14" />
-              <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
-            </linearGradient>
-            <linearGradient id="sun-arc" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stopColor="#f59e0b" />
-              <stop offset="1" stopColor="#fbbf24" />
-            </linearGradient>
-          </defs>
-          {/* sky fill under the full arc */}
-          <path d={`${arcPath(0, 1)} L8 40 Z`} fill="url(#sun-sky)" />
-          {/* remaining (faint) full arc */}
-          <path d={arcPath(0, 1)} fill="none" stroke="var(--color-border)" strokeWidth="1.5" strokeDasharray="2 2.5" strokeLinecap="round" />
-          {/* elapsed (bright) arc up to the sun */}
-          {isDay && frac > 0.001 && (
-            <path d={arcPath(0, frac)} fill="none" stroke="url(#sun-arc)" strokeWidth="2" strokeLinecap="round" />
-          )}
-          {/* horizon */}
-          <line x1="4" y1="40" x2="96" y2="40" stroke="var(--color-border-subtle)" strokeWidth="1" />
-          <circle cx="8" cy="40" r="1.5" fill="var(--color-text-muted)" />
-          <circle cx="92" cy="40" r="1.5" fill="var(--color-text-muted)" />
-        </svg>
-        {/* live weather icon on the arc */}
-        <div
-          className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-          style={{
-            left: `${m.x}%`,
-            top: `${(m.y / 48) * 100}%`,
-            filter: isDay ? "drop-shadow(0 0 6px rgba(251,191,36,0.6))" : "none",
-            opacity: isDay ? 1 : 0.6,
-          }}
-        >
-          <MarkerIcon className="w-full h-full" />
-        </div>
-        {/* countdown hero, floated in the arc's open mouth (above the horizon) */}
-        <div
-          className="absolute inset-x-0 flex flex-col items-center pointer-events-none"
-          style={{ top: "56%" }}
-        >
-          <span className="font-mono tabular-nums text-text text-[15px] leading-none">{hero.value}</span>
-          <span className="text-text-muted text-[9px] uppercase tracking-[0.12em] mt-0.5">{hero.label}</span>
+    <div className="h-full flex flex-col p-3 gap-1.5">
+      {/* arc — height-driven so a short/wide widget never clips the footer.
+          The inner box is aspect-locked to the viewBox so the % overlays for
+          the sun marker and hero map linearly onto it. */}
+      <div className="flex-1 min-h-0 flex justify-center">
+        <div className="relative h-full max-w-full" style={{ aspectRatio: "100 / 48" }}>
+          <svg viewBox="0 0 100 48" preserveAspectRatio="xMidYMid meet" className="w-full h-full block">
+            <defs>
+              <linearGradient id="sun-sky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor="#fbbf24" stopOpacity="0.14" />
+                <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
+              </linearGradient>
+              <linearGradient id="sun-arc" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stopColor="#f59e0b" />
+                <stop offset="1" stopColor="#fbbf24" />
+              </linearGradient>
+            </defs>
+            {/* sky fill under the full arc */}
+            <path d={`${arcPath(0, 1)} L8 40 Z`} fill="url(#sun-sky)" />
+            {/* remaining (faint) full arc */}
+            <path d={arcPath(0, 1)} fill="none" stroke="var(--color-border)" strokeWidth="1.5" strokeDasharray="2 2.5" strokeLinecap="round" />
+            {/* elapsed (bright) arc up to the sun */}
+            {isDay && frac > 0.001 && (
+              <path d={arcPath(0, frac)} fill="none" stroke="url(#sun-arc)" strokeWidth="2" strokeLinecap="round" />
+            )}
+            {/* horizon */}
+            <line x1="4" y1="40" x2="96" y2="40" stroke="var(--color-border-subtle)" strokeWidth="1" />
+            <circle cx="8" cy="40" r="1.5" fill="var(--color-text-muted)" />
+            <circle cx="92" cy="40" r="1.5" fill="var(--color-text-muted)" />
+          </svg>
+          {/* live weather icon on the arc */}
+          <div
+            className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            style={{
+              left: `${m.x}%`,
+              top: `${(m.y / 48) * 100}%`,
+              filter: isDay ? "drop-shadow(0 0 6px rgba(251,191,36,0.6))" : "none",
+              opacity: isDay ? 1 : 0.6,
+            }}
+          >
+            <MarkerIcon className="w-full h-full" />
+          </div>
+          {/* countdown hero, floated in the arc's open mouth (above the horizon) */}
+          <div
+            className="absolute inset-x-0 flex flex-col items-center pointer-events-none"
+            style={{ top: "54%" }}
+          >
+            <span className="font-mono tabular-nums text-text text-[15px] leading-none">{hero.value}</span>
+            <span className="text-text-muted text-[9px] uppercase tracking-[0.12em] mt-0.5">{hero.label}</span>
+          </div>
         </div>
       </div>
-      {/* footer: rise / set anchored under the arc feet */}
-      <div className="mt-auto flex items-end justify-between">
+      {/* footer: rise · UV · set */}
+      <div className="shrink-0 flex items-end justify-between">
         <div className="flex items-center gap-1.5">
           <RiseIcon className="w-3.5 h-3.5 shrink-0" style={{ color: "#fbbf24" }} />
           <div className="flex flex-col leading-tight">
@@ -179,6 +197,17 @@ function SunComponent({ config }: WidgetProps<SunConfig>) {
             <span className="font-mono tabular-nums text-text-secondary text-[12px]">{hhmm(data.daily.sunrise[0])}</span>
           </div>
         </div>
+        {uvInfo && uvNow != null && (
+          <div className="flex flex-col items-center leading-tight" title={`UV index${uvMax != null ? ` · peak ${uvMax.toFixed(1)}` : ""}`}>
+            <div className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: uvInfo.color }} />
+              <span className="font-mono tabular-nums text-text text-[12px]">UV {uvNow.toFixed(1)}</span>
+            </div>
+            <span className="text-[8.5px] uppercase tracking-[0.1em]" style={{ color: uvInfo.color }}>
+              {uvInfo.label}
+            </span>
+          </div>
+        )}
         <div className="flex items-center gap-1.5">
           <div className="flex flex-col leading-tight text-right">
             <span className="text-text-muted text-[8.5px] uppercase tracking-[0.1em]">Set</span>
@@ -260,11 +289,11 @@ const definition: WidgetDefinition<SunConfig> = {
   title: "Sun",
   icon: SunIcon,
   category: "external",
-  description: "Sunrise, sunset and a daylight arc for a city.",
+  description: "Sunrise, sunset, UV index and a daylight arc for a city.",
   minW: 2,
   minH: 2,
-  maxW: 4,
-  maxH: 3,
+  maxW: 5,
+  maxH: 4,
   defaultW: 3,
   defaultH: 2,
   defaultConfig: {},
