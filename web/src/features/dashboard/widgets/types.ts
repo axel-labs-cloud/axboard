@@ -99,6 +99,7 @@ export interface WeatherConfig {
   lat?: number;
   lon?: number;
   units?: "celsius" | "fahrenheit";
+  hourly?: boolean;
 }
 
 /**

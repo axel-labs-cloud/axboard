@@ -34,6 +34,11 @@ interface OpenMeteoResponse {
     temperature_2m_max: number[];
     temperature_2m_min: number[];
   };
+  hourly?: {
+    time: string[];
+    temperature_2m: number[];
+    weather_code: number[];
+  };
 }
 
 interface GeocodingResponse {
@@ -56,6 +61,7 @@ async function fetchWeather(
     current:
       "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,is_day",
     daily: "weather_code,temperature_2m_max,temperature_2m_min",
+    hourly: "temperature_2m,weather_code",
     timezone: "auto",
     forecast_days: "7",
     temperature_unit: units,
@@ -178,6 +184,33 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
     </div>
   );
 
+  // Next ~12 hours from the current hour (only when enabled + room to show it).
+  const showHourly = !!config?.hourly && (tall || (wide && !tall));
+  const HourlyStrip = (() => {
+    const hr = data.hourly;
+    if (!hr?.time?.length) return null;
+    const nowMs = Date.now();
+    let start = hr.time.findIndex((t) => new Date(t).getTime() >= nowMs - 30 * 60_000);
+    if (start < 0) start = 0;
+    const slice = hr.time.slice(start, start + 12);
+    return (
+      <div className="shrink-0 flex gap-1.5 overflow-x-auto pb-0.5">
+        {slice.map((t, k) => {
+          const idx = start + k;
+          const H = wmoIcon(hr.weather_code[idx], true).Icon;
+          const hour = new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", hour12: false }).slice(0, 2);
+          return (
+            <div key={t} className="shrink-0 w-11 flex flex-col items-center gap-0.5 rounded-md bg-bg-card/40 px-1 py-1.5">
+              <span className="text-[10px] text-text-muted tabular-nums">{k === 0 ? "now" : `${hour}h`}</span>
+              <div className="w-5 h-5"><H className="w-full h-full" /></div>
+              <span className="text-[11px] font-mono tabular-nums text-text">{Math.round(hr.temperature_2m[idx])}°</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  })();
+
   const ForecastRow = (
     <div className="flex-1 flex gap-1.5 min-h-0">
       {(data.daily?.time ?? []).slice(0, numForecast).map((d, i) => {
@@ -232,6 +265,7 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
       <div className="h-full flex flex-col gap-2 p-3 overflow-hidden">
         {Header}
         {Hero}
+        {showHourly && HourlyStrip}
         <div className="flex-1 flex flex-col min-h-0 gap-0.5 overflow-hidden">
           {(data.daily?.time ?? []).slice(0, veryTall ? 7 : 5).map((d, i) => {
             const F = wmoIcon(data.daily!.weather_code[i], true).Icon;
@@ -266,6 +300,7 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
       {Header}
       {Hero}
       {showDetails && Details}
+      {showHourly && HourlyStrip}
       {tall && ForecastRow}
     </div>
   );
@@ -385,6 +420,19 @@ function WeatherConfigPanel({ config, save }: WidgetConfigProps<WeatherConfig>) 
           ))}
         </div>
       </div>
+
+      <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
+        <input
+          type="checkbox"
+          checked={!!config?.hourly}
+          onChange={(e) => save({ hourly: e.target.checked })}
+          className="accent-accent"
+        />
+        Show hourly forecast
+      </label>
+      <p className="text-[10px] text-text-muted leading-snug -mt-1">
+        Adds a next-12-hours strip when the widget is tall enough.
+      </p>
     </div>
   );
 }

@@ -34,6 +34,19 @@ const ENGINES: { name: string; url: string }[] = [
   { name: "Wikipedia", url: "https://en.wikipedia.org/wiki/Special:Search?search=" },
 ];
 
+// Search "bangs": `g foo`, `!yt foo`, `gh foo` → jump straight to that engine.
+const BANGS: Record<string, { name: string; url: string }> = {
+  g: { name: "Google", url: "https://www.google.com/search?q=" },
+  ddg: { name: "DuckDuckGo", url: "https://duckduckgo.com/?q=" },
+  gh: { name: "GitHub", url: "https://github.com/search?q=" },
+  yt: { name: "YouTube", url: "https://www.youtube.com/results?search_query=" },
+  w: { name: "Wikipedia", url: "https://en.wikipedia.org/wiki/Special:Search?search=" },
+  npm: { name: "npm", url: "https://www.npmjs.com/search?q=" },
+  mdn: { name: "MDN", url: "https://developer.mozilla.org/en-US/search?q=" },
+  so: { name: "Stack Overflow", url: "https://stackoverflow.com/search?q=" },
+  gm: { name: "Google Maps", url: "https://www.google.com/maps/search/" },
+};
+
 function score(haystack: string, q: string): number {
   if (!q) return 1;
   const h = haystack.toLowerCase();
@@ -111,10 +124,24 @@ export function Spotlight({ open, onClose, actions = [] }: Props) {
     return out.slice(0, 8);
   }, [cfg, query]);
 
-  // Web search engines (only when there's a query).
+  // Web search engines (only when there's a query). A leading bang (`g …`,
+  // `!yt …`, `gh …`) jumps straight to that engine as the top result.
   const engineResults = useMemo<Result[]>(() => {
     const q = query.trim();
     if (!q) return [];
+    const m = q.match(/^!?([a-z]+)\s+(.+)$/i);
+    const bang = m ? BANGS[m[1].toLowerCase()] : undefined;
+    if (bang && m) {
+      const term = m[2];
+      return [
+        {
+          kind: "engine",
+          label: bang.name,
+          subtitle: `Search "${term}"`,
+          url: bang.url + encodeURIComponent(term),
+        },
+      ];
+    }
     return ENGINES.map<Result>((e) => ({
       kind: "engine",
       label: e.name,
@@ -140,10 +167,14 @@ export function Spotlight({ open, onClose, actions = [] }: Props) {
       }));
   }, [actions, query]);
 
-  const results = useMemo(
-    () => [...actionResults, ...appResults, ...bookmarkResults, ...engineResults],
-    [actionResults, appResults, bookmarkResults, engineResults],
-  );
+  const results = useMemo(() => {
+    const m = query.trim().match(/^!?([a-z]+)\s+.+$/i);
+    const bangActive = !!m && !!BANGS[m[1].toLowerCase()];
+    // With an explicit bang, the engine jump is the intent → put it first.
+    return bangActive
+      ? [...engineResults, ...actionResults, ...appResults, ...bookmarkResults]
+      : [...actionResults, ...appResults, ...bookmarkResults, ...engineResults];
+  }, [query, actionResults, appResults, bookmarkResults, engineResults]);
 
   useEffect(() => setSelected(0), [query]);
 
