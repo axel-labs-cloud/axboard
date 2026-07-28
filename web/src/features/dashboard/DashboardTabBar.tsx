@@ -100,6 +100,7 @@ export function DashboardTabBar({
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -338,165 +339,92 @@ export function DashboardTabBar({
           createPortal(
             <div
               data-general-menu
-              className="fixed z-[300] w-[260px] bg-bg-elevated border border-border rounded-lg shadow-2xl ring-1 ring-white/5 py-1"
+              className="fixed z-[300] w-[264px] max-h-[80vh] overflow-auto bg-bg-elevated border border-border rounded-lg shadow-2xl ring-1 ring-white/5 py-1"
               style={{ top: menuPos.top, right: menuPos.right }}
             >
-              <MenuItem
-                label="Add widget"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onAddWidget();
-                }}
-              />
-              <MenuItem
-                label="Manage services"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onManageServices();
-                }}
-              />
-              <MenuItem
-                label="Export this dashboard"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onExport();
-                }}
-              />
-              <MenuItem
-                label="Import a dashboard…"
-                onClick={() => {
-                  setMenuOpen(false);
-                  importInputRef.current?.click();
-                }}
-              />
-              <div className="my-1 border-t border-border-subtle" />
-              <MenuItem
-                label={editing ? "Done editing" : "Edit dashboard"}
-                icon={
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-3.5 h-3.5"
-                  >
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
-                  </svg>
-                }
-                onClick={() => {
-                  setMenuOpen(false);
-                  onToggleEdit();
-                }}
-              />
-              <MenuItem
-                label="Appearance…"
-                icon={
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
-                    <circle cx="13.5" cy="6.5" r="2.5" />
-                    <circle cx="6.5" cy="12" r="2.5" />
-                    <path d="M12 2a10 10 0 1 0 0 20a3 3 0 0 0 0-6h-1a2 2 0 0 1 0-4h3a5 5 0 0 0 5-5a5 5 0 0 0-9-3" />
-                  </svg>
-                }
-                onClick={() => {
-                  setMenuOpen(false);
-                  setAppearanceOpen(true);
-                }}
-              />
-              <div className="my-1 border-t border-border-subtle" />
-              <MenuItem
-                label="New dashboard from template…"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onNewFromTemplate();
-                }}
-              />
-              <MenuItem
-                label="Edit config.yaml…"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onEditConfig();
-                }}
-              />
-              <MenuItem
-                label={alertsEnabled ? "Desktop alerts: on" : "Desktop alerts: off"}
-                onClick={() => {
-                  setMenuOpen(false);
-                  onToggleAlerts();
-                }}
-              />
-              <MenuItem
-                label="Enter kiosk mode"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onEnterKiosk();
-                }}
-              />
-              <MenuItem
-                label="Back up everything"
-                onClick={() => {
-                  setMenuOpen(false);
-                  onBackup();
-                }}
-              />
-              <MenuItem
-                label="Restore from backup…"
-                onClick={() => {
-                  setMenuOpen(false);
-                  restoreInputRef.current?.click();
-                }}
-              />
-              <div className="my-1 border-t border-border-subtle" />
-              <div className="px-3 py-1.5">
-                <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-1.5">
-                  Density
-                </div>
-                <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card w-full">
-                  {(["compact", "cozy", "spacious"] as const).map((d) => (
-                    <button
-                      key={d}
-                      onClick={() => onSetDensity(d)}
-                      className={`flex-1 px-2 py-1 text-[11px] rounded capitalize transition-colors ${
-                        density === d ? "bg-bg-elevated text-text shadow-sm" : "text-text-muted hover:text-text-secondary"
-                      }`}
-                    >
-                      {d}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="px-3 py-1.5">
-                <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-2">
-                  Theme
-                </div>
-                <div className="grid grid-cols-3 gap-1.5">
-                  {THEMES.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => setTheme(t.id)}
-                      title={t.label}
-                      className={`flex flex-col items-center gap-1 rounded-md p-1.5 border transition-colors ${
-                        theme === t.id
-                          ? "border-accent/50 bg-accent/10"
-                          : "border-border-subtle hover:border-border hover:bg-bg-hover"
-                      }`}
-                    >
-                      <span
-                        className="w-full h-6 rounded flex items-center justify-end px-1 ring-1 ring-black/20"
-                        style={{ background: t.bg }}
+              <MenuGroup
+                label="Widgets & services"
+                icon={GROUP_ICONS.widgets}
+                open={openGroup === "widgets"}
+                onToggle={() => setOpenGroup((g) => (g === "widgets" ? null : "widgets"))}
+              >
+                <MenuItem label="Add widget" onClick={() => { setMenuOpen(false); onAddWidget(); }} />
+                <MenuItem label="Manage services" onClick={() => { setMenuOpen(false); onManageServices(); }} />
+              </MenuGroup>
+
+              <MenuGroup
+                label="This dashboard"
+                icon={GROUP_ICONS.dashboard}
+                open={openGroup === "dashboard"}
+                onToggle={() => setOpenGroup((g) => (g === "dashboard" ? null : "dashboard"))}
+              >
+                <MenuItem
+                  label={editing ? "Done editing" : "Edit dashboard"}
+                  onClick={() => { setMenuOpen(false); onToggleEdit(); }}
+                />
+                <MenuItem label="Appearance…" onClick={() => { setMenuOpen(false); setAppearanceOpen(true); }} />
+                <MenuItem label="Export this dashboard" onClick={() => { setMenuOpen(false); onExport(); }} />
+                <MenuItem label="Import a dashboard…" onClick={() => { setMenuOpen(false); importInputRef.current?.click(); }} />
+              </MenuGroup>
+
+              <MenuGroup
+                label="Backup & config"
+                icon={GROUP_ICONS.backup}
+                open={openGroup === "backup"}
+                onToggle={() => setOpenGroup((g) => (g === "backup" ? null : "backup"))}
+              >
+                <MenuItem label="New dashboard from template…" onClick={() => { setMenuOpen(false); onNewFromTemplate(); }} />
+                <MenuItem label="Edit config.yaml…" onClick={() => { setMenuOpen(false); onEditConfig(); }} />
+                <MenuItem label="Back up everything" onClick={() => { setMenuOpen(false); onBackup(); }} />
+                <MenuItem label="Restore from backup…" onClick={() => { setMenuOpen(false); restoreInputRef.current?.click(); }} />
+              </MenuGroup>
+
+              <MenuGroup
+                label="Display"
+                icon={GROUP_ICONS.display}
+                open={openGroup === "display"}
+                onToggle={() => setOpenGroup((g) => (g === "display" ? null : "display"))}
+              >
+                <MenuItem label={alertsEnabled ? "Desktop alerts: on" : "Desktop alerts: off"} onClick={() => { setMenuOpen(false); onToggleAlerts(); }} />
+                <MenuItem label="Enter kiosk mode" onClick={() => { setMenuOpen(false); onEnterKiosk(); }} />
+                <div className="px-3 py-1.5">
+                  <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-1.5">Density</div>
+                  <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card w-full">
+                    {(["compact", "cozy", "spacious"] as const).map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => onSetDensity(d)}
+                        className={`flex-1 px-2 py-1 text-[11px] rounded capitalize transition-colors ${
+                          density === d ? "bg-bg-elevated text-text shadow-sm" : "text-text-muted hover:text-text-secondary"
+                        }`}
                       >
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ background: t.accent }} />
-                        <span className="w-2.5 h-4 rounded-sm ml-0.5" style={{ background: t.surface }} />
-                      </span>
-                      <span className="text-[10px] text-text-secondary truncate max-w-full">
-                        {t.label}
-                      </span>
-                    </button>
-                  ))}
+                        {d}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+                <div className="px-3 py-1.5">
+                  <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-2">Theme</div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {THEMES.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setTheme(t.id)}
+                        title={t.label}
+                        className={`flex flex-col items-center gap-1 rounded-md p-1.5 border transition-colors ${
+                          theme === t.id ? "border-accent/50 bg-accent/10" : "border-border-subtle hover:border-border hover:bg-bg-hover"
+                        }`}
+                      >
+                        <span className="w-full h-6 rounded flex items-center justify-end px-1 ring-1 ring-black/20" style={{ background: t.bg }}>
+                          <span className="w-2.5 h-2.5 rounded-full" style={{ background: t.accent }} />
+                          <span className="w-2.5 h-4 rounded-sm ml-0.5" style={{ background: t.surface }} />
+                        </span>
+                        <span className="text-[10px] text-text-secondary truncate max-w-full">{t.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </MenuGroup>
             </div>,
             document.body,
           )}
@@ -642,6 +570,75 @@ function MenuItem({
     </button>
   );
 }
+
+// Collapsible submenu group inside the general menu (accordion-style).
+function MenuGroup({
+  label,
+  icon,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  icon?: React.ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="border-b border-border-subtle/60 last:border-b-0">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-text-secondary hover:text-text hover:bg-bg-hover transition-colors"
+      >
+        {icon && <span className="text-text-muted shrink-0">{icon}</span>}
+        <span className="flex-1 text-left">{label}</span>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`w-3.5 h-3.5 text-text-muted transition-transform ${open ? "rotate-90" : ""}`}
+        >
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </button>
+      {open && <div className="pb-1">{children}</div>}
+    </div>
+  );
+}
+
+const GROUP_ICONS: Record<string, React.ReactNode> = {
+  widgets: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </svg>
+  ),
+  dashboard: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
+  ),
+  backup: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path d="M3 5v14a9 3 0 0 0 18 0V5" />
+      <path d="M3 12a9 3 0 0 0 18 0" />
+    </svg>
+  ),
+  display: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+    </svg>
+  ),
+};
 
 function IconButton({
   title,

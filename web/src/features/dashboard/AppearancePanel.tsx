@@ -60,12 +60,15 @@ export function AppearancePanel(props: Props) {
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-      <div
-        className="relative w-full max-w-md max-h-[85vh] overflow-auto rounded-xl border border-border bg-bg-card shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    // Only a click that lands on the overlay itself (not a child) dismisses —
+    // this is robust against event-bubbling quirks with portals.
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div className="relative w-full max-w-md max-h-[85vh] overflow-auto rounded-xl border border-border bg-bg-card shadow-2xl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border-subtle sticky top-0 bg-bg-card z-10">
           <h2 className="text-[14px] font-semibold text-text">Appearance</h2>
           <button onClick={onClose} className="text-text-muted hover:text-text text-lg leading-none px-1">×</button>
