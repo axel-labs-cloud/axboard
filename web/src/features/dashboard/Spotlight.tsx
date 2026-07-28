@@ -4,17 +4,25 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Config } from "../../api/types";
 import { SimpleIcon } from "./SimpleIcon";
 
+export interface SpotlightAction {
+  label: string;
+  subtitle?: string;
+  run: () => void;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
+  actions?: SpotlightAction[];
 }
 
 interface Result {
-  kind: "app" | "bookmark" | "engine";
+  kind: "action" | "app" | "bookmark" | "engine";
   label: string;
   subtitle?: string;
   icon?: string;
-  url: string;
+  url?: string;
+  run?: () => void;
 }
 
 // Hardcoded engine list for v1. Will move to a top-level config field once
@@ -35,7 +43,7 @@ function score(haystack: string, q: string): number {
   return idx === 0 ? 3 : 2;
 }
 
-export function Spotlight({ open, onClose }: Props) {
+export function Spotlight({ open, onClose, actions = [] }: Props) {
   const qc = useQueryClient();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -115,9 +123,26 @@ export function Spotlight({ open, onClose }: Props) {
     }));
   }, [query]);
 
+  // Command actions (theme, add widget, jump dashboard…) — matched by label.
+  const actionResults = useMemo<Result[]>(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return actions
+      .map((a) => ({ a, s: score(a.label, q) }))
+      .filter(({ s }) => s > 0)
+      .sort((x, y) => y.s - x.s)
+      .slice(0, 8)
+      .map<Result>(({ a }) => ({
+        kind: "action",
+        label: a.label,
+        subtitle: a.subtitle,
+        run: a.run,
+      }));
+  }, [actions, query]);
+
   const results = useMemo(
-    () => [...appResults, ...bookmarkResults, ...engineResults],
-    [appResults, bookmarkResults, engineResults],
+    () => [...actionResults, ...appResults, ...bookmarkResults, ...engineResults],
+    [actionResults, appResults, bookmarkResults, engineResults],
   );
 
   useEffect(() => setSelected(0), [query]);
@@ -131,7 +156,11 @@ export function Spotlight({ open, onClose }: Props) {
   }, [selected]);
 
   const launch = (r: Result) => {
-    window.open(r.url, "_blank", "noopener");
+    if (r.kind === "action") {
+      r.run?.();
+    } else if (r.url) {
+      window.open(r.url, "_blank", "noopener");
+    }
     onClose();
   };
 
@@ -241,7 +270,13 @@ function ResultList({
       {groups.map((g, gi) => (
         <div key={gi}>
           <div className="px-4 pt-2 pb-1 text-[9px] uppercase tracking-[0.12em] text-text-muted/70 font-semibold">
-            {g.kind === "app" ? "Apps" : g.kind === "bookmark" ? "Bookmarks" : "Search the web"}
+            {g.kind === "action"
+              ? "Commands"
+              : g.kind === "app"
+                ? "Apps"
+                : g.kind === "bookmark"
+                  ? "Bookmarks"
+                  : "Search the web"}
           </div>
           {g.rows.map(({ r, i }) => (
             <button

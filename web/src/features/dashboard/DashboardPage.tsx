@@ -18,7 +18,8 @@ import { useDownAlerts } from "../../hooks/useDownAlerts";
 import { WidgetContextMenu } from "./WidgetContextMenu";
 import { AddWidgetModal } from "./AddWidgetModal";
 import { ServicesEditor } from "./widgets/apps/ServicesEditor";
-import { Spotlight } from "./Spotlight";
+import { Spotlight, type SpotlightAction } from "./Spotlight";
+import { THEMES } from "../../hooks/themes";
 import { ConfigEditorModal } from "./ConfigEditorModal";
 import { TemplatePickerModal } from "./TemplatePickerModal";
 import type { DashboardTemplate } from "./templates";
@@ -125,6 +126,11 @@ interface DashboardPageProps {
 export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const qc = useQueryClient();
   const { dashboards } = useDashboards();
+
+  // Kiosk mode (?kiosk=1) — hide all chrome and lock to view mode, for a
+  // wall-mounted display.
+  const kiosk =
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).has("kiosk");
 
   const [activeDashboardId, setActiveDashboardId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -791,7 +797,9 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   useDashboardShortcuts({
     editing,
     selectedWidgetId,
-    toggleEdit: () => setEditing((e) => !e),
+    toggleEdit: () => {
+      if (!kiosk) setEditing((e) => !e);
+    },
     onEscape: () => {
       if (contextMenu) {
         setContextMenu(null);
@@ -947,13 +955,65 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const isEmpty = layout.widgets.length === 0;
   const activeAccent = dashboards.find((d) => d.id === activeDashboardId)?.accent;
 
+  // Arrow keys nudge the selected widget by one grid cell in edit mode.
+  useEffect(() => {
+    if (!editing) return;
+    const deltas: Record<string, [number, number]> = {
+      ArrowLeft: [-1, 0],
+      ArrowRight: [1, 0],
+      ArrowUp: [0, -1],
+      ArrowDown: [0, 1],
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (!selectedWidgetId) return;
+      const tgt = e.target as HTMLElement | null;
+      if (tgt && (tgt.tagName === "INPUT" || tgt.tagName === "TEXTAREA" || tgt.isContentEditable)) return;
+      const d = deltas[e.key];
+      if (!d) return;
+      e.preventDefault();
+      const items = (layoutRef.current.layouts.lg || []).map((it) =>
+        it.i === selectedWidgetId
+          ? {
+              ...it,
+              x: Math.max(0, Math.min(cols - it.w, it.x + d[0])),
+              y: Math.max(0, it.y + d[1]),
+            }
+          : it,
+      );
+      persistWithHistory({ ...layoutRef.current, layouts: { lg: items } });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editing, selectedWidgetId, persistWithHistory, cols]);
+
+  // Commands surfaced in the ⌘K spotlight (type to filter by label).
+  const spotlightActions: SpotlightAction[] = useMemo(() => {
+    const acts: SpotlightAction[] = [
+      { label: editing ? "Exit edit mode" : "Edit dashboard", run: () => setEditing((e) => !e) },
+      { label: "Add widget", run: () => setAddWidgetOpen(true) },
+      { label: "Manage services", run: () => setManageServicesOpen(true) },
+      { label: "New dashboard from template", run: () => setTemplatePickerOpen(true) },
+      { label: "Edit config.yaml", run: () => setConfigEditorOpen(true) },
+      { label: "Back up everything", run: () => handleBackup() },
+    ];
+    for (const t of THEMES) {
+      acts.push({ label: `Theme: ${t.label}`, subtitle: "Switch color theme", run: () => setTheme(t.id) });
+    }
+    for (const d of dashboards) {
+      acts.push({ label: `Go to ${d.name}`, subtitle: "Dashboard", run: () => setActiveDashboardId(d.id) });
+    }
+    return acts;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, dashboards, setTheme, handleBackup]);
+
   return (
     <div
-      className="p-6 h-full flex flex-col min-h-0"
+      className={`${kiosk ? "p-4" : "p-6"} h-full flex flex-col min-h-0`}
       // Per-dashboard accent overrides the theme --color-accent for everything
       // inside this subtree (all `*-accent` utilities read the variable).
       style={activeAccent ? ({ "--color-accent": activeAccent } as React.CSSProperties) : undefined}
     >
+      {!kiosk && (
       <DashboardTabBar
         dashboards={dashboards.map((d) => ({
           id: d.id,
@@ -988,6 +1048,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         theme={theme}
         setTheme={setTheme}
       />
+      )}
 
       <div
         ref={containerRef}
@@ -1126,7 +1187,11 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         open={manageServicesOpen}
         onClose={() => setManageServicesOpen(false)}
       />
-      <Spotlight open={spotlightOpen} onClose={() => setSpotlightOpen(false)} />
+      <Spotlight
+        open={spotlightOpen}
+        onClose={() => setSpotlightOpen(false)}
+        actions={spotlightActions}
+      />
       <ConfigEditorModal open={configEditorOpen} onClose={() => setConfigEditorOpen(false)} />
       <TemplatePickerModal
         open={templatePickerOpen}
