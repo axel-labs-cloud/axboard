@@ -127,13 +127,30 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const qc = useQueryClient();
   const { dashboards } = useDashboards();
 
-  // Kiosk mode (?kiosk=1) — hide all chrome and lock to view mode, for a
-  // wall-mounted display.
-  const kiosk =
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).has("kiosk");
+  // Kiosk mode — hide all chrome and lock to view mode, for a wall display.
+  // Toggleable from the menu; also honored via the ?kiosk=1 URL param.
+  const [kiosk, setKiosk] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).has("kiosk"),
+  );
 
   const [activeDashboardId, setActiveDashboardId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+
+  // Keep the URL in sync so a kiosk view survives reload / can be bookmarked,
+  // and let Escape leave kiosk mode.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (kiosk) url.searchParams.set("kiosk", "1");
+    else url.searchParams.delete("kiosk");
+    window.history.replaceState({}, "", url);
+    if (!kiosk) return;
+    setEditing(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setKiosk(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [kiosk]);
   const [configId, setConfigId] = useState<string | null>(null);
   const [configPos, setConfigPos] = useState<{ x: number; y: number } | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -153,6 +170,18 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     () => typeof window !== "undefined" && window.localStorage.getItem("axboard-alerts") === "1",
   );
   useDownAlerts(alertsEnabled);
+
+  const [density, setDensityState] = useState<string>(
+    () => (typeof window !== "undefined" && window.localStorage.getItem("axboard-density")) || "cozy",
+  );
+  const setDensity = useCallback((d: string) => {
+    setDensityState(d);
+    try {
+      window.localStorage.setItem("axboard-density", d);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const toggleAlerts = useCallback(async () => {
     if (!alertsEnabled) {
@@ -236,7 +265,8 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   // it both between widgets and around the outer edge). Bumped from 6 so
   // widgets sit visibly inside their grid cells.
   const cols = 24;
-  const gap = 12;
+  // Board density controls the inter-widget gap (and page padding below).
+  const gap = density === "compact" ? 6 : density === "spacious" ? 20 : 12;
   const cell = (containerW - gap * (cols + 1)) / cols;
 
   const layoutQueryKey = ["dashboard-layout", activeDashboardId] as const;
@@ -1008,7 +1038,9 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
 
   return (
     <div
-      className={`${kiosk ? "p-4" : "p-6"} h-full flex flex-col min-h-0`}
+      className={`${
+        kiosk ? "p-3" : density === "compact" ? "p-3" : density === "spacious" ? "p-8" : "p-6"
+      } h-full flex flex-col min-h-0`}
       // Per-dashboard accent overrides the theme --color-accent for everything
       // inside this subtree (all `*-accent` utilities read the variable).
       style={activeAccent ? ({ "--color-accent": activeAccent } as React.CSSProperties) : undefined}
@@ -1039,6 +1071,9 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onNewFromTemplate={() => setTemplatePickerOpen(true)}
         alertsEnabled={alertsEnabled}
         onToggleAlerts={toggleAlerts}
+        onEnterKiosk={() => setKiosk(true)}
+        density={density}
+        onSetDensity={setDensity}
         onAddWidget={() => setAddWidgetOpen(true)}
         onManageServices={() => setManageServicesOpen(true)}
         onAddDashboard={handleAddDashboard}
@@ -1187,6 +1222,19 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         open={manageServicesOpen}
         onClose={() => setManageServicesOpen(false)}
       />
+      {kiosk && (
+        <button
+          onClick={() => setKiosk(false)}
+          title="Exit kiosk (Esc)"
+          className="fixed top-3 right-3 z-[200] w-8 h-8 flex items-center justify-center rounded-md bg-bg-elevated/70 border border-border-subtle text-text-muted hover:text-text hover:bg-bg-elevated opacity-30 hover:opacity-100 transition-opacity"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      )}
+
       <Spotlight
         open={spotlightOpen}
         onClose={() => setSpotlightOpen(false)}

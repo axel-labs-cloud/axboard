@@ -77,10 +77,24 @@ function HostComponent({ config, h }: WidgetProps<HostConfig>) {
         </div>
       )}
 
-      {h > 2 && (
+      {h >= 2 && (
         <div className="flex items-baseline justify-between text-[11px] pt-0.5">
           <span className="text-text-muted">Uptime</span>
           <span className="font-mono tabular-nums text-text-secondary">{fmtUptime(data.uptime_sec)}</span>
+        </div>
+      )}
+      {h >= 3 && (
+        <div className="flex items-baseline justify-between text-[11px]">
+          <span className="text-text-muted">CPU cores</span>
+          <span className="font-mono tabular-nums text-text-secondary">{data.cpus}</span>
+        </div>
+      )}
+      {h >= 3 && (
+        <div className="flex items-baseline justify-between text-[11px]">
+          <span className="text-text-muted">Mem free</span>
+          <span className="font-mono tabular-nums text-text-secondary">
+            {fmtBytes(Math.max(0, data.mem_total - data.mem_used))}
+          </span>
         </div>
       )}
     </div>
@@ -104,8 +118,8 @@ const definition: WidgetDefinition<HostConfig> = {
   description: "Memory, load average and uptime of the machine axboard runs on.",
   minW: 2,
   minH: 2,
-  maxW: 5,
-  maxH: 4,
+  maxW: 8,
+  maxH: 6,
   defaultW: 3,
   defaultH: 2,
   defaultConfig: { showLoad: true },

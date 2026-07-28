@@ -29,6 +29,9 @@ interface Props {
   onNewFromTemplate: () => void;
   alertsEnabled: boolean;
   onToggleAlerts: () => void;
+  onEnterKiosk: () => void;
+  density: string;
+  onSetDensity: (d: string) => void;
   onAddWidget: () => void;
   onManageServices: () => void;
   onAddDashboard: () => void;
@@ -60,6 +63,9 @@ export function DashboardTabBar({
   onNewFromTemplate,
   alertsEnabled,
   onToggleAlerts,
+  onEnterKiosk,
+  density,
+  onSetDensity,
   onAddWidget,
   onManageServices,
   onAddDashboard,
@@ -426,6 +432,13 @@ export function DashboardTabBar({
                 }}
               />
               <MenuItem
+                label="Enter kiosk mode"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEnterKiosk();
+                }}
+              />
+              <MenuItem
                 label="Back up everything"
                 onClick={() => {
                   setMenuOpen(false);
@@ -440,6 +453,24 @@ export function DashboardTabBar({
                 }}
               />
               <div className="my-1 border-t border-border-subtle" />
+              <div className="px-3 py-1.5">
+                <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-1.5">
+                  Density
+                </div>
+                <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card w-full">
+                  {(["compact", "cozy", "spacious"] as const).map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => onSetDensity(d)}
+                      className={`flex-1 px-2 py-1 text-[11px] rounded capitalize transition-colors ${
+                        density === d ? "bg-bg-elevated text-text shadow-sm" : "text-text-muted hover:text-text-secondary"
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="px-3 py-1.5">
                 <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-2">
                   Theme
