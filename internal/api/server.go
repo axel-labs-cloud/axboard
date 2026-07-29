@@ -373,14 +373,7 @@ func (s *Server) handleWoL(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "invalid MAC"})
 		return
 	}
-	// Magic packet: 6×0xFF then the MAC repeated 16 times.
-	packet := make([]byte, 6, 102)
-	for i := range packet {
-		packet[i] = 0xFF
-	}
-	for i := 0; i < 16; i++ {
-		packet = append(packet, hw...)
-	}
+	packet := magicPacket(hw)
 	conn, err := net.Dial("udp", net.JoinHostPort(bcast, "9"))
 	if err != nil {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
@@ -392,6 +385,19 @@ func (s *Server) handleWoL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// magicPacket builds a Wake-on-LAN magic packet: 6×0xFF then the MAC repeated
+// 16 times (102 bytes total).
+func magicPacket(hw net.HardwareAddr) []byte {
+	packet := make([]byte, 6, 102)
+	for i := range packet {
+		packet[i] = 0xFF
+	}
+	for i := 0; i < 16; i++ {
+		packet = append(packet, hw...)
+	}
+	return packet
 }
 
 // handleUptimePing checks one URL for the uptime-monitor widget and returns

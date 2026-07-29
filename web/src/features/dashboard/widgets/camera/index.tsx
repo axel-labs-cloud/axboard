@@ -281,11 +281,13 @@ const definition: WidgetDefinition<CameraConfig> = {
   defaultW: 4,
   defaultH: 3,
   // Seeds a public demo MJPEG cam so the widget shows a live feed immediately.
+  // It's a third-party public camera that may go offline — replace it with your
+  // Frigate camera or your own stream URL in the config.
   defaultConfig: {
     source: "url",
     mode: "mjpeg",
     streamUrl: "http://158.58.130.148/mjpg/video.mjpg",
-    title: "Demo camera",
+    title: "Demo — replace with your camera",
     showTitle: true,
     fit: "cover",
   },

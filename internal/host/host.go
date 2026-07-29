@@ -265,9 +265,13 @@ func readCPU() (busy, total uint64, perBusy, perTotal []uint64) {
 	return busy, total, perBusy, perTotal
 }
 
+// hwmonBase / powerBase are overridable in tests.
+var hwmonBase = "/sys/class/hwmon"
+var powerBase = "/sys/class/power_supply"
+
 // gatherTemps reads hardware temperatures from /sys/class/hwmon.
 func gatherTemps() []Temp {
-	const base = "/sys/class/hwmon"
+	base := hwmonBase
 	dirs, err := os.ReadDir(base)
 	if err != nil {
 		return nil
@@ -311,7 +315,7 @@ func gatherTemps() []Temp {
 
 // gatherBatteries reads power supplies of type Battery/UPS.
 func gatherBatteries() []Battery {
-	const base = "/sys/class/power_supply"
+	base := powerBase
 	dirs, err := os.ReadDir(base)
 	if err != nil {
 		return nil
@@ -458,8 +462,8 @@ func TopProcs(n int) []Proc {
 		if len(rest) < 22 {
 			continue
 		}
-		utime, _ := strconv.ParseUint(rest[11], 10, 64) // field 14
-		stime, _ := strconv.ParseUint(rest[12], 10, 64) // field 15
+		utime, _ := strconv.ParseUint(rest[11], 10, 64)    // field 14
+		stime, _ := strconv.ParseUint(rest[12], 10, 64)    // field 15
 		rssPages, _ := strconv.ParseUint(rest[21], 10, 64) // field 24
 		cur[pid] = procSample{jiffies: utime + stime, rss: rssPages * pageSize, name: name}
 	}

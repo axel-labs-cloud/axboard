@@ -132,6 +132,19 @@ Press **`?`** in-app for the full cheat sheet.
 | `Del` / `⌫` | Remove selected widget (edit mode) |
 | Arrow keys | Nudge selected widget (edit mode) |
 
+## Alerts
+
+axboard notifies you when a health-checked app **goes down or recovers**. Add an
+`alerts` block to `config.yaml` — every configured channel fires (all
+best-effort):
+
+- **ntfy** — zero infra: POSTs to a topic on `ntfy.sh` or your self-hosted ntfy.
+- **Telegram** — a bot token (from `@BotFather`) + your chat id.
+- **Email** — through your SMTP relay (host + creds).
+- **Webhook** — a plain JSON POST for Discord/Slack/custom.
+
+See the commented `alerts:` example in [`config.example.yaml`](./config.example.yaml).
+
 ## Deployment & security
 
 axboard has **no authentication by design** — anyone who can reach the port can read and edit the config. That's fine for a LAN-bound single-user dashboard.

@@ -11,9 +11,25 @@ server:
   # behind a reverse-proxy / forward-auth if you expose it beyond the LAN.
   bind: "0.0.0.0:8080"
 
-# Optional: POST a small JSON payload to a webhook when an app goes down/up.
+# Optional: notify when an app goes down or recovers. Every configured channel
+# fires; all are best-effort. ntfy needs no infra (public ntfy.sh or self-host);
+# Telegram needs a bot token + chat id; email needs an SMTP relay.
 # alerts:
-#   webhook_url: "https://hooks.example.com/axboard"
+#   webhook_url: "https://hooks.example.com/axboard"   # Discord/Slack/custom
+#   ntfy:
+#     server: "https://ntfy.sh"        # or your self-hosted ntfy
+#     topic: "my-homelab-alerts"
+#     token: ""                        # optional ntfy access token
+#   telegram:
+#     bot_token: "123456:ABC-DEF..."   # from @BotFather
+#     chat_id: "987654321"
+#   email:
+#     smtp_host: "smtp.example.com"
+#     smtp_port: 587
+#     username: "bot@example.com"
+#     password: "app-password"
+#     from: "axboard@example.com"
+#     to: "you@example.com"
 
 # ---------------------------------------------------------------------------
 # Apps — clickable, health-checked service cards. `icon` resolves via

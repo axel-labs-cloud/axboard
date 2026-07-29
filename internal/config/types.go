@@ -38,10 +38,37 @@ type ServerConfig struct {
 	Bind string `yaml:"bind,omitempty" json:"bind,omitempty"`
 }
 
-// AlertsConfig configures optional outbound notifications. When webhook_url is
-// set, axboard POSTs a small JSON payload when an app goes down or recovers.
+// AlertsConfig configures optional outbound notifications sent when an app
+// goes down or recovers. Every configured channel fires; all are best-effort.
 type AlertsConfig struct {
-	WebhookURL string `yaml:"webhook_url,omitempty" json:"webhook_url,omitempty"`
+	// Generic webhook — POSTs a small JSON payload (Discord/Slack/custom).
+	WebhookURL string          `yaml:"webhook_url,omitempty" json:"webhook_url,omitempty"`
+	Ntfy       *NtfyConfig     `yaml:"ntfy,omitempty" json:"ntfy,omitempty"`
+	Telegram   *TelegramConfig `yaml:"telegram,omitempty" json:"telegram,omitempty"`
+	Email      *EmailConfig    `yaml:"email,omitempty" json:"email,omitempty"`
+}
+
+// NtfyConfig — push via ntfy.sh (or a self-hosted ntfy). Zero infra.
+type NtfyConfig struct {
+	Server string `yaml:"server,omitempty" json:"server,omitempty"` // default https://ntfy.sh
+	Topic  string `yaml:"topic,omitempty" json:"topic,omitempty"`
+	Token  string `yaml:"token,omitempty" json:"token,omitempty"` // optional access token
+}
+
+// TelegramConfig — push via a Telegram bot (BotFather token + chat id).
+type TelegramConfig struct {
+	BotToken string `yaml:"bot_token,omitempty" json:"bot_token,omitempty"`
+	ChatID   string `yaml:"chat_id,omitempty" json:"chat_id,omitempty"`
+}
+
+// EmailConfig — send through an SMTP relay (host/creds required).
+type EmailConfig struct {
+	SMTPHost string `yaml:"smtp_host,omitempty" json:"smtp_host,omitempty"`
+	SMTPPort int    `yaml:"smtp_port,omitempty" json:"smtp_port,omitempty"` // default 587
+	Username string `yaml:"username,omitempty" json:"username,omitempty"`
+	Password string `yaml:"password,omitempty" json:"password,omitempty"`
+	From     string `yaml:"from,omitempty" json:"from,omitempty"`
+	To       string `yaml:"to,omitempty" json:"to,omitempty"`
 }
 
 type App struct {
