@@ -120,6 +120,15 @@ export interface NoticeDef {
   active?: boolean;
 }
 
+export interface StatusBackgroundDef {
+  type?: string; // color | gradient | image
+  color?: string;
+  gradient?: string;
+  image?: string;
+  blur?: number;
+  dim?: number;
+}
+
 export interface StatusPageDef {
   slug?: string;
   enabled?: boolean;
@@ -130,6 +139,9 @@ export interface StatusPageDef {
   groups?: string[];
   apps?: string[];
   theme?: string; // "dark" | "light"
+  width?: string; // narrow | wide | full
+  accent?: string;
+  background?: StatusBackgroundDef;
   notices?: NoticeDef[];
 }
 

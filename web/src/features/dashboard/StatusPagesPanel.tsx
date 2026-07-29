@@ -30,6 +30,17 @@ function clean(pages: StatusPageDef[]): StatusPageDef[] {
     if (p.footer?.trim()) c.footer = p.footer;
     if (p.hide_branding) c.hide_branding = true;
     if (p.theme && p.theme !== "dark") c.theme = p.theme;
+    if (p.width && p.width !== "narrow") c.width = p.width;
+    if (p.accent?.trim()) c.accent = p.accent.trim();
+    if (p.background?.type) {
+      const b = p.background;
+      c.background = { type: b.type };
+      if (b.color) c.background.color = b.color;
+      if (b.gradient) c.background.gradient = b.gradient;
+      if (b.image) c.background.image = b.image;
+      if (b.blur) c.background.blur = b.blur;
+      if (b.dim) c.background.dim = b.dim;
+    }
     if (p.groups?.length) c.groups = p.groups;
     if (p.apps?.length) c.apps = p.apps;
     if (p.enabled === false) c.enabled = false;
@@ -98,6 +109,9 @@ export function StatusPagesForm({
     next.has(id) ? next.delete(id) : next.add(id);
     update({ apps: next.size === apps.length ? [] : [...next] });
   };
+  // Appearance.
+  const bg = cur?.background ?? {};
+  const setBg = (patch: Partial<typeof bg>) => update({ background: { ...cur?.background, ...patch } });
   // Notices.
   const notices = cur?.notices ?? [];
   const setNotices = (n: NoticeDef[]) => update({ notices: n });
@@ -143,21 +157,68 @@ export function StatusPagesForm({
               <T label="Header text (under the title)" value={cur.header ?? ""} onChange={(v) => update({ header: v })} placeholder="e.g. Real-time status of our services" />
               <T label="Footer text (blank = default / branding)" value={cur.footer ?? ""} onChange={(v) => update({ footer: v })} placeholder="© 2026 Axel Labs" />
 
-              <div className="flex items-center gap-4">
-                <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Theme</label>
-                <div className="flex gap-1">
-                  {(["dark", "light"] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => update({ theme: t })}
-                      className={`px-2.5 py-1 text-[11px] rounded border capitalize transition-colors ${
-                        (cur.theme ?? "dark") === t ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"
-                      }`}
-                    >
-                      {t}
-                    </button>
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Theme</label>
+                  <div className="flex gap-1">
+                    {(["dark", "light"] as const).map((t) => (
+                      <button key={t} onClick={() => update({ theme: t })} className={`px-2.5 py-1 text-[11px] rounded border capitalize transition-colors ${(cur.theme ?? "dark") === t ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{t}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Width</label>
+                  <div className="flex gap-1">
+                    {(["narrow", "wide", "full"] as const).map((wv) => (
+                      <button key={wv} onClick={() => update({ width: wv })} className={`px-2.5 py-1 text-[11px] rounded border capitalize transition-colors ${(cur.width ?? "narrow") === wv ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{wv}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Accent</label>
+                  <input type="color" value={cur.accent || "#818cf8"} onChange={(e) => update({ accent: e.target.value })} className="w-7 h-7 rounded bg-transparent border border-border cursor-pointer" />
+                  {cur.accent && <button onClick={() => update({ accent: undefined })} className="text-[10px] text-text-muted hover:text-text">reset</button>}
+                </div>
+              </div>
+
+              {/* Background */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Background</label>
+                <div className="flex gap-1 flex-wrap">
+                  {([["", "None"], ["color", "Color"], ["gradient", "Gradient"], ["image", "Image"]] as const).map(([t, lbl]) => (
+                    <button key={t} onClick={() => setBg({ type: t || undefined })} className={`px-2.5 py-1 text-[11px] rounded border transition-colors ${(bg.type ?? "") === t ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{lbl}</button>
                   ))}
                 </div>
+                {bg.type === "color" && (
+                  <input type="color" value={bg.color || "#0b0d13"} onChange={(e) => setBg({ color: e.target.value })} className="w-10 h-8 rounded bg-transparent border border-border cursor-pointer" />
+                )}
+                {bg.type === "gradient" && (
+                  <input value={bg.gradient ?? ""} onChange={(e) => setBg({ gradient: e.target.value })} placeholder="linear-gradient(135deg,#1e293b,#0f172a)" className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent" />
+                )}
+                {bg.type === "image" && (
+                  <div className="space-y-2">
+                    <input value={bg.image ?? ""} onChange={(e) => setBg({ image: e.target.value })} placeholder="https://…/bg.jpg or data: URI" className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent" />
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-1.5 text-[11px] text-text-muted flex-1">
+                        Blur
+                        <input type="range" min={0} max={20} value={bg.blur ?? 0} onChange={(e) => setBg({ blur: parseInt(e.target.value) })} className="flex-1 accent-accent" />
+                        <span className="w-6 tabular-nums">{bg.blur ?? 0}</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 text-[11px] text-text-muted flex-1">
+                        Dim
+                        <input type="range" min={0} max={90} value={bg.dim ?? 0} onChange={(e) => setBg({ dim: parseInt(e.target.value) })} className="flex-1 accent-accent" />
+                        <span className="w-8 tabular-nums">{bg.dim ?? 0}%</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+                {(bg.type === "color" || bg.type === "gradient") && (
+                  <label className="flex items-center gap-1.5 text-[11px] text-text-muted">
+                    Dim
+                    <input type="range" min={0} max={90} value={bg.dim ?? 0} onChange={(e) => setBg({ dim: parseInt(e.target.value) })} className="flex-1 accent-accent" />
+                    <span className="w-8 tabular-nums">{bg.dim ?? 0}%</span>
+                  </label>
+                )}
               </div>
 
               {groups.length > 0 && (

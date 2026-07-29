@@ -34,9 +34,23 @@ type StatusPageConfig struct {
 	Groups       []string `yaml:"groups,omitempty" json:"groups,omitempty"` // group IDs to include (empty = all)
 	Apps         []string `yaml:"apps,omitempty" json:"apps,omitempty"`     // app IDs to include (empty = all)
 	Theme        string   `yaml:"theme,omitempty" json:"theme,omitempty"`   // dark (default) | light
+	Width        string   `yaml:"width,omitempty" json:"width,omitempty"`   // narrow (default) | wide | full
+	Accent       string   `yaml:"accent,omitempty" json:"accent,omitempty"` // accent colour (links/banner)
+	// Background is the page backdrop (like a dashboard background).
+	Background *StatusBackground `yaml:"background,omitempty" json:"background,omitempty"`
 	// Notices are manual announcement banners shown at the top of this page
 	// (maintenance, incidents, upcoming changes) — independent of health checks.
 	Notices []Notice `yaml:"notices,omitempty" json:"notices,omitempty"`
+}
+
+// StatusBackground is a status page's backdrop.
+type StatusBackground struct {
+	Type     string `yaml:"type,omitempty" json:"type,omitempty"` // color | gradient | image
+	Color    string `yaml:"color,omitempty" json:"color,omitempty"`
+	Gradient string `yaml:"gradient,omitempty" json:"gradient,omitempty"` // full CSS gradient
+	Image    string `yaml:"image,omitempty" json:"image,omitempty"`       // URL or data: URI
+	Blur     int    `yaml:"blur,omitempty" json:"blur,omitempty"`         // px (image)
+	Dim      int    `yaml:"dim,omitempty" json:"dim,omitempty"`           // 0-100 dark overlay
 }
 
 // Notice is a manual status-page banner with a severity.

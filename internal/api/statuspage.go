@@ -4,6 +4,7 @@ import (
 	"html/template"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -49,12 +50,66 @@ type spData struct {
 	Footer       string
 	HideBranding bool
 	Light        bool
+	Accent       string
+	WrapW        template.CSS
+	HasBg        bool
+	BgStyle      template.CSS
+	Dim          int
 	Up           int
 	Total        int
 	AllUp        bool
 	Notices      []spNotice
 	Groups       []spGroup
 	UpdatedAt    string
+}
+
+// bgStyle builds the CSS for the background layer (image/gradient/color + blur).
+func bgStyle(b *config.StatusBackground) (template.CSS, bool) {
+	if b == nil {
+		return "", false
+	}
+	var css string
+	switch b.Type {
+	case "image":
+		if b.Image == "" {
+			return "", false
+		}
+		css = "background-image:url('" + strings.ReplaceAll(b.Image, "'", "%27") + "');background-size:cover;background-position:center;"
+		if b.Blur > 0 {
+			css += "filter:blur(" + itoa(b.Blur) + "px);"
+		}
+	case "gradient":
+		if b.Gradient == "" {
+			return "", false
+		}
+		css = "background:" + sanitizeCSS(b.Gradient) + ";"
+	case "color":
+		if b.Color == "" {
+			return "", false
+		}
+		css = "background:" + sanitizeCSS(b.Color) + ";"
+	default:
+		return "", false
+	}
+	return template.CSS(css), true
+}
+
+// sanitizeCSS strips characters that could break out of the value context.
+func sanitizeCSS(s string) string {
+	return strings.NewReplacer(";", "", "}", "", "{", "", "<", "", ">", "").Replace(s)
+}
+
+func itoa(n int) string { return strconv.Itoa(n) }
+
+func wrapWidth(w string) template.CSS {
+	switch strings.ToLower(w) {
+	case "wide":
+		return "1040px"
+	case "full":
+		return "min(1600px,96vw)"
+	default:
+		return "760px"
+	}
 }
 
 // resolvePage returns the status page config for a slug ("" = default), or false
@@ -153,7 +208,8 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 			up++
 		}
 		svc := spService{Name: a.Name, Status: st, StatusText: statusText(st)}
-		if pts := hist[a.ID]; len(pts) > 0 {
+		pts := hist[a.ID]
+		if len(pts) > 0 {
 			healthy := 0
 			for _, p := range pts {
 				if p.Status == health.StatusHealthy {
@@ -162,14 +218,20 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 			}
 			svc.HasUptime = true
 			svc.UptimePct = int(float64(healthy) / float64(len(pts)) * 100)
-			// Last ~40 checks as a coloured bar strip.
-			tail := pts
-			if len(tail) > 40 {
-				tail = tail[len(tail)-40:]
-			}
-			for _, p := range tail {
-				svc.Bars = append(svc.Bars, string(p.Status))
-			}
+		}
+		// Always render a fixed strip; empty cells fill in from the right as
+		// checks accumulate (like a typical status page).
+		const barCount = 40
+		tail := pts
+		if len(tail) > barCount {
+			tail = tail[len(tail)-barCount:]
+		}
+		svc.Bars = make([]string, barCount)
+		for i := range svc.Bars {
+			svc.Bars[i] = "empty"
+		}
+		for i, p := range tail {
+			svc.Bars[barCount-len(tail)+i] = string(p.Status)
 		}
 		if !res.CertExpiry.IsZero() {
 			if d := int(time.Until(res.CertExpiry).Hours() / 24); d <= 30 {
@@ -205,12 +267,22 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 		notices = append(notices, spNotice{Severity: sev, Title: n.Title, Message: n.Message})
 	}
 
+	bg, hasBg := bgStyle(page.Background)
+	dim := 0
+	if page.Background != nil {
+		dim = page.Background.Dim
+	}
 	data := spData{
 		Title:        title,
 		Header:       page.Header,
 		Footer:       page.Footer,
 		HideBranding: page.HideBranding,
 		Light:        strings.EqualFold(page.Theme, "light"),
+		Accent:       sanitizeCSS(page.Accent),
+		WrapW:        wrapWidth(page.Width),
+		HasBg:        hasBg,
+		BgStyle:      bg,
+		Dim:          dim,
 		Up:           up,
 		Total:        total,
 		AllUp:        total > 0 && up == total,
@@ -241,11 +313,14 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
 <meta http-equiv="refresh" content="30">
 <title>{{.Title}}</title>
 <style>
-  :root{--bg:#0b0d13;--card:#141824;--line:#232838;--tx:#e6e8ee;--mut:#8b93a7;--up:#22c55e;--deg:#f59e0b;--down:#f43f5e;--unk:#6b7280}
+  :root{--bg:#0b0d13;--card:#141824;--line:#232838;--tx:#e6e8ee;--mut:#8b93a7;--up:#22c55e;--deg:#f59e0b;--down:#f43f5e;--unk:#6b7280;--accent:#818cf8}
   html.light{--bg:#f6f7f9;--card:#ffffff;--line:#e4e7ec;--tx:#1a1d24;--mut:#697086;--up:#16a34a;--deg:#d97706;--down:#dc2626;--unk:#9ca3af}
+  {{if .Accent}}:root{--accent:{{.Accent}}}{{end}}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-  .wrap{max-width:760px;margin:0 auto;padding:40px 20px}
+  body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+  .bglayer{position:fixed;inset:-24px;z-index:-2;{{.BgStyle}}}
+  .bgdim{position:fixed;inset:0;z-index:-1;background:rgb(0 0 0 / {{.Dim}}%)}
+  .wrap{max-width:{{.WrapW}};margin:0 auto;padding:40px 20px;position:relative}
   h1{font-size:22px;margin:0 0 4px}
   .hdr{color:var(--mut);font-size:13px;margin:0 0 8px;white-space:pre-wrap}
   .sub{color:var(--mut);font-size:12px;margin-bottom:22px}
@@ -264,13 +339,13 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .cert{font-size:10px;padding:2px 6px;border-radius:6px;background:rgba(245,158,11,.15);color:var(--deg)}
   .cert.exp{background:rgba(244,63,94,.15);color:var(--down)}
   .bars{display:flex;gap:2px;align-items:stretch;height:22px;flex:1;min-width:60px;max-width:260px}
-  .bars span{flex:1;border-radius:2px;background:var(--unk)}
-  .bars span.healthy{background:var(--up)} .bars span.degraded{background:var(--deg)} .bars span.down{background:var(--down)}
+  .bars span{flex:1;border-radius:2px;background:var(--line)}
+  .bars span.healthy{background:var(--up)} .bars span.degraded{background:var(--deg)} .bars span.down{background:var(--down)} .bars span.unknown{background:var(--unk)}
   .pct{color:var(--mut);font-variant-numeric:tabular-nums;font-size:12px;width:64px;text-align:right}
   .st{font-size:12px;font-variant-numeric:tabular-nums;width:96px;text-align:right}
   .st.healthy{color:var(--up)} .st.degraded{color:var(--deg)} .st.down{color:var(--down)} .st.unknown{color:var(--mut)}
   footer{color:var(--mut);font-size:11px;text-align:center;margin-top:28px;white-space:pre-wrap}
-  a{color:inherit}
+  a{color:var(--accent)}
   .notice{border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:12px 14px;margin-bottom:12px;background:var(--card)}
   .notice .nt{font-weight:600;font-size:13px;margin-bottom:2px}
   .notice .nm{color:var(--mut);font-size:12px;white-space:pre-wrap}
@@ -278,7 +353,9 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .notice.warning{border-left-color:var(--deg)} .notice.warning .nt{color:var(--deg)}
   .notice.critical{border-left-color:var(--down)} .notice.critical .nt{color:var(--down)}
   .notice.maintenance{border-left-color:#8b5cf6} .notice.maintenance .nt{color:#8b5cf6}
-</style></head><body><div class="wrap">
+</style></head><body>
+  {{if .HasBg}}<div class="bglayer"></div>{{if gt .Dim 0}}<div class="bgdim"></div>{{end}}{{end}}
+  <div class="wrap">
   <h1>{{.Title}}</h1>
   {{if .Header}}<div class="hdr">{{.Header}}</div>{{end}}
   <div class="sub">Updated {{.UpdatedAt}} · refreshes automatically</div>
