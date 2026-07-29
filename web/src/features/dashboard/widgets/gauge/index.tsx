@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
@@ -141,28 +141,53 @@ function BarStyle({ pct, big, sub, name, h, cfg }: { pct: number; big: string; s
   );
 }
 
+// Catmull-Rom → cubic-bezier smoothing so the sparkline reads as a smooth
+// trend, not a jagged zig-zag.
+function smoothPath(pts: [number, number][]): string {
+  if (pts.length === 0) return "";
+  if (pts.length < 3) return `M ${pts.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" L ")}`;
+  let d = `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] ?? p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+
 function Spark({ hist, big, sub, name, w, h, cfg }: { hist: number[]; big: string; sub: string; name: string; w: number; h: number; cfg: GaugeConfig }) {
+  const uid = useId().replace(/:/g, "");
   const width = Math.max(80, w - 24);
-  // Fill the available height: header (~24) + sub (~16) leave the rest for the
-  // chart, clamped to a sensible range.
   const height = Math.max(28, Math.min((h || 120) - 44, 220));
-  const pts = hist.length ? hist : [0];
+  const pts = hist.length ? hist : [0, 0];
   const cur = pts[pts.length - 1] ?? 0;
   const color = scaleColor(cur, cfg as ColorConfig, OPTS);
   const glow = cfg.glow !== false;
-  const step = pts.length > 1 ? width / (pts.length - 1) : width;
-  // Auto-scale the y-axis to the data's own range (with headroom) so a low but
-  // varying value fills the chart instead of hugging the bottom.
+  // Inset the chart so the smoothed curve never touches the edges, and give the
+  // y-axis its own headroom so peaks sit inside the frame.
+  const PADX = 4;
+  const topPad = 4;
+  const botPad = 2;
+  const iw = Math.max(1, width - PADX * 2);
+  const ih = Math.max(1, height - topPad - botPad);
+  const step = pts.length > 1 ? iw / (pts.length - 1) : iw;
   const lo = Math.min(...pts);
   const hi = Math.max(...pts);
   const span = Math.max(hi - lo, 2);
-  const yMin = Math.max(0, lo - span * 0.2);
-  const yMax = hi + span * 0.2;
-  const y = (v: number) => height - ((v - yMin) / (yMax - yMin || 1)) * height;
-  const coords = pts.map((v, i) => `${i * step},${y(v)}`);
-  const line = `M ${coords.join(" L ")}`;
-  const area = `${line} L ${(pts.length - 1) * step},${height} L 0,${height} Z`;
-  const fillId = "gauge-spark-fill";
+  const yMin = Math.max(0, lo - span * 0.25);
+  const yMax = hi + span * 0.25;
+  const y = (v: number) => topPad + (ih - ((v - yMin) / (yMax - yMin || 1)) * ih);
+  const P: [number, number][] = pts.map((v, i) => [PADX + i * step, y(v)]);
+  const line = smoothPath(P);
+  const lastX = (PADX + (pts.length - 1) * step).toFixed(1);
+  const area = `${line} L ${lastX},${height} L ${PADX},${height} Z`;
+  const fillId = `spk-${uid}`;
   return (
     <div className="w-full px-3">
       <div className="flex items-baseline justify-between mb-1">
@@ -172,7 +197,7 @@ function Spark({ hist, big, sub, name, w, h, cfg }: { hist: number[]; big: strin
       <svg width={width} height={height} className="w-full" preserveAspectRatio="none" viewBox={`0 0 ${width} ${height}`}>
         <defs>
           <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={color} stopOpacity="0.35" />
+            <stop offset="0" stopColor={color} stopOpacity="0.28" />
             <stop offset="1" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
