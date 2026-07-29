@@ -185,8 +185,8 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const deletedTimer = useRef<number | null>(null);
   const [addWidgetOpen, setAddWidgetOpen] = useState(false);
   const [manageServicesOpen, setManageServicesOpen] = useState(false);
-  const [servicesTab, setServicesTab] = useState<"services" | "alerts">("services");
-  const openServices = useCallback((tab: "services" | "alerts" = "services") => {
+  const [servicesTab, setServicesTab] = useState<"services" | "alerts" | "status">("services");
+  const openServices = useCallback((tab: "services" | "alerts" | "status" = "services") => {
     setServicesTab(tab);
     setManageServicesOpen(true);
   }, []);
@@ -1270,7 +1270,6 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onRenameDashboard={handleRenameDashboard}
         onDeleteDashboard={handleDeleteDashboard}
         onOpenSpotlight={() => setSpotlightOpen(true)}
-        onOpenAlerts={() => openServices("alerts")}
         theme={theme}
         setTheme={setTheme}
       />

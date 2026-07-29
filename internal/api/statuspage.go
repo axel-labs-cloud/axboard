@@ -492,11 +492,11 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .wrap{max-width:{{.WrapW}};margin:0 auto;padding:40px 20px;position:relative}
   /* When a custom backdrop is set, make the cards glassy so it shows through. */
   body.themed .banner,body.themed .card,body.themed .notice{background:color-mix(in srgb,var(--card) 78%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
-  h1{font-size:22px;margin:0 0 4px}
+  h1{font-size:22px;margin:0 0 4px;color:var(--accent)}
   .hdr{color:var(--mut);font-size:13px;margin:0 0 8px;white-space:pre-wrap}
   .sub{color:var(--mut);font-size:12px;margin-bottom:22px}
   .banner{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:12px;margin-bottom:24px;font-weight:600;
-    border:1px solid var(--line);background:var(--card)}
+    border:1px solid var(--line);border-left:4px solid var(--accent);background:var(--card)}
   .banner .big{width:12px;height:12px;border-radius:50%}
   .banner.ok .big{background:var(--up)} .banner.bad .big{background:var(--down)}
   .grp{margin-bottom:22px}
