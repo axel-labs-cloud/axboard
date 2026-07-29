@@ -271,17 +271,16 @@ export interface AxServiceConfig {
   password?: string;
 }
 
-/** Resource gauge — one host metric drawn as a ring / bar / arc / sparkline. */
+/** Resource gauge — one host metric drawn as a ring / bar / sparkline. */
 export interface GaugeConfig {
   metric?: "cpu" | "ram" | "disk" | "swap";
-  style?: "ring" | "bar" | "arc" | "spark";
+  style?: "ring" | "bar" | "spark";
   label?: string; // overrides the default metric name
-  /** How the fill colour is chosen. threshold = green/amber/red by health,
-   *  gradient = smooth green→red spectrum, solid = the picked colour,
-   *  accent = follow the dashboard accent colour. */
+  /** How the fill colour is chosen (see colorScale.tsx). */
   colorScale?: "threshold" | "gradient" | "solid" | "accent";
-  /** Named colour used by the "solid" scale (and as a tint elsewhere). */
-  color?: "accent" | "emerald" | "cyan" | "blue" | "violet" | "amber" | "rose";
+  color?: string; // palette key for the "solid" scale
+  warn?: number; // amber breakpoint %, for "threshold"
+  crit?: number; // red breakpoint %, for "threshold"
   /** Add a soft neon glow around the fill. Default on. */
   glow?: boolean;
   /** Show a faint track behind the fill. Default on. */
@@ -309,6 +308,8 @@ export interface CameraConfig {
   refreshSec?: number;
   title?: string;
   showTitle?: boolean;
+  /** Title text colour (hex/css). Default white. */
+  titleColor?: string;
   fit?: "cover" | "contain";
   /** Optional click-through URL (e.g. the full Frigate UI). */
   link?: string;
@@ -316,13 +317,20 @@ export interface CameraConfig {
 
 /** Per-core CPU widget — one bar per logical core. */
 export interface PerCpuConfig {
-  /** Colour scale shared with the gauge: threshold / accent / solid hue. */
-  color?: "threshold" | "accent" | "emerald" | "cyan" | "violet" | "amber" | "rose";
+  colorScale?: "threshold" | "gradient" | "solid" | "accent";
+  color?: string;
+  warn?: number;
+  crit?: number;
 }
 
 /** Temperatures widget — hardware sensors from /sys/class/hwmon. */
 export interface TempsConfig {
-  filter?: string; // substring match on sensor label
+  /** Explicit list of sensor labels to show. undefined = a default subset. */
+  sensors?: string[];
+  colorScale?: "threshold" | "gradient" | "solid" | "accent";
+  color?: string;
+  warn?: number; // amber °C
+  crit?: number; // red °C
 }
 
 /** Top-processes widget — highest CPU/mem processes. */
@@ -333,13 +341,22 @@ export interface TopProcConfig {
 
 /** Filesystems widget — usage bars for every mounted real filesystem. */
 export interface DisksConfig {
-  filter?: string;
+  /** Explicit list of mount paths to show. undefined = all. */
+  mounts?: string[];
+  colorScale?: "threshold" | "gradient" | "solid" | "accent";
+  color?: string;
+  warn?: number;
+  crit?: number;
 }
 
 /** Network throughput graph — live rx/tx sparkline. */
 export interface NetGraphConfig {
   /** Fixed scale in Mbit/s; 0/undefined = auto-scale to the window peak. */
   scaleMbit?: number;
+  /** mirror = in above / out below a centre line; stack = both from the bottom. */
+  style?: "mirror" | "stack";
+  colorIn?: string; // palette key for download
+  colorOut?: string; // palette key for upload
 }
 
 /** Battery / UPS widget — power supplies from /sys/class/power_supply. */
@@ -351,6 +368,7 @@ export interface BatteryConfig {
 export interface GrafanaConfig {
   url?: string;
   refreshSec?: number;
+  title?: string;
 }
 
 /** Wake-on-LAN launcher — a grid of buttons that send magic packets. */

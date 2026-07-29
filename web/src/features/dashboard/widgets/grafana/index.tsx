@@ -30,13 +30,19 @@ function GrafanaComponent({ config, editing }: WidgetProps<GrafanaConfig>) {
   }
 
   const src = `${url}${url.includes("?") ? "&" : "?"}_n=${nonce}`;
+  const title = config?.title?.trim();
   return (
-    <div className="relative h-full w-full bg-black/20">
+    <div className="relative h-full w-full bg-black/20 flex flex-col">
+      {title && (
+        <div className="shrink-0 px-3 py-1.5 text-[12px] font-medium text-text-secondary border-b border-border-subtle truncate">
+          {title}
+        </div>
+      )}
       <iframe
         key={nonce}
         src={src}
-        title="Grafana panel"
-        className="w-full h-full border-0"
+        title={title || "Grafana panel"}
+        className="w-full flex-1 border-0"
         style={{ pointerEvents: editing ? "none" : undefined }}
       />
     </div>
@@ -59,6 +65,15 @@ function GrafanaConfigPanel({ config, save }: WidgetConfigProps<GrafanaConfig>) 
           Use a panel's <span className="font-mono">Share → Embed</span> URL (d-solo/…), or a dashboard
           URL with <span className="font-mono">&kiosk</span>. Grafana needs <span className="font-mono">allow_embedding=true</span>.
         </p>
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Title (optional)</label>
+        <input
+          value={config?.title ?? ""}
+          onChange={(e) => save({ title: e.target.value })}
+          placeholder="e.g. Cluster CPU"
+          className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
+        />
       </div>
       <div className="space-y-1.5">
         <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Auto-refresh (seconds, 0 = off)</label>

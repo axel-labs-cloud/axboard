@@ -1,89 +1,60 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
+import { ColorControls, scaleColor, type ColorConfig } from "../colorScale";
 import type { PerCpuConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
-// Per-core CPU widget — one bar per logical core, live. Size-responsive: the
-// bars reflow into as many columns as fit, and grow taller in a taller widget.
+// Per-core CPU widget — one full-height column per logical core, each filling
+// from the bottom by utilisation. Bars reflow into as many columns as fit.
 // ---------------------------------------------------------------------------
 
-const PALETTE: Record<string, string> = {
-  emerald: "#10b981", cyan: "#06b6d4", violet: "#8b5cf6", amber: "#f59e0b", rose: "#f43f5e",
-};
-
-function colorFor(pct: number, mode: string): string {
-  if (mode === "accent") return "var(--color-accent, #818cf8)";
-  if (PALETTE[mode]) return PALETTE[mode];
-  if (pct > 90) return "var(--color-down, #f43f5e)";
-  if (pct > 70) return "var(--color-degraded, #f59e0b)";
-  return "var(--color-up, #10b981)";
-}
+const OPTS = { lo: 0, hi: 100, warn: 70, crit: 90 };
 
 function PerCpuComponent({ config }: WidgetProps<PerCpuConfig>) {
   const box = useSize<HTMLDivElement>();
-  const mode = config?.color ?? "threshold";
   const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: 2_000 });
 
   if (isError || !data) {
-    return (
-      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
-        Host stats unavailable.
-      </div>
-    );
+    return <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">Host stats unavailable.</div>;
   }
 
   const cores = data.per_cpu ?? [];
   const n = cores.length;
   const avg = n ? cores.reduce((a, b) => a + b, 0) / n : data.cpu_pct;
 
-  // Choose a column count so each bar is at least ~14px wide.
+  // Column count so each bar is at least ~14px wide.
   const usableW = Math.max(0, box.w - 24);
-  const cols = Math.max(1, Math.min(n, Math.floor(usableW / 16))) || 8;
+  const cols = Math.max(1, Math.min(n || 1, Math.floor(usableW / 16))) || 8;
 
   return (
-    <div ref={box.ref} className="h-full flex flex-col px-3 py-2.5">
+    <div ref={box.ref} className="h-full flex flex-col px-3 py-2.5 min-h-0">
       <div className="flex items-baseline justify-between shrink-0 mb-2">
         <span className="text-[11px] text-text-muted uppercase tracking-wide">CPU · {n} cores</span>
-        <span className="font-mono tabular-nums text-[15px] font-semibold" style={{ color: colorFor(avg, mode) }}>
+        <span className="font-mono tabular-nums text-[15px] font-semibold" style={{ color: scaleColor(avg, config as ColorConfig, OPTS) }}>
           {avg.toFixed(0)}%
         </span>
       </div>
       <div
-        className="flex-1 min-h-0"
-        style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gap: "3px", alignItems: "end" }}
+        className="flex-1 min-h-0 w-full"
+        style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gridAutoRows: "1fr", gap: "3px" }}
       >
         {cores.map((p, i) => (
-          <div key={i} title={`core ${i}: ${p.toFixed(0)}%`} className="relative h-full rounded-sm bg-bg-elevated overflow-hidden flex items-end">
-            <div className="w-full rounded-sm" style={{ height: `${Math.max(3, p)}%`, background: colorFor(p, mode), transition: "height 0.5s ease, background 0.4s ease" }} />
+          <div key={i} title={`core ${i}: ${p.toFixed(0)}%`} className="relative w-full h-full min-h-0 rounded-sm bg-bg-elevated overflow-hidden">
+            <div
+              className="absolute bottom-0 left-0 right-0 rounded-sm"
+              style={{ height: `${Math.max(2, Math.min(100, p))}%`, background: scaleColor(p, config as ColorConfig, OPTS), transition: "height 0.5s ease, background 0.4s ease" }}
+            />
           </div>
         ))}
-        {n === 0 && <div className="text-[11px] text-text-muted col-span-full">No per-core data.</div>}
+        {n === 0 && <div className="text-[11px] text-text-muted col-span-full self-center">No per-core data.</div>}
       </div>
     </div>
   );
 }
 
 function PerCpuConfigPanel({ config, save }: WidgetConfigProps<PerCpuConfig>) {
-  const mode = config?.color ?? "threshold";
-  return (
-    <div className="space-y-1.5">
-      <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Colour</label>
-      <div className="grid grid-cols-4 gap-1">
-        {(["threshold", "accent", "emerald", "cyan", "violet", "amber", "rose"] as const).map((c) => (
-          <button
-            key={c}
-            onClick={() => save({ color: c })}
-            className={`px-1.5 py-1.5 text-[10px] rounded border capitalize transition-colors ${
-              mode === c ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"
-            }`}
-          >
-            {c === "threshold" ? "health" : c}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+  return <ColorControls cfg={config} save={save} opts={OPTS} unit="%" />;
 }
 
 const PerCpuIcon = (
@@ -105,7 +76,7 @@ const definition: WidgetDefinition<PerCpuConfig> = {
   maxH: 6,
   defaultW: 4,
   defaultH: 2,
-  defaultConfig: { color: "threshold" },
+  defaultConfig: { colorScale: "threshold" },
   Component: PerCpuComponent,
   ConfigPanel: PerCpuConfigPanel,
 };

@@ -110,7 +110,7 @@ function CameraComponent({ config, editing }: WidgetProps<CameraConfig>) {
       {cfg.showTitle !== false && title && !failed && (
         <div className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-2 py-1 bg-gradient-to-b from-black/60 to-transparent">
           <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
-          <span className="text-[11px] text-white/90 font-medium truncate drop-shadow">{title}</span>
+          <span className="text-[12px] font-semibold truncate drop-shadow" style={{ color: cfg.titleColor || "#ffffff" }}>{title}</span>
         </div>
       )}
     </div>
@@ -197,6 +197,23 @@ function CameraConfigPanel({ config, save }: WidgetConfigProps<CameraConfig>) {
       )}
 
       <Field label="Title (optional)" value={config?.title ?? ""} onChange={(v) => save({ title: v })} placeholder="Driveway" />
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Title colour</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={config?.titleColor || "#ffffff"}
+            onChange={(e) => save({ titleColor: e.target.value })}
+            className="w-8 h-8 rounded bg-transparent border border-border cursor-pointer"
+          />
+          <input
+            value={config?.titleColor ?? ""}
+            onChange={(e) => save({ titleColor: e.target.value })}
+            placeholder="#ffffff"
+            className="flex-1 px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text font-mono placeholder:text-text-muted focus:outline-none focus:border-accent"
+          />
+        </div>
+      </div>
       <Field label="Click-through URL (optional)" value={config?.link ?? ""} onChange={(v) => save({ link: v })} placeholder="http://frigate.lan:5000" />
 
       <div className="flex items-center gap-4">

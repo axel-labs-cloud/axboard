@@ -1,13 +1,17 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
+import { ColorControls, scaleColor, type ColorConfig } from "../colorScale";
 import type { DisksConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
+import type { HostStats } from "../../../../api/types";
 
 // ---------------------------------------------------------------------------
-// Filesystems widget — a usage bar for every mounted real filesystem. Two
-// columns when wide, one when narrow.
+// Filesystems widget — a usage bar for every selected mount. Mounts are chosen
+// from a checklist (default: all). Colour from the shared scale.
 // ---------------------------------------------------------------------------
+
+const OPTS = { lo: 0, hi: 100, warn: 75, crit: 90 };
 
 function fmtBytes(n: number): string {
   if (n <= 0) return "0";
@@ -15,25 +19,22 @@ function fmtBytes(n: number): string {
   const i = Math.min(u.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
   return `${(n / 1024 ** i).toFixed(i >= 3 ? 1 : 0)}${u[i]}`;
 }
-function tone(pct: number): string {
-  return pct > 90 ? "bg-down" : pct > 75 ? "bg-degraded" : "bg-up";
-}
 
 function DisksComponent({ config }: WidgetProps<DisksConfig>) {
   const box = useSize<HTMLDivElement>();
-  const filter = config?.filter?.trim().toLowerCase() ?? "";
   const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: 15_000 });
 
   const fs = useMemo(() => {
-    let f = data?.filesystems ?? [];
-    if (filter) f = f.filter((x) => x.path.toLowerCase().includes(filter));
-    return [...f].sort((a, b) => b.total - a.total);
-  }, [data, filter]);
+    const all = data?.filesystems ?? [];
+    const sel = config?.mounts;
+    const filtered = sel && sel.length ? all.filter((f) => sel.includes(f.path)) : all;
+    return [...filtered].sort((a, b) => b.total - a.total);
+  }, [data, config?.mounts]);
 
   if (isError || !data) {
     return <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">Host stats unavailable.</div>;
   }
-  if (fs.length === 0) {
+  if ((data.filesystems ?? []).length === 0) {
     return <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">No filesystems reported.</div>;
   }
 
@@ -44,6 +45,7 @@ function DisksComponent({ config }: WidgetProps<DisksConfig>) {
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, columnGap: "14px", rowGap: "9px" }}>
         {fs.map((d) => {
           const pct = d.total > 0 ? (d.used / d.total) * 100 : 0;
+          const color = scaleColor(pct, config as ColorConfig, OPTS);
           return (
             <div key={d.path} className="space-y-1">
               <div className="flex items-baseline justify-between text-[11px] gap-2">
@@ -51,7 +53,7 @@ function DisksComponent({ config }: WidgetProps<DisksConfig>) {
                 <span className="font-mono tabular-nums text-text-muted shrink-0">{fmtBytes(d.used)}/{fmtBytes(d.total)}</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-bg-elevated overflow-hidden">
-                <div className={`h-full ${tone(pct)}`} style={{ width: `${Math.min(100, pct)}%`, transition: "width 0.5s ease" }} />
+                <div className="h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: color, transition: "width 0.5s ease" }} />
               </div>
             </div>
           );
@@ -62,16 +64,37 @@ function DisksComponent({ config }: WidgetProps<DisksConfig>) {
 }
 
 function DisksConfigPanel({ config, save }: WidgetConfigProps<DisksConfig>) {
+  const qc = useQueryClient();
+  const host = qc.getQueryData<HostStats>(["host"]);
+  const all = host?.filesystems ?? [];
+  const sel = config?.mounts;
+  const enabledSet = new Set(sel && sel.length ? sel : all.map((f) => f.path));
+
+  const toggle = (path: string) => {
+    const base = sel && sel.length ? sel : all.map((f) => f.path);
+    const next = enabledSet.has(path) ? base.filter((p) => p !== path) : [...base, path];
+    save({ mounts: next });
+  };
+
   return (
-    <div className="space-y-1.5">
-      <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Path filter</label>
-      <input
-        value={config?.filter ?? ""}
-        onChange={(e) => save({ filter: e.target.value })}
-        placeholder="e.g. /mnt"
-        className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
-      />
-      <p className="text-[11px] text-text-muted">Real on-disk filesystems (ext4/xfs/btrfs/zfs/…).</p>
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Filesystems</label>
+        {all.length === 0 ? (
+          <p className="text-[11px] text-text-muted">No filesystems detected yet.</p>
+        ) : (
+          <div className="max-h-52 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
+            {all.map((f) => (
+              <label key={f.path} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
+                <input type="checkbox" checked={enabledSet.has(f.path)} onChange={() => toggle(f.path)} className="accent-accent" />
+                <span className="flex-1 truncate font-mono">{f.path}</span>
+                <span className="font-mono tabular-nums text-[11px] text-text-muted">{fmtBytes(f.total)}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+      <ColorControls cfg={config} save={save} opts={OPTS} unit="%" />
     </div>
   );
 }
@@ -88,7 +111,7 @@ const definition: WidgetDefinition<DisksConfig> = {
   title: "Filesystems",
   icon: DisksIcon,
   category: "infrastructure",
-  description: "Usage bars for every mounted real filesystem on the host.",
+  description: "Usage bars for the host filesystems you pick.",
   minW: 2,
   minH: 2,
   maxW: 10,

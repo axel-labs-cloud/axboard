@@ -272,6 +272,7 @@ func gatherTemps() []Temp {
 		return nil
 	}
 	var out []Temp
+	seen := map[string]int{}
 	for _, d := range dirs {
 		hw := base + "/" + d.Name()
 		chip := readTrim(hw + "/name")
@@ -290,9 +291,16 @@ func gatherTemps() []Temp {
 			label := readTrim(hw + "/" + prefix + "_label")
 			if label == "" {
 				label = chip
+			} else if chip != "" {
+				label = chip + " " + label
+			}
+			// Ensure labels are unique so they can be toggled individually.
+			seen[label]++
+			if seen[label] > 1 {
+				label = label + " #" + strconv.Itoa(seen[label])
 			}
 			out = append(out, Temp{Label: label, Celsius: milli / 1000})
-			if len(out) >= 24 {
+			if len(out) >= 32 {
 				return out
 			}
 		}

@@ -1,21 +1,18 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
-import type {
-  GaugeConfig,
-  WidgetConfigProps,
-  WidgetDefinition,
-  WidgetProps,
-} from "../types";
+import { ColorControls, scaleColor, type ColorConfig } from "../colorScale";
+import type { GaugeConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 import type { HostStats } from "../../../../api/types";
 
 // ---------------------------------------------------------------------------
-// Resource gauge — one host metric (CPU / RAM / disk / swap) drawn as a
-// configurable ring, arc, bar, or live sparkline, with threshold / gradient /
-// solid colour scales, an optional neon glow, and a palette. Reads /api/host;
-// keeps a short rolling history locally for the sparkline style.
+// Resource gauge — one host metric (CPU / RAM / disk / swap) as a ring, chunky
+// bar, or live sparkline. Colour comes from the shared scale (health with
+// configurable breakpoints / value gradient / solid / accent); optional glow.
 // ---------------------------------------------------------------------------
+
+const OPTS = { lo: 0, hi: 100, warn: 75, crit: 90 };
 
 function fmtBytes(n: number): string {
   if (n <= 0) return "0 B";
@@ -40,60 +37,8 @@ function readMetric(d: HostStats, metric: string): Metric {
   }
 }
 
-const PALETTE: Record<string, string> = {
-  accent: "var(--color-accent, #818cf8)",
-  emerald: "#10b981",
-  cyan: "#06b6d4",
-  blue: "#3b82f6",
-  violet: "#8b5cf6",
-  amber: "#f59e0b",
-  rose: "#f43f5e",
-};
-
-function threshold(pct: number): string {
-  if (pct > 90) return "var(--color-down, #f43f5e)";
-  if (pct > 75) return "var(--color-degraded, #f59e0b)";
-  return "var(--color-up, #10b981)";
-}
-
-// hue from green (145°) at 0% to red (0°) at 100%.
-function hue(pct: number): string {
-  const h = Math.max(0, 145 - 1.45 * Math.min(100, Math.max(0, pct)));
-  return `hsl(${h.toFixed(0)} 72% 52%)`;
-}
-
-// Colour for the current value (used for numbers, spark line, solid fills).
-function currentColor(pct: number, cfg: GaugeConfig): string {
-  if (cfg.colorScale === "accent") return "var(--color-accent, #818cf8)";
-  if (cfg.colorScale === "solid") return PALETTE[cfg.color ?? "accent"] ?? PALETTE.accent;
-  if (cfg.colorScale === "gradient") return hue(pct);
-  return threshold(pct);
-}
-
-function useGaugeColors(pct: number, cfg: GaugeConfig, gradId: string) {
-  const scale = cfg.colorScale ?? "threshold";
-  const cur = currentColor(pct, cfg);
-  // fill = a paint reference for strokes/bars: the spectrum gradient in
-  // gradient mode, otherwise the solid current colour.
-  const fill = scale === "gradient" ? `url(#${gradId})` : cur;
-  return { cur, fill, scale };
-}
-
-// The green→amber→red spectrum, defined once per gauge for gradient mode.
-function SpectrumDef({ id, vertical }: { id: string; vertical?: boolean }) {
-  return (
-    <defs>
-      <linearGradient id={id} x1="0" y1={vertical ? "1" : "0"} x2={vertical ? "0" : "1"} y2="0">
-        <stop offset="0" stopColor="#10b981" />
-        <stop offset="0.55" stopColor="#f59e0b" />
-        <stop offset="1" stopColor="#f43f5e" />
-      </linearGradient>
-    </defs>
-  );
-}
-
-function Ring({ pct, size, big, name, cfg, gradId }: { pct: number; size: number; big: string; name: string; cfg: GaugeConfig; gradId: string }) {
-  const { fill, cur } = useGaugeColors(pct, cfg, gradId);
+function Ring({ pct, size, big, name, cfg }: { pct: number; size: number; big: string; name: string; cfg: GaugeConfig }) {
+  const cur = scaleColor(pct, cfg as ColorConfig, OPTS);
   const glow = cfg.glow !== false;
   const showTrack = cfg.track !== false;
   const stroke = Math.max(5, Math.round(size * 0.09));
@@ -103,14 +48,13 @@ function Ring({ pct, size, big, name, cfg, gradId }: { pct: number; size: number
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <SpectrumDef id={gradId} />
         {showTrack && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-bg-elevated, #1e2130)" strokeWidth={stroke} />}
         <circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={fill}
+          stroke={cur}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
@@ -119,98 +63,44 @@ function Ring({ pct, size, big, name, cfg, gradId }: { pct: number; size: number
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="font-mono tabular-nums font-semibold leading-none" style={{ fontSize: size * 0.24, color: cur }}>
-          {big}
-        </span>
+        <span className="font-mono tabular-nums font-semibold leading-none" style={{ fontSize: size * 0.24, color: cur }}>{big}</span>
         <span className="text-text-muted uppercase tracking-wide" style={{ fontSize: Math.max(8, size * 0.1) }}>{name}</span>
       </div>
     </div>
   );
 }
 
-function Arc({ pct, w, big, name, cfg, gradId }: { pct: number; w: number; big: string; name: string; cfg: GaugeConfig; gradId: string }) {
-  const { fill, cur } = useGaugeColors(pct, cfg, gradId);
-  const glow = cfg.glow !== false;
-  const showTrack = cfg.track !== false;
-  const size = Math.min(w, 260);
-  const stroke = Math.max(6, Math.round(size * 0.08));
-  const r = (size - stroke) / 2;
-  const cx = size / 2;
-  const cy = size / 2;
-  const start = 150;
-  const sweep = 240;
-  const pol = (deg: number) => {
-    const a = (deg * Math.PI) / 180;
-    return `${cx + r * Math.cos(a)} ${cy + r * Math.sin(a)}`;
-  };
-  const arcPath = (fromDeg: number, toDeg: number) => {
-    const large = toDeg - fromDeg > 180 ? 1 : 0;
-    return `M ${pol(fromDeg)} A ${r} ${r} 0 ${large} 1 ${pol(toDeg)}`;
-  };
-  const p = Math.min(100, Math.max(0, pct));
-  const end = start + (sweep * p) / 100;
-  return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size * 0.72 }}>
-      <svg width={size} height={size} className="absolute top-0" style={{ overflow: "visible" }}>
-        <SpectrumDef id={gradId} />
-        {showTrack && <path d={arcPath(start, start + sweep)} fill="none" stroke="var(--color-bg-elevated, #1e2130)" strokeWidth={stroke} strokeLinecap="round" />}
-        {p > 0 && (
-          <path
-            d={arcPath(start, end)}
-            fill="none"
-            stroke={fill}
-            strokeWidth={stroke}
-            strokeLinecap="round"
-            style={{ transition: "stroke 0.4s ease", filter: glow ? `drop-shadow(0 0 ${stroke * 0.7}px ${cur})` : undefined }}
-          />
-        )}
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pt-2">
-        <span className="font-mono tabular-nums font-semibold leading-none" style={{ fontSize: size * 0.2, color: cur }}>{big}</span>
-        <span className="text-text-muted uppercase tracking-wide" style={{ fontSize: Math.max(8, size * 0.075) }}>{name}</span>
-      </div>
-    </div>
-  );
-}
-
 function BarStyle({ pct, big, sub, name, cfg }: { pct: number; big: string; sub: string; name: string; cfg: GaugeConfig }) {
-  const { cur, scale } = useGaugeColors(pct, cfg, "");
+  const cur = scaleColor(pct, cfg as ColorConfig, OPTS);
   const glow = cfg.glow !== false;
   const showTrack = cfg.track !== false;
   const p = Math.min(100, Math.max(0, pct));
-  const barBg =
-    scale === "gradient"
-      ? "linear-gradient(90deg,#10b981 0%,#f59e0b 55%,#f43f5e 100%)"
-      : cur;
   return (
     <div className="w-full px-4">
       <div className="flex items-baseline justify-between mb-1.5">
         <span className="text-[12px] text-text-muted uppercase tracking-wide">{name}</span>
         <span className="font-mono tabular-nums text-[22px] font-semibold leading-none" style={{ color: cur }}>{big}</span>
       </div>
-      <div className={`w-full h-3 rounded-full overflow-hidden ${showTrack ? "bg-bg-elevated" : ""}`}>
-        <div
-          className="h-full rounded-full"
-          style={{ width: `${p}%`, background: barBg, transition: "width 0.6s ease, background 0.4s ease", boxShadow: glow ? `0 0 8px ${cur}` : undefined }}
-        />
+      <div className={`w-full h-5 rounded-[3px] overflow-hidden ${showTrack ? "bg-bg-elevated" : ""}`}>
+        <div className="h-full rounded-[2px]" style={{ width: `${p}%`, background: cur, transition: "width 0.6s ease, background 0.4s ease", boxShadow: glow ? `0 0 8px ${cur}` : undefined }} />
       </div>
       <div className="mt-1.5 text-[11px] font-mono text-text-muted">{sub}</div>
     </div>
   );
 }
 
-function Spark({ hist, big, sub, name, w, cfg, gradId }: { hist: number[]; big: string; sub: string; name: string; w: number; cfg: GaugeConfig; gradId: string }) {
+function Spark({ hist, big, sub, name, w, cfg }: { hist: number[]; big: string; sub: string; name: string; w: number; cfg: GaugeConfig }) {
   const width = Math.max(80, w - 32);
   const height = 46;
   const pts = hist.length ? hist : [0];
   const cur = pts[pts.length - 1] ?? 0;
-  const { cur: color, fill } = useGaugeColors(cur, cfg, gradId);
+  const color = scaleColor(cur, cfg as ColorConfig, OPTS);
   const glow = cfg.glow !== false;
   const step = pts.length > 1 ? width / (pts.length - 1) : width;
   const coords = pts.map((v, i) => `${i * step},${height - (Math.min(100, v) / 100) * height}`);
   const line = `M ${coords.join(" L ")}`;
   const area = `${line} L ${(pts.length - 1) * step},${height} L 0,${height} Z`;
-  const fillId = `${gradId}-f`;
+  const fillId = "gauge-spark-fill";
   return (
     <div className="w-full px-4">
       <div className="flex items-baseline justify-between mb-1">
@@ -218,7 +108,6 @@ function Spark({ hist, big, sub, name, w, cfg, gradId }: { hist: number[]; big: 
         <span className="font-mono tabular-nums text-[22px] font-semibold leading-none" style={{ color }}>{big}</span>
       </div>
       <svg width={width} height={height} className="w-full" preserveAspectRatio="none" viewBox={`0 0 ${width} ${height}`}>
-        <SpectrumDef id={gradId} />
         <defs>
           <linearGradient id={fillId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={color} stopOpacity="0.35" />
@@ -226,7 +115,7 @@ function Spark({ hist, big, sub, name, w, cfg, gradId }: { hist: number[]; big: 
           </linearGradient>
         </defs>
         <path d={area} fill={`url(#${fillId})`} />
-        <path d={line} fill="none" stroke={fill} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" style={{ filter: glow ? `drop-shadow(0 0 3px ${color})` : undefined }} />
+        <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" style={{ filter: glow ? `drop-shadow(0 0 3px ${color})` : undefined }} />
       </svg>
       <div className="mt-1 text-[11px] font-mono text-text-muted">{sub}</div>
     </div>
@@ -238,16 +127,10 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   const cfg = config ?? {};
   const metric = cfg.metric ?? "cpu";
   const style = cfg.style ?? "ring";
-  const uid = useId().replace(/:/g, "");
-  const gradId = `gauge-${uid}`;
   const hist = useRef<number[]>([]);
   const [, tick] = useState(0);
 
-  const { data, isError } = useQuery({
-    queryKey: ["host"],
-    queryFn: api.getHost,
-    refetchInterval: 5_000,
-  });
+  const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: 5_000 });
 
   useEffect(() => {
     if (!data) return;
@@ -257,11 +140,7 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   }, [data, metric]);
 
   if (isError || !data) {
-    return (
-      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
-        Host stats unavailable.
-      </div>
-    );
+    return <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">Host stats unavailable.</div>;
   }
 
   const m = readMetric(data, metric);
@@ -271,29 +150,18 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   if (style === "bar") {
     body = <BarStyle pct={m.pct} big={m.big} sub={m.sub} name={name} cfg={cfg} />;
   } else if (style === "spark") {
-    body = <Spark hist={hist.current} big={m.big} sub={m.sub} name={name} w={box.w} cfg={cfg} gradId={gradId} />;
-  } else if (style === "arc") {
-    body = <Arc pct={m.pct} w={box.w} big={m.big} name={name} cfg={cfg} gradId={gradId} />;
+    body = <Spark hist={hist.current} big={m.big} sub={m.sub} name={name} w={box.w} cfg={cfg} />;
   } else {
     const size = Math.max(60, Math.min(box.w - 24, box.h - 24, 200)) || 96;
-    body = <Ring pct={m.pct} size={size} big={m.big} name={name} cfg={cfg} gradId={gradId} />;
+    body = <Ring pct={m.pct} size={size} big={m.big} name={name} cfg={cfg} />;
   }
 
-  return (
-    <div ref={box.ref} className="h-full flex flex-col items-center justify-center">
-      {body}
-    </div>
-  );
+  return <div ref={box.ref} className="h-full flex flex-col items-center justify-center">{body}</div>;
 }
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button
-      onClick={onClick}
-      className={`px-2 py-1.5 text-[11px] rounded border capitalize transition-colors ${
-        active ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"
-      }`}
-    >
+    <button onClick={onClick} className={`px-2 py-1.5 text-[11px] rounded border capitalize transition-colors ${active ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>
       {children}
     </button>
   );
@@ -302,8 +170,6 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 function GaugeConfigPanel({ config, save }: WidgetConfigProps<GaugeConfig>) {
   const metric = config?.metric ?? "cpu";
   const style = config?.style ?? "ring";
-  const scale = config?.colorScale ?? "threshold";
-  const color = config?.color ?? "accent";
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
@@ -317,52 +183,14 @@ function GaugeConfigPanel({ config, save }: WidgetConfigProps<GaugeConfig>) {
 
       <div className="space-y-1.5">
         <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Style</label>
-        <div className="grid grid-cols-4 gap-1">
-          {(["ring", "arc", "bar", "spark"] as const).map((st) => (
+        <div className="grid grid-cols-3 gap-1">
+          {(["ring", "bar", "spark"] as const).map((st) => (
             <Chip key={st} active={style === st} onClick={() => save({ style: st })}>{st}</Chip>
           ))}
         </div>
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Colour scale</label>
-        <div className="grid grid-cols-4 gap-1">
-          {([
-            ["threshold", "health"],
-            ["gradient", "spectrum"],
-            ["solid", "solid"],
-            ["accent", "accent"],
-          ] as const).map(([sc, lbl]) => (
-            <Chip key={sc} active={scale === sc} onClick={() => save({ colorScale: sc })}>{lbl}</Chip>
-          ))}
-        </div>
-        <p className="text-[10px] text-text-muted">
-          {scale === "threshold"
-            ? "Green → amber → red by load."
-            : scale === "gradient"
-              ? "Smooth spectrum by value."
-              : scale === "accent"
-                ? "Follows the dashboard accent colour."
-                : "One fixed colour."}
-        </p>
-      </div>
-
-      {scale === "solid" && (
-        <div className="space-y-1.5">
-          <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Colour</label>
-          <div className="flex flex-wrap gap-1.5">
-            {(["accent", "emerald", "cyan", "blue", "violet", "amber", "rose"] as const).map((c) => (
-              <button
-                key={c}
-                onClick={() => save({ color: c })}
-                title={c}
-                className={`w-6 h-6 rounded-full ring-2 transition-transform ${color === c ? "ring-text scale-110" : "ring-transparent hover:scale-105"}`}
-                style={{ background: PALETTE[c] }}
-              />
-            ))}
-          </div>
-        </div>
-      )}
+      <ColorControls cfg={config} save={save} opts={OPTS} unit="%" />
 
       <div className="flex items-center gap-4 pt-0.5">
         <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
@@ -401,7 +229,7 @@ const definition: WidgetDefinition<GaugeConfig> = {
   title: "Resource gauge",
   icon: GaugeIcon,
   category: "infrastructure",
-  description: "One host metric (CPU/RAM/disk/swap) as a ring, arc, bar or live sparkline — themable colours + glow.",
+  description: "One host metric (CPU/RAM/disk/swap) as a ring, bar or live sparkline — configurable colours + glow.",
   minW: 2,
   minH: 2,
   maxW: 6,
