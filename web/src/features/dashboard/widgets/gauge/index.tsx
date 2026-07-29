@@ -18,10 +18,10 @@ const OPTS = { lo: 0, hi: 100, warn: 75, crit: 90 };
 const POLL_MS = 5000;
 
 const METRIC_ICONS: Record<string, React.ReactNode> = {
-  cpu: <><rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" /><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" /></>,
-  ram: <><rect x="2" y="7" width="20" height="10" rx="1" /><path d="M6 7v10M10 7v10M14 7v10M18 7v10" /></>,
-  disk: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.5" /></>,
-  swap: <><path d="M17 2l4 4-4 4" /><path d="M3 6h18M7 22l-4-4 4-4M21 18H3" /></>,
+  cpu: <><rect x="6" y="6" width="12" height="12" rx="1.5" /><rect x="10" y="10" width="4" height="4" /></>,
+  ram: <><rect x="3" y="8" width="18" height="8" rx="1" /><path d="M8 8v8M12 8v8M16 8v8" /></>,
+  disk: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="2" /></>,
+  swap: <><path d="M8 4v13M8 4 5 7M8 4l3 3" /><path d="M16 20V7M16 20l-3-3M16 20l3-3" /></>,
 };
 
 function fmtBytes(n: number): string {
@@ -83,18 +83,17 @@ function Ring({ pct, size, big, name, cfg }: { pct: number; size: number; big: s
 // Compact ring for tiny (≈1×1) tiles: the metric's icon sits in the centre.
 function RingIcon({ pct, size, metric, cfg }: { pct: number; size: number; metric: string; cfg: GaugeConfig }) {
   const cur = scaleColor(pct, cfg as ColorConfig, OPTS);
-  const glow = cfg.glow !== false;
-  const stroke = Math.max(4, Math.round(size * 0.1));
+  const stroke = Math.max(3, Math.round(size * 0.08));
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const off = c * (1 - Math.min(100, Math.max(0, pct)) / 100);
-  const iconSize = size * 0.34;
+  const iconSize = size * 0.44;
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }} title={`${metric.toUpperCase()} ${Math.round(pct)}%`}>
       <svg width={size} height={size} className="-rotate-90">
         {cfg.track !== false && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-bg-elevated, #1e2130)" strokeWidth={stroke} />}
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={cur} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off}
-          style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.4s ease", filter: glow ? `drop-shadow(0 0 ${stroke * 0.6}px ${cur})` : undefined }} />
+          style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.4s ease" }} />
       </svg>
       <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} fill="none" stroke={cur} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute">
         {METRIC_ICONS[metric] ?? METRIC_ICONS.cpu}
@@ -117,7 +116,7 @@ function BarStyle({ pct, big, sub, name, cfg }: { pct: number; big: string; sub:
       <div className={`w-full h-5 rounded-[3px] overflow-hidden ${showTrack ? "bg-bg-elevated" : ""}`}>
         <div className="h-full rounded-[2px]" style={{ width: `${p}%`, background: cur, transition: "width 0.6s ease, background 0.4s ease", boxShadow: glow ? `0 0 8px ${cur}` : undefined }} />
       </div>
-      <div className="mt-1.5 text-[11px] font-mono text-text-muted">{sub}</div>
+      <div className="mt-1.5 text-[11px] font-mono text-text-muted whitespace-nowrap truncate">{sub}</div>
     </div>
   );
 }
@@ -150,7 +149,7 @@ function Spark({ hist, big, sub, name, w, cfg }: { hist: number[]; big: string; 
         <path d={area} fill={`url(#${fillId})`} />
         <path d={line} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" style={{ filter: glow ? `drop-shadow(0 0 3px ${color})` : undefined }} />
       </svg>
-      <div className="mt-1 text-[11px] font-mono text-text-muted">{sub}</div>
+      <div className="mt-1 text-[11px] font-mono text-text-muted whitespace-nowrap truncate">{sub}</div>
     </div>
   );
 }
