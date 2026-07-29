@@ -22,10 +22,7 @@ function PerCpuComponent({ config }: WidgetProps<PerCpuConfig>) {
   const cores = data.per_cpu ?? [];
   const n = cores.length;
   const avg = n ? cores.reduce((a, b) => a + b, 0) / n : data.cpu_pct;
-
-  // Column count so each bar is at least ~14px wide.
-  const usableW = Math.max(0, box.w - 24);
-  const cols = Math.max(1, Math.min(n || 1, Math.floor(usableW / 16))) || 8;
+  const gap = n > 32 ? 1 : n > 16 ? 2 : 3;
 
   return (
     <div ref={box.ref} className="h-full flex flex-col px-3 py-2.5 min-h-0">
@@ -35,19 +32,17 @@ function PerCpuComponent({ config }: WidgetProps<PerCpuConfig>) {
           {avg.toFixed(0)}%
         </span>
       </div>
-      <div
-        className="flex-1 min-h-0 w-full"
-        style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))`, gridAutoRows: "1fr", gap: "3px" }}
-      >
+      {/* One flex row of full-height columns — always fills, never leaves gaps. */}
+      <div className="flex-1 min-h-0 w-full flex items-stretch" style={{ gap: `${gap}px` }}>
         {cores.map((p, i) => (
-          <div key={i} title={`core ${i}: ${p.toFixed(0)}%`} className="relative w-full h-full min-h-0 rounded-sm bg-bg-elevated overflow-hidden">
+          <div key={i} title={`core ${i}: ${p.toFixed(0)}%`} className="relative flex-1 min-w-0 h-full rounded-sm bg-bg-elevated overflow-hidden">
             <div
               className="absolute bottom-0 left-0 right-0 rounded-sm"
               style={{ height: `${Math.max(2, Math.min(100, p))}%`, background: scaleColor(p, config as ColorConfig, OPTS), transition: "height 0.5s ease, background 0.4s ease" }}
             />
           </div>
         ))}
-        {n === 0 && <div className="text-[11px] text-text-muted col-span-full self-center">No per-core data.</div>}
+        {n === 0 && <div className="text-[11px] text-text-muted self-center">No per-core data.</div>}
       </div>
     </div>
   );

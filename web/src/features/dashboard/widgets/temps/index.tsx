@@ -26,12 +26,16 @@ function TempsComponent({ config }: WidgetProps<TempsConfig>) {
   const box = useSize<HTMLDivElement>();
   const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: 5_000 });
 
+  const names = config?.names ?? {};
   const temps = useMemo(() => {
     const all = data?.temps ?? [];
     const enabled = config?.sensors ?? defaultSubset(all.map((t) => t.label));
     const set = new Set(enabled);
-    return all.filter((t) => set.has(t.label)).sort((a, b) => b.celsius - a.celsius);
-  }, [data, config?.sensors]);
+    return all
+      .filter((t) => set.has(t.label))
+      .map((t) => ({ ...t, display: names[t.label] || t.label }))
+      .sort((a, b) => b.celsius - a.celsius);
+  }, [data, config?.sensors, config?.names]);
 
   if (isError || !data) {
     return <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">Host stats unavailable.</div>;
@@ -50,7 +54,7 @@ function TempsComponent({ config }: WidgetProps<TempsConfig>) {
   if (compact) {
     return (
       <div ref={box.ref} className="h-full flex flex-col justify-center px-3.5">
-        <span className="text-[11px] text-text-muted uppercase tracking-wide truncate">{hottest.label}</span>
+        <span className="text-[11px] text-text-muted uppercase tracking-wide truncate">{hottest.display}</span>
         <span className="font-mono tabular-nums text-3xl font-semibold leading-none" style={{ color: scaleColor(hottest.celsius, config as ColorConfig, OPTS) }}>
           {hottest.celsius.toFixed(0)}°
         </span>
@@ -67,7 +71,7 @@ function TempsComponent({ config }: WidgetProps<TempsConfig>) {
           return (
             <div key={i} className="space-y-1">
               <div className="flex items-baseline justify-between text-[11px] gap-2">
-                <span className="text-text-secondary truncate">{t.label}</span>
+                <span className="text-text-secondary truncate">{t.display}</span>
                 <span className="font-mono tabular-nums" style={{ color }}>{t.celsius.toFixed(0)}°C</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-bg-elevated overflow-hidden">
@@ -88,25 +92,37 @@ function TempsConfigPanel({ config, save }: WidgetConfigProps<TempsConfig>) {
   const enabled = config?.sensors ?? defaultSubset(all.map((t) => t.label));
   const enabledSet = new Set(enabled);
 
+  const names = config?.names ?? {};
   const toggle = (label: string) => {
     const next = enabledSet.has(label) ? enabled.filter((l) => l !== label) : [...enabled, label];
     save({ sensors: next });
+  };
+  const rename = (label: string, value: string) => {
+    const next = { ...names };
+    if (value.trim()) next[label] = value;
+    else delete next[label];
+    save({ names: next });
   };
 
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Sensors</label>
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Sensors — tick to show, rename to relabel</label>
         {all.length === 0 ? (
           <p className="text-[11px] text-text-muted">No sensors detected yet.</p>
         ) : (
-          <div className="max-h-52 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
+          <div className="max-h-64 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
             {all.map((t) => (
-              <label key={t.label} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
-                <input type="checkbox" checked={enabledSet.has(t.label)} onChange={() => toggle(t.label)} className="accent-accent" />
-                <span className="flex-1 truncate">{t.label}</span>
-                <span className="font-mono tabular-nums text-[11px] text-text-muted">{t.celsius.toFixed(0)}°</span>
-              </label>
+              <div key={t.label} className="flex items-center gap-2 px-2 py-1.5">
+                <input type="checkbox" checked={enabledSet.has(t.label)} onChange={() => toggle(t.label)} className="accent-accent shrink-0" />
+                <input
+                  value={names[t.label] ?? ""}
+                  onChange={(e) => rename(t.label, e.target.value)}
+                  placeholder={t.label}
+                  className="flex-1 min-w-0 px-1.5 py-0.5 rounded bg-bg-card border border-transparent hover:border-border focus:border-accent text-[12px] text-text placeholder:text-text-muted/70 focus:outline-none"
+                />
+                <span className="font-mono tabular-nums text-[11px] text-text-muted shrink-0">{t.celsius.toFixed(0)}°</span>
+              </div>
             ))}
           </div>
         )}

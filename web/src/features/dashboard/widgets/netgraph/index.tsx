@@ -20,16 +20,37 @@ function fmtRate(bps: number): string {
   return `${(bps / 1024 ** i).toFixed(i >= 2 ? 1 : 0)} ${u[i]}`;
 }
 
-// Area path for `vals` over width w, band height h, scaled to max. When flip is
-// set the band grows downward from y=0; otherwise it grows up from y=h.
-function area(vals: number[], w: number, h: number, max: number, flip: boolean): string {
-  if (vals.length === 0 || max <= 0) return "";
+// Catmull-Rom → cubic-bezier smoothing over a list of points.
+function smooth(pts: [number, number][]): string {
+  if (pts.length === 0) return "";
+  if (pts.length < 3) return `M ${pts.map((p) => `${p[0]},${p[1]}`).join(" L ")}`;
+  let d = `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] ?? pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] ?? p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+  }
+  return d;
+}
+
+// Smooth line + filled area for `vals` over a band of height h scaled to max.
+// flip grows the band downward from y=0; otherwise upward from y=h.
+function paths(vals: number[], w: number, h: number, max: number, flip: boolean): { line: string; fill: string } {
+  if (vals.length === 0 || max <= 0) return { line: "", fill: "" };
   const step = vals.length > 1 ? w / (vals.length - 1) : w;
   const y = (v: number) => (flip ? (v / max) * h : h - (v / max) * h);
-  const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${y(Math.min(v, max)).toFixed(1)}`);
-  const last = ((vals.length - 1) * step).toFixed(1);
-  const base = flip ? "0" : h.toFixed(1);
-  return `M 0,${base} L ${pts.join(" L ")} L ${last},${base} Z`;
+  const pts: [number, number][] = vals.map((v, i) => [i * step, y(Math.min(v, max))]);
+  const line = smooth(pts);
+  const last = (vals.length - 1) * step;
+  const base = flip ? 0 : h;
+  const fill = `${line} L ${last.toFixed(1)},${base} L 0,${base} Z`;
+  return { line, fill };
 }
 
 function col(key: string | undefined, fallback: string): string {
@@ -63,12 +84,17 @@ function NetGraphComponent({ config }: WidgetProps<NetGraphConfig>) {
   const fixed = config?.scaleMbit ? (config.scaleMbit * 1e6) / 8 : 0;
   const peak = Math.max(1, fixed || Math.max(...rx.current, ...tx.current, 1) * 1.15);
 
+  const inP = paths(rx.current, w, style === "mirror" ? chartH / 2 : chartH, peak, false);
+  const outP = paths(tx.current, w, style === "mirror" ? chartH / 2 : chartH, peak, style === "mirror");
+  const grid = style === "mirror" ? [chartH / 2] : [chartH * 0.33, chartH * 0.66];
+
   return (
     <div ref={box.ref} className="h-full flex flex-col">
       <div className="flex items-center justify-between px-3 pt-1.5 shrink-0 text-[11px]">
         <span className="flex items-center gap-1.5" style={{ color: inColor }}>
           <span className="w-2 h-2 rounded-sm" style={{ background: inColor }} /> In {fmtRate(data.net_rx_bps)}
         </span>
+        <span className="font-mono text-[9px] text-text-muted/70">↑{fmtRate(peak)}</span>
         <span className="flex items-center gap-1.5" style={{ color: outColor }}>
           Out {fmtRate(data.net_tx_bps)} <span className="w-2 h-2 rounded-sm" style={{ background: outColor }} />
         </span>
@@ -84,18 +110,24 @@ function NetGraphComponent({ config }: WidgetProps<NetGraphConfig>) {
             <stop offset="1" stopColor={outColor} stopOpacity="0.04" />
           </linearGradient>
         </defs>
+        {grid.map((gy, i) => (
+          <line key={i} x1="0" y1={gy} x2={w} y2={gy} stroke="var(--color-border-subtle, #ffffff14)" strokeWidth="1" strokeDasharray={style === "mirror" ? undefined : "2 4"} />
+        ))}
         {style === "mirror" ? (
           <>
-            <line x1="0" y1={chartH / 2} x2={w} y2={chartH / 2} stroke="var(--color-border-subtle, #ffffff18)" strokeWidth="1" />
-            <path d={area(rx.current, w, chartH / 2, peak, false)} fill="url(#ng-in)" stroke={inColor} strokeWidth="1.5" />
+            <path d={inP.fill} fill="url(#ng-in)" />
+            <path d={inP.line} fill="none" stroke={inColor} strokeWidth="1.75" style={{ filter: `drop-shadow(0 0 3px ${inColor})` }} />
             <g transform={`translate(0,${chartH / 2})`}>
-              <path d={area(tx.current, w, chartH / 2, peak, true)} fill="url(#ng-out)" stroke={outColor} strokeWidth="1.5" />
+              <path d={outP.fill} fill="url(#ng-out)" />
+              <path d={outP.line} fill="none" stroke={outColor} strokeWidth="1.75" style={{ filter: `drop-shadow(0 0 3px ${outColor})` }} />
             </g>
           </>
         ) : (
           <>
-            <path d={area(tx.current, w, chartH, peak, false)} fill="url(#ng-out)" stroke={outColor} strokeWidth="1.5" />
-            <path d={area(rx.current, w, chartH, peak, false)} fill="url(#ng-in)" stroke={inColor} strokeWidth="1.5" />
+            <path d={outP.fill} fill="url(#ng-out)" />
+            <path d={outP.line} fill="none" stroke={outColor} strokeWidth="1.75" style={{ filter: `drop-shadow(0 0 3px ${outColor})` }} />
+            <path d={inP.fill} fill="url(#ng-in)" />
+            <path d={inP.line} fill="none" stroke={inColor} strokeWidth="1.75" style={{ filter: `drop-shadow(0 0 3px ${inColor})` }} />
           </>
         )}
       </svg>

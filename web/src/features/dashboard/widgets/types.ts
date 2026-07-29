@@ -327,6 +327,8 @@ export interface PerCpuConfig {
 export interface TempsConfig {
   /** Explicit list of sensor labels to show. undefined = a default subset. */
   sensors?: string[];
+  /** Custom display names, keyed by the raw sensor label. */
+  names?: Record<string, string>;
   colorScale?: "threshold" | "gradient" | "solid" | "accent";
   color?: string;
   warn?: number; // amber °C
