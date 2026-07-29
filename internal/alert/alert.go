@@ -70,22 +70,47 @@ func (n *Notifier) Notify(app, prev, cur string) {
 	if !ok {
 		return
 	}
+	n.dispatch(e)
+}
+
+// SendTest fires a sample notification to every configured channel and returns
+// the channel names it triggered (so the UI can confirm what's wired up).
+func (n *Notifier) SendTest() []string {
+	return n.dispatch(event{
+		app:   "axboard",
+		title: "axboard test alert",
+		body:  "This is a test notification from axboard — your alerts are working.",
+		down:  false,
+		prev:  "healthy",
+		cur:   "healthy",
+	})
+}
+
+// dispatch fans an event out to every configured channel and reports which
+// ones were triggered. Sends are best-effort in their own goroutines.
+func (n *Notifier) dispatch(e event) []string {
 	n.mu.RLock()
 	cfg := n.cfg
 	n.mu.RUnlock()
 
+	var sent []string
 	if cfg.WebhookURL != "" {
+		sent = append(sent, "webhook")
 		go n.sendWebhook(cfg.WebhookURL, e)
 	}
 	if cfg.Ntfy != nil && cfg.Ntfy.Topic != "" {
+		sent = append(sent, "ntfy")
 		go n.sendNtfy(*cfg.Ntfy, e)
 	}
 	if cfg.Telegram != nil && cfg.Telegram.BotToken != "" && cfg.Telegram.ChatID != "" {
+		sent = append(sent, "telegram")
 		go n.sendTelegram(*cfg.Telegram, e)
 	}
 	if cfg.Email != nil && cfg.Email.SMTPHost != "" && cfg.Email.To != "" {
+		sent = append(sent, "email")
 		go n.sendEmail(*cfg.Email, e)
 	}
+	return sent
 }
 
 func ctx() (context.Context, context.CancelFunc) {

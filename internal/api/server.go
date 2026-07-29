@@ -23,6 +23,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/alert"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/config"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/discover"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/health"
@@ -161,6 +162,7 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Get("/host", s.handleHost)
 		r.Get("/host/procs", s.handleHostProcs)
 		r.Post("/wol", s.handleWoL)
+		r.Post("/alerts/test", s.handleAlertTest)
 		r.Get("/ping", s.handleUptimePing)
 		r.Get("/publicip", s.handlePublicIP)
 		r.Get("/proxy", s.handleProxy)
@@ -385,6 +387,20 @@ func (s *Server) handleWoL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handleAlertTest fires a sample notification through the currently-configured
+// alert channels and reports which ones it triggered.
+func (s *Server) handleAlertTest(w http.ResponseWriter, _ *http.Request) {
+	cfg := s.getConfig()
+	if cfg == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "no config loaded"})
+		return
+	}
+	n := alert.New()
+	n.SetConfig(cfg.Alerts)
+	sent := n.SendTest()
+	writeJSON(w, http.StatusOK, map[string]any{"ok": len(sent) > 0, "channels": sent})
 }
 
 // magicPacket builds a Wake-on-LAN magic packet: 6×0xFF then the MAC repeated

@@ -25,7 +25,7 @@ import { THEMES } from "../../hooks/themes";
 import { ConfigEditorModal } from "./ConfigEditorModal";
 import { TemplatePickerModal } from "./TemplatePickerModal";
 import type { DashboardTemplate } from "./templates";
-import type { BackgroundDef, HeaderDef } from "../../api/types";
+import type { AlertsDef, BackgroundDef, HeaderDef } from "../../api/types";
 import { backgroundLayerStyle } from "./appearance";
 import type {
   AnyWidgetConfig,
@@ -66,6 +66,7 @@ interface ServerTopBar {
 interface ConfigPayload {
   topBar?: ServerTopBar;
   dashboards?: ServerDashboard[];
+  alerts?: AlertsDef;
 }
 
 interface StatePayload {
@@ -538,6 +539,14 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       }
     },
     [qc],
+  );
+
+  // Alert settings — saved from the ⋯ menu's Alerts panel into config.yaml.
+  const handleSaveAlerts = useCallback(
+    (alerts: AlertsDef) => {
+      writeConfigAndRefresh((cfg) => ({ ...cfg, alerts }));
+    },
+    [writeConfigAndRefresh],
   );
 
   // Appearance edits fire rapidly (sliders, color pickers). Instead of a PUT +
@@ -1264,6 +1273,8 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onRenameDashboard={handleRenameDashboard}
         onDeleteDashboard={handleDeleteDashboard}
         onOpenSpotlight={() => setSpotlightOpen(true)}
+        alerts={fullConfig?.alerts}
+        onSaveAlerts={handleSaveAlerts}
         theme={theme}
         setTheme={setTheme}
       />

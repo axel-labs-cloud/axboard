@@ -84,12 +84,37 @@ export interface ServerConfig {
   bind?: string;
 }
 
+export interface NtfyDef {
+  server?: string;
+  topic?: string;
+  token?: string;
+}
+export interface TelegramDef {
+  bot_token?: string;
+  chat_id?: string;
+}
+export interface EmailDef {
+  smtp_host?: string;
+  smtp_port?: number;
+  username?: string;
+  password?: string;
+  from?: string;
+  to?: string;
+}
+export interface AlertsDef {
+  webhook_url?: string;
+  ntfy?: NtfyDef;
+  telegram?: TelegramDef;
+  email?: EmailDef;
+}
+
 export interface Config {
   server?: ServerConfig;
   apps?: AppDef[];
   groups?: GroupDef[];
   topBar?: TopBarDef;
   dashboards?: DashboardDef[];
+  alerts?: AlertsDef;
 }
 
 export interface AppStatus {

@@ -134,9 +134,10 @@ Press **`?`** in-app for the full cheat sheet.
 
 ## Alerts
 
-axboard notifies you when a health-checked app **goes down or recovers**. Add an
-`alerts` block to `config.yaml` — every configured channel fires (all
-best-effort):
+axboard notifies you when a health-checked app **goes down or recovers**.
+Configure it entirely from the UI — **⋯ menu → Alerts** — with a **Save & send
+test** button to confirm each channel works (or hand-edit the `alerts` block in
+`config.yaml`). Every configured channel fires (all best-effort):
 
 - **ntfy** — zero infra: POSTs to a topic on `ntfy.sh` or your self-hosted ntfy.
 - **Telegram** — a bot token (from `@BotFather`) + your chat id.
