@@ -142,6 +142,7 @@ export interface StatusPageDef {
   theme?: string; // "dark" | "light"
   width?: string; // narrow | wide | full
   accent?: string;
+  banner_style?: string; // tint | minimal | strip | outline | solid | accent
   background?: StatusBackgroundDef;
   notices?: NoticeDef[];
 }

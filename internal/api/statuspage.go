@@ -65,6 +65,7 @@ type spData struct {
 	AllUp        bool
 	Headline     string // human summary, e.g. "All systems operational"
 	State        string // ok | degraded | down — worst current state
+	BannerStyle  string // tint | minimal | strip | outline | solid | accent
 	Notices      []spNotice
 	Groups       []spGroup
 	UpdatedAt    string
@@ -398,6 +399,13 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 	case degraded > 0:
 		state, headline = "degraded", "Degraded performance"
 	}
+	bannerStyle := strings.ToLower(strings.TrimSpace(page.BannerStyle))
+	switch bannerStyle {
+	case "minimal", "strip", "outline", "solid", "accent":
+		// valid
+	default:
+		bannerStyle = "tint"
+	}
 	data := spData{
 		Title:        title,
 		Header:       page.Header,
@@ -416,6 +424,7 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 		AllUp:        total > 0 && up == total,
 		Headline:     headline,
 		State:        state,
+		BannerStyle:  bannerStyle,
 		Notices:      notices,
 		Groups:       groups,
 		UpdatedAt:    time.Now().Format("Jan 2, 15:04:05 MST"),
@@ -513,15 +522,14 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .bgdim{position:fixed;inset:0;z-index:-1;background:rgb(0 0 0 / {{.Dim}}%)}
   .wrap{max-width:{{.WrapW}};margin:0 auto;padding:40px 20px;position:relative}
   /* When a custom backdrop is set, make the cards glassy so it shows through. */
-  body.themed .banner,body.themed .card,body.themed .notice{background:color-mix(in srgb,var(--card) 78%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+  body.themed .card,body.themed .notice{background:color-mix(in srgb,var(--card) 78%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
   h1{font-size:22px;margin:0 0 4px;color:var(--accent)}
   .hdr{color:var(--mut);font-size:13px;margin:0 0 18px;white-space:pre-wrap}
   .sub{color:var(--mut);font-size:12px;margin-bottom:22px}
   .updated{color:var(--mut);font-size:11.5px;text-align:center;margin-top:26px}
   .banner{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:14px;margin:6px 0 26px;
-    border:1px solid var(--line);border-left:4px solid var(--sc);background:var(--card)}
-  .banner .big{width:14px;height:14px;border-radius:50%;flex:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--sc) 22%,transparent)}
-  .banner .big{background:var(--sc)}
+    border:1px solid var(--line);background:var(--card)}
+  .banner .big{width:14px;height:14px;border-radius:50%;flex:none;background:var(--sc);box-shadow:0 0 0 4px color-mix(in srgb,var(--sc) 22%,transparent)}
   .bmeta{flex:1;min-width:0}
   .bhead{font-weight:600;font-size:16px;color:var(--tx);line-height:1.25}
   .bsub{font-size:12.5px;color:var(--mut);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px}
@@ -530,6 +538,17 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .bcount{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--tx);line-height:1;white-space:nowrap}
   .bcount span{font-size:15px;font-weight:500;color:var(--mut)}
   .banner.ok{--sc:var(--up)} .banner.degraded{--sc:var(--deg)} .banner.down{--sc:var(--down)}
+  /* Banner style presets (set per page). */
+  .banner.tint{border-color:color-mix(in srgb,var(--sc) 28%,var(--line));background:color-mix(in srgb,var(--sc) 8%,var(--card))}
+  .banner.strip{border-left:4px solid var(--sc)}
+  .banner.outline{border:1.5px solid var(--sc);background:transparent}
+  .banner.accent{border-color:color-mix(in srgb,var(--accent) 30%,var(--line));background:color-mix(in srgb,var(--accent) 9%,var(--card))}
+  .banner.accent .big{--sc:var(--accent)}
+  .banner.solid{border-color:transparent;background:var(--sc)}
+  .banner.solid .bhead,.banner.solid .bcount{color:#fff}
+  .banner.solid .bsub,.banner.solid .bcount span{color:rgba(255,255,255,.82)}
+  .banner.solid .bsub b{color:#fff}
+  .banner.solid .big{background:#fff;box-shadow:0 0 0 4px rgba(255,255,255,.28)}
   .grp{margin-bottom:22px}
   .grp h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:0 0 8px;font-weight:600}
   .card{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
@@ -567,7 +586,7 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
     {{if .Message}}<div class="nm">{{.Message}}</div>{{end}}
   </div>
   {{end}}
-  <div class="banner {{.State}}">
+  <div class="banner {{.State}} {{.BannerStyle}}">
     <span class="big"></span>
     <div class="bmeta">
       <div class="bhead">{{.Headline}}</div>

@@ -43,6 +43,7 @@ function clean(pages: StatusPageDef[]): StatusPageDef[] {
     if (p.theme && p.theme !== "dark") c.theme = p.theme;
     if (p.width && p.width !== "narrow") c.width = p.width;
     if (p.accent?.trim()) c.accent = p.accent.trim();
+    if (p.banner_style && p.banner_style !== "tint") c.banner_style = p.banner_style;
     if (p.background?.type) {
       const b = p.background;
       c.background = { type: b.type };
@@ -190,6 +191,14 @@ export function StatusPagesForm({
                   <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Accent</label>
                   <input type="color" value={cur.accent || "#818cf8"} onChange={(e) => update({ accent: e.target.value })} className="w-7 h-7 rounded bg-transparent border border-border cursor-pointer" />
                   {cur.accent && <button onClick={() => update({ accent: undefined })} className="text-[10px] text-text-muted hover:text-text">reset</button>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Banner</label>
+                  <div className="flex gap-1 flex-wrap">
+                    {(["tint", "minimal", "strip", "outline", "solid", "accent"] as const).map((bs) => (
+                      <button key={bs} onClick={() => update({ banner_style: bs })} className={`px-2.5 py-1 text-[11px] rounded border capitalize transition-colors ${(cur.banner_style ?? "tint") === bs ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{bs}</button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

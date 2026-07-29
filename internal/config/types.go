@@ -39,7 +39,10 @@ type StatusPageConfig struct {
 	Apps         []string `yaml:"apps,omitempty" json:"apps,omitempty"`     // app IDs to include (empty = all)
 	Theme        string   `yaml:"theme,omitempty" json:"theme,omitempty"`   // dark (default) | light
 	Width        string   `yaml:"width,omitempty" json:"width,omitempty"`   // narrow (default) | wide | full
-	Accent       string   `yaml:"accent,omitempty" json:"accent,omitempty"` // accent colour (links/banner)
+	Accent       string   `yaml:"accent,omitempty" json:"accent,omitempty"` // accent colour (links/title)
+	// BannerStyle picks how the summary banner is drawn: tint (default) |
+	// minimal | strip | outline | solid | accent.
+	BannerStyle string `yaml:"banner_style,omitempty" json:"banner_style,omitempty"`
 	// Background is the page backdrop (like a dashboard background).
 	Background *StatusBackground `yaml:"background,omitempty" json:"background,omitempty"`
 	// Notices are manual announcement banners shown at the top of this page
