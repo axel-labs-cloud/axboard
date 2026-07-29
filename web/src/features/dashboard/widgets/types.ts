@@ -135,6 +135,7 @@ export interface StatusSummaryConfig {
   showLegend?: boolean;
   byGroup?: boolean;
   bars?: boolean; // per-service Uptime-Kuma-style history bars
+  groups?: string[]; // filter: only these group ids (empty = all)
 }
 
 /** Notes / scratchpad widget — free text persisted in config.yaml. */

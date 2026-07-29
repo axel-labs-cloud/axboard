@@ -65,15 +65,36 @@ const SEGMENTS = [
   { key: "unknown", label: "Unknown", cls: "bg-unknown/60", text: "text-text-muted" },
 ] as const;
 
+function ServiceRow({ name, points, n }: { name: string; points: HistoryPoint[]; n: number }) {
+  const win = points.slice(-40);
+  const pct = win.length ? Math.round((win.filter((p) => p.status === "healthy").length / win.length) * 100) : null;
+  return (
+    <div className="flex items-center gap-2.5">
+      <div className="min-w-0 flex-1">
+        <div className="text-[11px] text-text-secondary truncate leading-tight mb-1">{name}</div>
+        <HistoryBars points={points} n={n} />
+      </div>
+      <span className="text-[10px] font-mono text-text-muted tabular-nums shrink-0 w-9 text-right">
+        {pct != null ? `${pct}%` : "—"}
+      </span>
+    </div>
+  );
+}
+
 function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>) {
   const box = useSize<HTMLDivElement>();
   const qc = useQueryClient();
   const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
   const groups = cfg?.groups ?? [];
-  const healthApps = useMemo(
-    () => (cfg?.apps ?? []).filter((a) => a.health && a.health.type !== "none"),
-    [cfg?.apps],
-  );
+  const healthApps = useMemo(() => {
+    const sel = config?.groups;
+    return (cfg?.apps ?? []).filter(
+      (a) =>
+        a.health &&
+        a.health.type !== "none" &&
+        (!sel || sel.length === 0 || sel.includes(a.group || "__ungrouped")),
+    );
+  }, [cfg?.apps, config?.groups]);
 
   const { data: statuses = {} } = useQuery({
     queryKey: ["apps-status"],
@@ -151,16 +172,23 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
     return rows.sort((a, b) => a.name.localeCompare(b.name));
   }, [config?.byGroup, groups, healthApps, statuses]);
 
+  // Filtered apps grouped for the by-group view.
+  const appGroups = useMemo(() => {
+    const byId = new Map(groups.map((g) => [g.id, g]));
+    const map = new Map<string, { g?: GroupDef; apps: AppDef[] }>();
+    for (const a of healthApps) {
+      const key = a.group || "__ungrouped";
+      if (!map.has(key)) map.set(key, { g: byId.get(key), apps: [] });
+      map.get(key)!.apps.push(a);
+    }
+    return [...map.values()].sort((x, y) => (x.g?.name ?? "Ungrouped").localeCompare(y.g?.name ?? "Ungrouped"));
+  }, [healthApps, groups]);
+
   const total = healthApps.length;
   const showLegend = config?.showLegend !== false && h > 1;
   // Per-service history bars (Kuma-style) — default on, when there's room.
-  const showBars = config?.bars !== false && !config?.byGroup && h > 1;
-  const barCount = box.w > 0 ? Math.max(10, Math.min(64, Math.floor((box.w - 150) / 4))) : 24;
-  const appPct = (id: string): number | null => {
-    const win = (history[id] ?? []).slice(-40);
-    if (!win.length) return null;
-    return Math.round((win.filter((p) => p.status === "healthy").length / win.length) * 100);
-  };
+  const showBars = config?.bars !== false && h > 1;
+  const barCount = box.w > 0 ? Math.max(10, Math.min(80, Math.floor((box.w - 150) / 4))) : 24;
 
   if (total === 0) {
     return (
@@ -210,21 +238,26 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
       )}
 
       {showBars ? (
-        <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-2 mt-0.5 pr-0.5">
-          {healthApps.map((a) => {
-            const pct = appPct(a.id);
-            return (
-              <div key={a.id} className="flex items-center gap-2.5">
-                <div className="min-w-0 flex-1">
-                  <div className="text-[11px] text-text-secondary truncate leading-tight mb-1">{a.name}</div>
-                  <HistoryBars points={history[a.id] ?? []} n={barCount} />
-                </div>
-                <span className="text-[10px] font-mono text-text-muted tabular-nums shrink-0 w-9 text-right">
-                  {pct != null ? `${pct}%` : "—"}
-                </span>
-              </div>
-            );
-          })}
+        <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-3 mt-0.5 pr-0.5">
+          {config?.byGroup
+            ? appGroups.map((grp) => {
+                const upN = grp.apps.filter((a) => statuses[a.id]?.status === "healthy").length;
+                return (
+                  <div key={grp.g?.id ?? "__ung"} className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.06em] text-text-muted">
+                      {grp.g?.color && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: grp.g.color }} />}
+                      <span className="truncate">{grp.g?.name ?? "Ungrouped"}</span>
+                      <span className="ml-auto font-mono tabular-nums">{upN}/{grp.apps.length}</span>
+                    </div>
+                    {grp.apps.map((a) => (
+                      <ServiceRow key={a.id} name={a.name} points={history[a.id] ?? []} n={barCount} />
+                    ))}
+                  </div>
+                );
+              })
+            : healthApps.map((a) => (
+                <ServiceRow key={a.id} name={a.name} points={history[a.id] ?? []} n={barCount} />
+              ))}
         </div>
       ) : config?.byGroup && h > 1 ? (
         <div className="flex-1 min-h-0 flex flex-col justify-center gap-1 overflow-auto">
@@ -262,6 +295,11 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
 }
 
 function StatusSummaryConfigPanel({ config, save }: WidgetConfigProps<StatusSummaryConfig>) {
+  const qc = useQueryClient();
+  const groups = qc.getQueryData<{ groups?: GroupDef[] }>(["config"])?.groups ?? [];
+  const sel = config?.groups ?? [];
+  const toggleGroup = (id: string) =>
+    save({ groups: sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id] });
   return (
     <div className="space-y-3">
       <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
@@ -292,9 +330,32 @@ function StatusSummaryConfigPanel({ config, save }: WidgetConfigProps<StatusSumm
         />
         Show per-state legend
       </label>
+      {groups.length > 0 && (
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+            Filter to groups (none = all)
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {groups.map((g) => {
+              const on = sel.includes(g.id);
+              return (
+                <button
+                  key={g.id}
+                  onClick={() => toggleGroup(g.id)}
+                  className={`px-2.5 py-1 rounded text-[11px] border transition-colors ${
+                    on ? "bg-accent/15 border-accent text-accent" : "bg-bg-card border-border text-text-muted hover:text-text"
+                  }`}
+                >
+                  {g.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <p className="text-[11px] text-text-muted leading-snug">
-        Counts every service that has a health check (type http or tcp). Liveness only; the
-        line is recent uptime.
+        Counts every service that has a health check (type http or tcp). Liveness only; bars show
+        recent per-service uptime.
       </p>
     </div>
   );
@@ -322,10 +383,10 @@ const definition: WidgetDefinition<StatusSummaryConfig> = {
   description: "At-a-glance roll-up of all service health: N up, degraded, down.",
   minW: 2,
   minH: 1,
-  maxW: 8,
-  maxH: 8,
-  defaultW: 4,
-  defaultH: 3,
+  maxW: 12,
+  maxH: 14,
+  defaultW: 5,
+  defaultH: 4,
   defaultConfig: { showLegend: true, bars: true },
   Component: StatusSummaryComponent,
   ConfigPanel: StatusSummaryConfigPanel,
