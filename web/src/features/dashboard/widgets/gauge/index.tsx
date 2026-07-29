@@ -129,9 +129,9 @@ function BarStyle({ pct, big, sub, name, h, cfg }: { pct: number; big: string; s
   const p = Math.min(100, Math.max(0, pct));
   return (
     <div className="w-full px-4">
-      <div className="flex items-baseline justify-between mb-1.5">
+      <div className="flex items-center justify-between gap-2 mb-1.5 leading-none">
         <span className="text-[12px] text-text-muted uppercase tracking-wide">{name}</span>
-        <span className="font-mono tabular-nums text-[22px] font-semibold leading-none" style={{ color: cur }}>{big}</span>
+        <span className="font-mono tabular-nums text-[20px] font-semibold" style={{ color: cur }}>{big}</span>
       </div>
       <div className={`w-full h-5 rounded-[3px] overflow-hidden ${showTrack ? "bg-bg-elevated" : ""}`}>
         <div className="h-full rounded-[2px]" style={{ width: `${p}%`, background: cur, transition: "width 0.6s ease, background 0.4s ease", boxShadow: glow ? `0 0 8px ${cur}` : undefined }} />
@@ -190,9 +190,9 @@ function Spark({ hist, big, sub, name, w, h, cfg }: { hist: number[]; big: strin
   const fillId = `spk-${uid}`;
   return (
     <div className="w-full px-3">
-      <div className="flex items-baseline justify-between mb-1">
+      <div className="flex items-center justify-between gap-2 mb-1.5 leading-none">
         <span className="text-[12px] text-text-muted uppercase tracking-wide">{name}</span>
-        <span className="font-mono tabular-nums text-[22px] font-semibold leading-none" style={{ color }}>{big}</span>
+        <span className="font-mono tabular-nums text-[20px] font-semibold" style={{ color }}>{big}</span>
       </div>
       <svg width={width} height={height} className="w-full" preserveAspectRatio="none" viewBox={`0 0 ${width} ${height}`}>
         <defs>

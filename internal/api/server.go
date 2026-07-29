@@ -30,9 +30,10 @@ import (
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/state"
 )
 
-// Build info, injected at link time via -ldflags "-X ...".
+// Build info, injected at link time via -ldflags "-X ...". Defaults to the
+// current release when not overridden (e.g. a plain `go build`).
 var (
-	Version   = "dev"
+	Version   = "v0.1.0-beta.1"
 	BuildDate = ""
 )
 

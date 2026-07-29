@@ -110,6 +110,15 @@ Everything lives in **⋯ → Themes & appearance…** (a live-preview drawer):
 - **Global top bar:** style (default / solid / contrast / transparent) + **flush** edge-to-edge mode, branding (hide/replace the logo, rename or hide the name), search-bar toggle, header widgets (clock, weather, services-up), and icon-only bookmark launchers.
 - **Themes tab:** 13 built-ins, a **custom-theme creator** (per-token color pickers, import/export as JSON), a **font** picker, **widget style** (opacity / backdrop-blur / corner radius / border), and a **custom-CSS** box.
 
+## Multiple dashboards & deep links
+
+Tabs across the top switch between dashboards. Each is **addressable by URL**: the
+default dashboard lives at `/`, and every other one at `/<slug>` derived from its
+name — so a dashboard named **Dev** opens directly at **`/dev`**. Typing the path
+(or bookmarking it) opens that dashboard; switching tabs updates the URL, and
+browser back/forward work. Slugs lowercase the name and turn spaces into dashes
+(`Home Lab` → `/home-lab`).
+
 ## Keyboard shortcuts
 
 Press **`?`** in-app for the full cheat sheet.

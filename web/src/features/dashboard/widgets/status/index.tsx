@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
@@ -103,6 +103,14 @@ function RtChart({ points }: { points: HistoryPoint[] }) {
 
 // Detail popover for one service — uptime %, response-time chart, last incident.
 function ServiceDetail({ name, points, onClose }: { name: string; points: HistoryPoint[]; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   const total = points.length;
   const up = points.filter((p) => p.status === "healthy").length;
   const uptimePct = total ? Math.round((up / total) * 100) : null;
@@ -113,7 +121,7 @@ function ServiceDetail({ name, points, onClose }: { name: string; points: Histor
 
   return createPortal(
     <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-[min(420px,92vw)] rounded-xl bg-bg-elevated border border-border shadow-2xl ring-1 ring-white/5 p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label={`${name} status`} className="w-[min(420px,92vw)] rounded-xl bg-bg-elevated border border-border shadow-2xl ring-1 ring-white/5 p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <span className="text-[14px] font-semibold text-text truncate">{name}</span>
           <button onClick={onClose} className="text-text-muted hover:text-text text-[13px]">✕</button>

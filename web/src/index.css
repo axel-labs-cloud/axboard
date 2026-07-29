@@ -513,12 +513,16 @@
    but the bar itself is hidden so tiles stay clean. Config panels and modals
    live outside the grid and keep their scrollbars. */
 .react-grid-item ::-webkit-scrollbar,
-.react-grid-item::-webkit-scrollbar {
+.react-grid-item::-webkit-scrollbar,
+.widget-card ::-webkit-scrollbar,
+.widget-card::-webkit-scrollbar {
   width: 0 !important;
   height: 0 !important;
 }
 .react-grid-item *,
-.react-grid-item {
+.react-grid-item,
+.widget-card *,
+.widget-card {
   scrollbar-width: none;
 }
 
