@@ -44,6 +44,7 @@ function clean(pages: StatusPageDef[]): StatusPageDef[] {
     if (p.width && p.width !== "narrow") c.width = p.width;
     if (p.accent?.trim()) c.accent = p.accent.trim();
     if (p.banner_style && p.banner_style !== "tint") c.banner_style = p.banner_style;
+    if (p.critical_threshold && p.critical_threshold > 0) c.critical_threshold = p.critical_threshold;
     if (p.background?.type) {
       const b = p.background;
       c.background = { type: b.type };
@@ -195,10 +196,20 @@ export function StatusPagesForm({
                 <div className="flex items-center gap-2">
                   <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Banner</label>
                   <div className="flex gap-1 flex-wrap">
-                    {(["tint", "minimal", "strip", "outline", "solid", "accent"] as const).map((bs) => (
+                    {(["tint", "minimal", "strip", "outline", "solid"] as const).map((bs) => (
                       <button key={bs} onClick={() => update({ banner_style: bs })} className={`px-2.5 py-1 text-[11px] rounded border capitalize transition-colors ${(cur.banner_style ?? "tint") === bs ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{bs}</button>
                     ))}
                   </div>
+                </div>
+                <div className="flex items-center gap-2" title="Banner turns red if a Critical service is down, or if at least this many non-critical services are down at once. 0 = non-critical outages stay amber.">
+                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Red at</label>
+                  <input
+                    type="number" min={0} max={99}
+                    value={cur.critical_threshold ?? 0}
+                    onChange={(e) => update({ critical_threshold: Math.max(0, parseInt(e.target.value) || 0) })}
+                    className="w-14 px-2 py-1 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent"
+                  />
+                  <span className="text-[10px] text-text-muted">non-critical down (0 = off)</span>
                 </div>
               </div>
 

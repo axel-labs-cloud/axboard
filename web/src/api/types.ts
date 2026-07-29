@@ -24,6 +24,7 @@ export interface AppDef {
   icon?: string;
   group?: string;
   description?: string;
+  critical?: boolean; // outage counts as a major (red) incident on status pages
   health?: HealthCheck;
 }
 
@@ -142,7 +143,8 @@ export interface StatusPageDef {
   theme?: string; // "dark" | "light"
   width?: string; // narrow | wide | full
   accent?: string;
-  banner_style?: string; // tint | minimal | strip | outline | solid | accent
+  banner_style?: string; // tint | minimal | strip | outline | solid
+  critical_threshold?: number; // # of non-critical services down that escalates to red
   background?: StatusBackgroundDef;
   notices?: NoticeDef[];
 }

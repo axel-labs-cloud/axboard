@@ -25,6 +25,7 @@ import (
 
 type spService struct {
 	Name       string
+	Critical   bool
 	Status     string
 	StatusText string
 	UptimePct  int
@@ -280,6 +281,7 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 	order := []string{}
 	buckets := map[string][]spService{}
 	up, degraded, down, total := 0, 0, 0, 0
+	criticalDown, nonCriticalDown := 0, 0
 	for _, a := range cfg.Apps {
 		if a.Health == nil || a.Health.Type == config.HealthNone || a.Health.Type == "" {
 			continue
@@ -303,8 +305,13 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 			degraded++
 		case "down":
 			down++
+			if a.Critical {
+				criticalDown++
+			} else {
+				nonCriticalDown++
+			}
 		}
-		svc := spService{Name: a.Name, Status: st, StatusText: statusText(st)}
+		svc := spService{Name: a.Name, Status: st, StatusText: statusText(st), Critical: a.Critical}
 		// Prefer the 30-day windowed uptime (disk-backed) when available.
 		if u := s.Health.Uptime(); u != nil {
 			if pct, ok := u.Window(a.ID, 30*24*time.Hour, time.Now()); ok {
@@ -390,18 +397,26 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 	if page.Background != nil {
 		dim = page.Background.Dim
 	}
+	// Banner state by criticality: a critical service down (or enough non-critical
+	// ones, per CriticalThreshold) is red; lesser outages/degradation are amber.
+	thr := page.CriticalThreshold
+	escalated := thr > 0 && nonCriticalDown >= thr
 	state, headline := "ok", "All systems operational"
 	switch {
 	case total == 0:
 		state, headline = "ok", "No services monitored"
+	case criticalDown > 0:
+		state, headline = "down", "Critical service disruption"
+	case escalated:
+		state, headline = "down", "Multiple services down"
 	case down > 0:
-		state, headline = "down", "Service disruption"
+		state, headline = "degraded", "Partial service disruption"
 	case degraded > 0:
 		state, headline = "degraded", "Degraded performance"
 	}
 	bannerStyle := strings.ToLower(strings.TrimSpace(page.BannerStyle))
 	switch bannerStyle {
-	case "minimal", "strip", "outline", "solid", "accent":
+	case "minimal", "strip", "outline", "solid":
 		// valid
 	default:
 		bannerStyle = "tint"
@@ -542,8 +557,6 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .banner.tint{border-color:color-mix(in srgb,var(--sc) 28%,var(--line));background:color-mix(in srgb,var(--sc) 8%,var(--card))}
   .banner.strip{border-left:4px solid var(--sc)}
   .banner.outline{border:1.5px solid var(--sc);background:transparent}
-  .banner.accent{border-color:color-mix(in srgb,var(--accent) 30%,var(--line));background:color-mix(in srgb,var(--accent) 9%,var(--card))}
-  .banner.accent .big{--sc:var(--accent)}
   .banner.solid{border-color:transparent;background:var(--sc)}
   .banner.solid .bhead,.banner.solid .bcount{color:#fff}
   .banner.solid .bsub,.banner.solid .bcount span{color:rgba(255,255,255,.82)}
@@ -556,7 +569,9 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .row:first-child{border-top:none}
   .dot{width:9px;height:9px;border-radius:50%;flex:none}
   .dot.healthy{background:var(--up)} .dot.degraded{background:var(--deg)} .dot.down{background:var(--down)} .dot.unknown{background:var(--unk)}
-  .name{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .name{min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .nwrap{flex:1;min-width:0;display:flex;align-items:center;gap:7px}
+  .crit{font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--down);border:1px solid color-mix(in srgb,var(--down) 45%,transparent);border-radius:5px;padding:1px 5px;flex:none}
   .cert{font-size:10px;padding:2px 6px;border-radius:6px;background:rgba(245,158,11,.15);color:var(--deg)}
   .cert.exp{background:rgba(244,63,94,.15);color:var(--down)}
   .bars{display:flex;gap:3px;align-items:stretch;height:26px;flex:1;min-width:90px;max-width:360px}
@@ -605,7 +620,7 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
       {{range .Services}}
       <div class="row">
         <span class="dot {{.Status}}"></span>
-        <span class="name">{{.Name}}</span>
+        <span class="nwrap"><span class="name">{{.Name}}</span>{{if .Critical}}<span class="crit" title="Critical service">critical</span>{{end}}</span>
         {{if .Bars}}<span class="bars">{{range .Bars}}<span class="{{.}}"></span>{{end}}</span>{{end}}
         {{if .HasCert}}<span class="cert {{if lt .CertDays 0}}exp{{else if le .CertDays 14}}exp{{end}}">{{if lt .CertDays 0}}cert expired{{else}}cert {{.CertDays}}d{{end}}</span>{{end}}
         {{if .HasMS}}<span class="ms">{{.AvgMS}}ms</span>{{end}}

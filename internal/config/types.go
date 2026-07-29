@@ -41,8 +41,13 @@ type StatusPageConfig struct {
 	Width        string   `yaml:"width,omitempty" json:"width,omitempty"`   // narrow (default) | wide | full
 	Accent       string   `yaml:"accent,omitempty" json:"accent,omitempty"` // accent colour (links/title)
 	// BannerStyle picks how the summary banner is drawn: tint (default) |
-	// minimal | strip | outline | solid | accent.
+	// minimal | strip | outline | solid.
 	BannerStyle string `yaml:"banner_style,omitempty" json:"banner_style,omitempty"`
+	// CriticalThreshold escalates the banner to red (critical) when this many or
+	// more non-critical services are down at once. 0 disables escalation
+	// (non-critical outages stay amber no matter how many). A critical service
+	// down is always red regardless of this value.
+	CriticalThreshold int `yaml:"critical_threshold,omitempty" json:"critical_threshold,omitempty"`
 	// Background is the page backdrop (like a dashboard background).
 	Background *StatusBackground `yaml:"background,omitempty" json:"background,omitempty"`
 	// Notices are manual announcement banners shown at the top of this page
@@ -159,13 +164,17 @@ type EmailConfig struct {
 }
 
 type App struct {
-	ID          string  `yaml:"id" json:"id"`
-	Name        string  `yaml:"name" json:"name"`
-	URL         string  `yaml:"url" json:"url"`
-	Icon        string  `yaml:"icon,omitempty" json:"icon,omitempty"`
-	Group       string  `yaml:"group,omitempty" json:"group,omitempty"`
-	Description string  `yaml:"description,omitempty" json:"description,omitempty"`
-	Health      *Health `yaml:"health,omitempty" json:"health,omitempty"`
+	ID          string `yaml:"id" json:"id"`
+	Name        string `yaml:"name" json:"name"`
+	URL         string `yaml:"url" json:"url"`
+	Icon        string `yaml:"icon,omitempty" json:"icon,omitempty"`
+	Group       string `yaml:"group,omitempty" json:"group,omitempty"`
+	Description string `yaml:"description,omitempty" json:"description,omitempty"`
+	// Critical marks a service whose outage is a major incident: a single
+	// critical service down turns a status page's banner red. See
+	// StatusPageConfig.CriticalThreshold for how non-critical outages escalate.
+	Critical bool    `yaml:"critical,omitempty" json:"critical,omitempty"`
+	Health   *Health `yaml:"health,omitempty" json:"health,omitempty"`
 }
 
 type HealthType string

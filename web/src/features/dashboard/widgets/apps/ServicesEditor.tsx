@@ -860,6 +860,11 @@ function ServiceForm({
         />
       </Field>
 
+      <label className="flex items-center gap-2 text-[12.5px] text-text cursor-pointer select-none" title="If down, the status-page banner goes red. Non-critical outages go amber (escalating to red past the page's threshold).">
+        <input type="checkbox" checked={app.critical ?? false} onChange={(e) => onPatch({ critical: e.target.checked || undefined })} className="accent-accent" />
+        Critical service <span className="text-text-muted text-[11px]">— outage is a major (red) incident</span>
+      </label>
+
       <Field label="Icon" hint="si: · sh: · URL · or Upload">
         <div className="flex gap-2">
           <input
