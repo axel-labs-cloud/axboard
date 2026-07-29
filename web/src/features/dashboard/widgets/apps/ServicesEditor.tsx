@@ -2,14 +2,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
-import type { AppDef, Config, GroupDef, HealthType, DiscoveredService } from "../../../../api/types";
+import type { AlertsDef, AppDef, Config, GroupDef, HealthType, DiscoveredService } from "../../../../api/types";
 import { SimpleIcon } from "../../SimpleIcon";
 import { IconPicker } from "./IconPicker";
 import { hashColor } from "./appVisual";
+import { AlertsForm } from "../../AlertsPanel";
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  initialTab?: "services" | "alerts";
 }
 
 type WorkingApp = AppDef & { _key: number };
@@ -74,9 +76,20 @@ function slugify(name: string): string {
     .slice(0, 40);
 }
 
-export function ServicesEditor({ open, onClose }: Props) {
+export function ServicesEditor({ open, onClose, initialTab = "services" }: Props) {
   const qc = useQueryClient();
   const cached = qc.getQueryData<Config>(["config"]);
+  const [tab, setTab] = useState<"services" | "alerts">(initialTab);
+  useEffect(() => {
+    if (open) setTab(initialTab);
+  }, [open, initialTab]);
+
+  const saveAlerts = async (a: AlertsDef) => {
+    const cur = qc.getQueryData<Config>(["config"]);
+    if (!cur) return;
+    await api.putConfig({ ...cur, alerts: a });
+    qc.invalidateQueries({ queryKey: ["config"] });
+  };
 
   const [apps, setApps] = useState<WorkingApp[]>([]);
   const [groups, setGroups] = useState<WorkingGroup[]>([]);
@@ -293,13 +306,25 @@ export function ServicesEditor({ open, onClose }: Props) {
                 <rect x="14" y="14" width="7" height="7" rx="1" />
               </svg>
             </div>
-            <div className="flex flex-col leading-tight">
-              <span className="text-[14px] font-semibold text-text">Services</span>
+            <div className="flex items-center gap-1 rounded-md border border-border-subtle p-0.5">
+              {(["services", "alerts"] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTab(t)}
+                  className={`px-2.5 py-1 text-[12px] rounded capitalize transition-colors ${
+                    tab === t ? "bg-accent/15 text-accent" : "text-text-muted hover:text-text"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+            {tab === "services" && (
               <span className="text-[11px] text-text-muted">
                 {apps.length} {apps.length === 1 ? "service" : "services"} · {groups.length} groups
               </span>
-            </div>
-            {dirty && (
+            )}
+            {tab === "services" && dirty && (
               <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-degraded/15 text-degraded font-medium ring-1 ring-degraded/25">
                 Unsaved
               </span>
@@ -312,21 +337,27 @@ export function ServicesEditor({ open, onClose }: Props) {
               }}
               className="px-3 py-1.5 text-[12px] rounded border border-border text-text-secondary hover:text-text"
             >
-              Cancel
+              {tab === "services" ? "Cancel" : "Close"}
             </button>
-            <button
-              onClick={() => {
-                setError(null);
-                save.mutate();
-              }}
-              disabled={!dirty || save.isPending}
-              className="px-3 py-1.5 text-[12px] rounded border border-accent/40 bg-accent/15 text-accent hover:bg-accent/25 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {save.isPending ? "Saving…" : "Save changes"}
-            </button>
+            {tab === "services" && (
+              <button
+                onClick={() => {
+                  setError(null);
+                  save.mutate();
+                }}
+                disabled={!dirty || save.isPending}
+                className="px-3 py-1.5 text-[12px] rounded border border-accent/40 bg-accent/15 text-accent hover:bg-accent/25 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {save.isPending ? "Saving…" : "Save changes"}
+              </button>
+            )}
           </div>
         </div>
 
+        {tab === "alerts" && <AlertsForm alerts={cached?.alerts} onSave={saveAlerts} />}
+
+        {tab === "services" && (
+          <>
         {error && (
           <div className="px-5 py-2 bg-rose-950/40 border-b border-rose-700/40 text-[11px] text-rose-200 font-mono">
             {error}
@@ -550,6 +581,8 @@ export function ServicesEditor({ open, onClose }: Props) {
               </div>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
 

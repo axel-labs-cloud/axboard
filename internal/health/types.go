@@ -16,6 +16,9 @@ type Result struct {
 	LastChecked time.Time `json:"last_checked,omitzero"`
 	ResponseMS  int64     `json:"response_ms,omitempty"`
 	Error       string    `json:"error,omitempty"`
+	// CertExpiry is the leaf TLS certificate's NotAfter for an HTTPS check
+	// (zero when not HTTPS or unavailable). Powers cert-expiry display + alerts.
+	CertExpiry time.Time `json:"cert_expiry,omitzero"`
 }
 
 // HistPoint is one entry in an app's rolling health history — enough to draw a

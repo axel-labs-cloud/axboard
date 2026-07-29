@@ -46,6 +46,9 @@ type AlertsConfig struct {
 	Ntfy       *NtfyConfig     `yaml:"ntfy,omitempty" json:"ntfy,omitempty"`
 	Telegram   *TelegramConfig `yaml:"telegram,omitempty" json:"telegram,omitempty"`
 	Email      *EmailConfig    `yaml:"email,omitempty" json:"email,omitempty"`
+	// CertExpiryDays alerts when an HTTPS cert has this many days left or fewer.
+	// 0 disables cert-expiry alerts (default 14 when any channel is configured).
+	CertExpiryDays int `yaml:"cert_expiry_days,omitempty" json:"cert_expiry_days,omitempty"`
 }
 
 // NtfyConfig — push via ntfy.sh (or a self-hosted ntfy). Zero infra.

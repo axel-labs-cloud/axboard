@@ -65,6 +65,13 @@ func CheckHTTP(ctx context.Context, client *http.Client, h *config.Health) Resul
 	}
 	defer resp.Body.Close()
 
+	// Capture the leaf certificate's expiry for HTTPS endpoints (free, like
+	// Uptime Kuma) so the UI can show cert age and we can alert before expiry.
+	var certExpiry time.Time
+	if resp.TLS != nil && len(resp.TLS.PeerCertificates) > 0 {
+		certExpiry = resp.TLS.PeerCertificates[0].NotAfter
+	}
+
 	// Read a bounded prefix if we need to match the body; otherwise just drain
 	// a little so the connection can be reused by keep-alive.
 	var bodyMatched = true
@@ -80,6 +87,7 @@ func CheckHTTP(ctx context.Context, client *http.Client, h *config.Health) Resul
 			LastChecked: time.Now(),
 			ResponseMS:  elapsed,
 			Error:       fmt.Sprintf("status %d (expected %d)", resp.StatusCode, expect),
+			CertExpiry:  certExpiry,
 		}
 	}
 	if !bodyMatched {
@@ -88,9 +96,10 @@ func CheckHTTP(ctx context.Context, client *http.Client, h *config.Health) Resul
 			LastChecked: time.Now(),
 			ResponseMS:  elapsed,
 			Error:       fmt.Sprintf("body did not contain %q", h.BodyContains),
+			CertExpiry:  certExpiry,
 		}
 	}
-	return Result{Status: StatusHealthy, LastChecked: time.Now(), ResponseMS: elapsed}
+	return Result{Status: StatusHealthy, LastChecked: time.Now(), ResponseMS: elapsed, CertExpiry: certExpiry}
 }
 
 // CheckICMP sends a single ICMP echo to h.Host by shelling out to `ping`

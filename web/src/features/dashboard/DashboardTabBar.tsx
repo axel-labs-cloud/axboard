@@ -2,11 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
-import type { AlertsDef, AppDef, BackgroundDef, HeaderDef } from "../../api/types";
+import type { AppDef, BackgroundDef, HeaderDef } from "../../api/types";
 import { barStyleClass } from "./appearance";
 import { HeaderWidgets } from "./HeaderWidgets";
 import { AppearancePanel } from "./AppearancePanel";
-import { AlertsPanel } from "./AlertsPanel";
 
 interface Dashboard {
   id: string;
@@ -53,8 +52,7 @@ interface Props {
   onRenameDashboard: (id: string, name: string) => void;
   onDeleteDashboard: (id: string) => void;
   onOpenSpotlight: () => void;
-  alerts?: AlertsDef;
-  onSaveAlerts: (a: AlertsDef) => void;
+  onOpenAlerts: () => void;
   theme: string;
   setTheme: (t: string) => void;
 }
@@ -98,8 +96,7 @@ export function DashboardTabBar({
   onRenameDashboard,
   onDeleteDashboard,
   onOpenSpotlight,
-  alerts,
-  onSaveAlerts,
+  onOpenAlerts,
   theme,
   setTheme,
 }: Props) {
@@ -110,7 +107,6 @@ export function DashboardTabBar({
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [menuPos, setMenuPos] = useState<{ top: number; right: number } | null>(null);
   const [appearanceOpen, setAppearanceOpen] = useState(false);
-  const [alertsOpen, setAlertsOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const versionQ = useQuery({ queryKey: ["version"], queryFn: api.getVersion, staleTime: Infinity });
 
@@ -409,9 +405,9 @@ export function DashboardTabBar({
 
               <div className="my-1 border-t border-border-subtle/60" />
               <MenuItem
-                label="Alerts (down/recover)…"
+                label="Alerts (down/recover/cert)…"
                 icon={ITEM_ICONS.bell}
-                onClick={() => { setMenuOpen(false); setAlertsOpen(true); }}
+                onClick={() => { setMenuOpen(false); onOpenAlerts(); }}
               />
               <MenuItem
                 label={alertsEnabled ? "Desktop alerts: on" : "Desktop alerts: off"}
@@ -451,8 +447,6 @@ export function DashboardTabBar({
         density={density}
         onSetDensity={onSetDensity}
       />
-
-      <AlertsPanel open={alertsOpen} onClose={() => setAlertsOpen(false)} alerts={alerts} onSave={onSaveAlerts} />
     </div>
   );
 }

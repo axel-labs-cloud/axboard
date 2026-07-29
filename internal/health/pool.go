@@ -19,6 +19,7 @@ import (
 //   - existing app IDs whose health-config hash changed are restarted
 //   - existing app IDs whose hash is unchanged are left alone (this is the
 //     whole point — we don't reset every status to unknown on every YAML save)
+//
 // CheckFunc runs a single health check and returns its result. The pool's
 // default routes by h.Type to CheckHTTP/CheckTCP over a shared client; tests
 // inject their own so the pool can be exercised without real network.
@@ -32,6 +33,7 @@ type Pool struct {
 	workers  map[string]*worker
 	results  sync.Map // map[string]Result
 	onChange func(id string, prev, cur Status)
+	onResult func(id string, res Result)
 	check    CheckFunc
 
 	histMu  sync.Mutex
@@ -114,6 +116,14 @@ func (p *Pool) OnChange(cb func(id string, prev, cur Status)) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.onChange = cb
+}
+
+// OnResult registers a callback fired on every completed check (used for
+// cert-expiry alerting). Set once at startup.
+func (p *Pool) OnResult(cb func(id string, res Result)) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.onResult = cb
 }
 
 // Reconcile aligns the worker pool to apps.
@@ -222,13 +232,15 @@ func (p *Pool) run(ctx context.Context, app config.App, w *worker) {
 		if prev != nil {
 			prevStatus = prev.(Result).Status
 		}
-		if prevStatus != res.Status {
-			p.mu.Lock()
-			cb := p.onChange
-			p.mu.Unlock()
-			if cb != nil {
-				cb(app.ID, prevStatus, res.Status)
-			}
+		p.mu.Lock()
+		onChange := p.onChange
+		onResult := p.onResult
+		p.mu.Unlock()
+		if prevStatus != res.Status && onChange != nil {
+			onChange(app.ID, prevStatus, res.Status)
+		}
+		if onResult != nil {
+			onResult(app.ID, res)
 		}
 	}
 

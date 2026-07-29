@@ -106,6 +106,7 @@ export interface AlertsDef {
   ntfy?: NtfyDef;
   telegram?: TelegramDef;
   email?: EmailDef;
+  cert_expiry_days?: number;
 }
 
 export interface Config {
@@ -122,6 +123,7 @@ export interface AppStatus {
   last_checked?: string;
   response_ms?: number;
   error?: string;
+  cert_expiry?: string; // ISO datetime of the TLS leaf cert's NotAfter
 }
 
 export type StatusMap = Record<string, AppStatus>;

@@ -14,7 +14,10 @@ server:
 # Optional: notify when an app goes down or recovers. Every configured channel
 # fires; all are best-effort. ntfy needs no infra (public ntfy.sh or self-host);
 # Telegram needs a bot token + chat id; email needs an SMTP relay.
+# Easiest to configure from the UI: ⋯ menu → Alerts (also an "Alerts" tab in
+# Manage services). Or hand-edit here:
 # alerts:
+#   cert_expiry_days: 14               # warn N days before an HTTPS cert expires (0=off)
 #   webhook_url: "https://hooks.example.com/axboard"   # Discord/Slack/custom
 #   ntfy:
 #     server: "https://ntfy.sh"        # or your self-hosted ntfy

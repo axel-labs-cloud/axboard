@@ -45,6 +45,16 @@ func main() {
 	pool.OnChange(func(id string, prev, cur health.Status) {
 		notifier.Notify(id, string(prev), string(cur))
 	})
+	// Cert-expiry alerting: on every check, if an HTTPS cert is near expiry,
+	// alert (deduped once per app per day inside the notifier).
+	pool.OnResult(func(id string, res health.Result) {
+		if res.CertExpiry.IsZero() {
+			return
+		}
+		now := time.Now()
+		days := int(res.CertExpiry.Sub(now).Hours() / 24)
+		notifier.NotifyCert(id, days, now.Format("2006-01-02"))
+	})
 
 	// Uploaded icons live next to state.yaml (machine-owned, persisted volume).
 	iconsDir := filepath.Join(filepath.Dir(*statePath), "icons")

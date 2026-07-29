@@ -185,6 +185,11 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const deletedTimer = useRef<number | null>(null);
   const [addWidgetOpen, setAddWidgetOpen] = useState(false);
   const [manageServicesOpen, setManageServicesOpen] = useState(false);
+  const [servicesTab, setServicesTab] = useState<"services" | "alerts">("services");
+  const openServices = useCallback((tab: "services" | "alerts" = "services") => {
+    setServicesTab(tab);
+    setManageServicesOpen(true);
+  }, []);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [configEditorOpen, setConfigEditorOpen] = useState(false);
@@ -539,14 +544,6 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       }
     },
     [qc],
-  );
-
-  // Alert settings — saved from the ⋯ menu's Alerts panel into config.yaml.
-  const handleSaveAlerts = useCallback(
-    (alerts: AlertsDef) => {
-      writeConfigAndRefresh((cfg) => ({ ...cfg, alerts }));
-    },
-    [writeConfigAndRefresh],
   );
 
   // Appearance edits fire rapidly (sliders, color pickers). Instead of a PUT +
@@ -1183,7 +1180,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     const acts: SpotlightAction[] = [
       { label: editing ? "Exit edit mode" : "Edit dashboard", run: () => setEditing((e) => !e) },
       { label: "Add widget", run: () => setAddWidgetOpen(true) },
-      { label: "Manage services", run: () => setManageServicesOpen(true) },
+      { label: "Manage services", run: () => openServices("services") },
       { label: "New dashboard from template", run: () => setTemplatePickerOpen(true) },
       { label: "Edit config.yaml", run: () => setConfigEditorOpen(true) },
       { label: "Back up everything", run: () => handleBackup() },
@@ -1268,13 +1265,12 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         density={density}
         onSetDensity={setDensity}
         onAddWidget={() => setAddWidgetOpen(true)}
-        onManageServices={() => setManageServicesOpen(true)}
+        onManageServices={() => openServices("services")}
         onAddDashboard={handleAddDashboard}
         onRenameDashboard={handleRenameDashboard}
         onDeleteDashboard={handleDeleteDashboard}
         onOpenSpotlight={() => setSpotlightOpen(true)}
-        alerts={fullConfig?.alerts}
-        onSaveAlerts={handleSaveAlerts}
+        onOpenAlerts={() => openServices("alerts")}
         theme={theme}
         setTheme={setTheme}
       />
@@ -1320,7 +1316,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
           <EmptyDashboard
             onAddWidget={() => setAddWidgetOpen(true)}
             onNewFromTemplate={() => setTemplatePickerOpen(true)}
-            onManageServices={() => setManageServicesOpen(true)}
+            onManageServices={() => openServices("services")}
           />
         ) : cell > 0 ? (
           <ReactGridLayout
@@ -1422,6 +1418,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       <ServicesEditor
         open={manageServicesOpen}
         onClose={() => setManageServicesOpen(false)}
+        initialTab={servicesTab}
       />
       {kiosk && (
         <button

@@ -111,6 +111,38 @@ func TestNotifyDispatchesNtfy(t *testing.T) {
 	}
 }
 
+func TestNotifyCertThresholdAndDedup(t *testing.T) {
+	var mu sync.Mutex
+	var hits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		mu.Lock()
+		hits++
+		mu.Unlock()
+		w.WriteHeader(200)
+	}))
+	defer srv.Close()
+
+	n := New()
+	n.SetConfig(config.AlertsConfig{Ntfy: &config.NtfyConfig{Server: srv.URL, Topic: "t"}, CertExpiryDays: 14})
+
+	// 30 days left → above threshold → no alert.
+	n.NotifyCert("svc", 30, "2026-01-01")
+	if hits != 0 {
+		t.Fatalf("30 days should not alert, hits=%d", hits)
+	}
+	// 10 days left → alert once.
+	n.NotifyCert("svc", 10, "2026-01-01")
+	waitFor(t, func() bool { mu.Lock(); defer mu.Unlock(); return hits == 1 })
+	// Same day again → deduped.
+	n.NotifyCert("svc", 9, "2026-01-01")
+	if hits != 1 {
+		t.Errorf("same-day cert alert should dedup, hits=%d", hits)
+	}
+	// Next day → alerts again.
+	n.NotifyCert("svc", 9, "2026-01-02")
+	waitFor(t, func() bool { mu.Lock(); defer mu.Unlock(); return hits == 2 })
+}
+
 func readAll(req *http.Request) (string, error) {
 	b := make([]byte, req.ContentLength)
 	body, err := req.GetBody()

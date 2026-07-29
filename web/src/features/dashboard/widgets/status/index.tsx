@@ -101,8 +101,14 @@ function RtChart({ points }: { points: HistoryPoint[] }) {
   );
 }
 
+// Days until a cert expiry ISO string (null when absent).
+function certDays(iso: string | undefined): number | null {
+  if (!iso) return null;
+  return Math.floor((new Date(iso).getTime() - Date.now()) / 86400000);
+}
+
 // Detail popover for one service — uptime %, response-time chart, last incident.
-function ServiceDetail({ name, points, onClose }: { name: string; points: HistoryPoint[]; onClose: () => void }) {
+function ServiceDetail({ name, points, certExpiry, onClose }: { name: string; points: HistoryPoint[]; certExpiry?: string; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -150,6 +156,15 @@ function ServiceDetail({ name, points, onClose }: { name: string; points: Histor
             <span className="text-up">none in window</span>
           )}
         </div>
+        {certDays(certExpiry) != null && (
+          <div className="text-[11px] text-text-muted">
+            Certificate:{" "}
+            <span className={certDays(certExpiry)! <= 14 ? "text-down" : certDays(certExpiry)! <= 30 ? "text-degraded" : "text-up"}>
+              {certDays(certExpiry)! < 0 ? "expired" : `expires in ${certDays(certExpiry)} day${certDays(certExpiry) === 1 ? "" : "s"}`}
+              {certExpiry ? ` · ${new Date(certExpiry).toLocaleDateString()}` : ""}
+            </span>
+          </div>
+        )}
       </div>
     </div>,
     document.body,
@@ -159,7 +174,7 @@ function ServiceDetail({ name, points, onClose }: { name: string; points: Histor
 function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>) {
   const box = useSize<HTMLDivElement>();
   const qc = useQueryClient();
-  const [detail, setDetail] = useState<{ name: string; points: HistoryPoint[] } | null>(null);
+  const [detail, setDetail] = useState<{ name: string; points: HistoryPoint[]; certExpiry?: string } | null>(null);
   const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
   const groups = cfg?.groups ?? [];
   const healthApps = useMemo(() => {
@@ -349,7 +364,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
                 <span className="ml-auto font-mono tabular-nums">{r.header.up}/{r.header.total}</span>
               </div>
             ) : (
-              <ServiceRow key={r.app!.id} name={r.app!.name} points={history[r.app!.id] ?? []} n={barCount} onOpen={() => setDetail({ name: r.app!.name, points: history[r.app!.id] ?? [] })} />
+              <ServiceRow key={r.app!.id} name={r.app!.name} points={history[r.app!.id] ?? []} n={barCount} onOpen={() => setDetail({ name: r.app!.name, points: history[r.app!.id] ?? [], certExpiry: statuses[r.app!.id]?.cert_expiry })} />
             ),
           )}
         </div>
@@ -384,7 +399,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
           </div>
         )
       )}
-      {detail && <ServiceDetail name={detail.name} points={detail.points} onClose={() => setDetail(null)} />}
+      {detail && <ServiceDetail name={detail.name} points={detail.points} certExpiry={detail.certExpiry} onClose={() => setDetail(null)} />}
     </div>
   );
 }

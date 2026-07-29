@@ -21,13 +21,14 @@ import (
 )
 
 type Notifier struct {
-	mu     sync.RWMutex
-	cfg    config.AlertsConfig
-	client *http.Client
+	mu       sync.RWMutex
+	cfg      config.AlertsConfig
+	client   *http.Client
+	certSent map[string]string // app → YYYY-MM-DD of last cert alert (dedup)
 }
 
 func New() *Notifier {
-	return &Notifier{client: &http.Client{Timeout: 8 * time.Second}}
+	return &Notifier{client: &http.Client{Timeout: 8 * time.Second}, certSent: map[string]string{}}
 }
 
 // SetConfig swaps in the latest alert config (called on every config reload).
@@ -69,6 +70,36 @@ func (n *Notifier) Notify(app, prev, cur string) {
 	e, ok := classify(app, prev, cur)
 	if !ok {
 		return
+	}
+	n.dispatch(e)
+}
+
+// NotifyCert alerts when an HTTPS certificate is within the configured expiry
+// threshold. Deduped to once per app per calendar day so it doesn't spam on
+// every check. A negative daysLeft means the cert is already expired.
+func (n *Notifier) NotifyCert(app string, daysLeft int, today string) {
+	n.mu.RLock()
+	raw := n.cfg.CertExpiryDays
+	last := n.certSent[app]
+	n.mu.RUnlock()
+	threshold := raw
+	if threshold == 0 {
+		threshold = 14
+	}
+	if raw < 0 || daysLeft > threshold || last == today {
+		return
+	}
+	n.mu.Lock()
+	n.certSent[app] = today
+	n.mu.Unlock()
+
+	e := event{app: app, down: true, prev: "healthy", cur: "healthy"}
+	if daysLeft < 0 {
+		e.title = app + " certificate EXPIRED"
+		e.body = fmt.Sprintf("%s TLS certificate has expired.", app)
+	} else {
+		e.title = app + " certificate expiring"
+		e.body = fmt.Sprintf("%s TLS certificate expires in %d day(s).", app, daysLeft)
 	}
 	n.dispatch(e)
 }
