@@ -35,7 +35,7 @@ import (
 // Build info, injected at link time via -ldflags "-X ...". Defaults to the
 // current release when not overridden (e.g. a plain `go build`).
 var (
-	Version   = "v0.1.0-beta.1"
+	Version   = "v0.2.0"
 	BuildDate = ""
 )
 
