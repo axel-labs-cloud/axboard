@@ -163,7 +163,9 @@ export function DashboardTabBar({
             <span className="w-px h-4 bg-border" />
           </div>
         )}
-        <div className="flex items-center gap-0.5 min-w-0 overflow-x-auto">
+        <div
+          className="flex items-center gap-0.5 min-w-0 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        >
           {dashboards.map((db) => (
             <DashboardTab
               key={db.id}
@@ -361,13 +363,25 @@ export function DashboardTabBar({
               className="fixed z-[300] w-[264px] max-h-[80vh] overflow-auto bg-bg-elevated border border-border rounded-lg shadow-2xl ring-1 ring-white/5 py-1"
               style={{ top: menuPos.top, right: menuPos.right }}
             >
+              {/* Top-level primary actions — the two things reached most often. */}
+              <MenuItem
+                label={editing ? "Done editing" : "Edit dashboard"}
+                icon={GROUP_ICONS.dashboard}
+                onClick={() => { setMenuOpen(false); onToggleEdit(); }}
+              />
+              <MenuItem
+                label="Add widget"
+                icon={GROUP_ICONS.widgets}
+                onClick={() => { setMenuOpen(false); onAddWidget(); }}
+              />
+              <div className="my-1 border-t border-border-subtle/60" />
+
               <MenuGroup
                 label="Widgets & services"
                 icon={GROUP_ICONS.widgets}
                 open={openGroup === "widgets"}
                 onToggle={() => setOpenGroup((g) => (g === "widgets" ? null : "widgets"))}
               >
-                <MenuItem label="Add widget" onClick={() => { setMenuOpen(false); onAddWidget(); }} />
                 <MenuItem label="Manage services" onClick={() => { setMenuOpen(false); onManageServices(); }} />
               </MenuGroup>
 
@@ -377,10 +391,6 @@ export function DashboardTabBar({
                 open={openGroup === "dashboard"}
                 onToggle={() => setOpenGroup((g) => (g === "dashboard" ? null : "dashboard"))}
               >
-                <MenuItem
-                  label={editing ? "Done editing" : "Edit dashboard"}
-                  onClick={() => { setMenuOpen(false); onToggleEdit(); }}
-                />
                 <MenuItem label="Export this dashboard" onClick={() => { setMenuOpen(false); onExport(); }} />
                 <MenuItem label={copiedShare ? "Copied to clipboard ✓" : "Copy dashboard (share)"} onClick={() => onCopyDashboard()} />
                 <MenuItem label="Import a dashboard…" onClick={() => { setMenuOpen(false); importInputRef.current?.click(); }} />

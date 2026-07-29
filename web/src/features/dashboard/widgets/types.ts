@@ -27,7 +27,9 @@ export type WidgetType =
   | "releases"
   | "customapi"
   | "axdnsd"
-  | "axlbd";
+  | "axlbd"
+  | "gauge"
+  | "speedtest";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -260,6 +262,19 @@ export interface AxServiceConfig {
   password?: string;
 }
 
+/** Resource gauge — one host metric drawn as a ring / bar / arc / sparkline. */
+export interface GaugeConfig {
+  metric?: "cpu" | "ram" | "disk" | "swap";
+  style?: "ring" | "bar" | "arc" | "spark";
+  label?: string; // overrides the default metric name
+}
+
+/** Internet speed test — client-side download/upload/latency via Cloudflare. */
+export interface SpeedTestConfig {
+  /** Auto-run on load. Default off (manual button). */
+  auto?: boolean;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -288,6 +303,8 @@ export type WidgetConfigByType = {
   customapi: CustomApiConfig;
   axdnsd: AxServiceConfig;
   axlbd: AxServiceConfig;
+  gauge: GaugeConfig;
+  speedtest: SpeedTestConfig;
 };
 
 export type AnyWidgetConfig = Partial<
@@ -316,7 +333,9 @@ export type AnyWidgetConfig = Partial<
     MarketsConfig &
     ReleasesConfig &
     CustomApiConfig &
-    AxServiceConfig
+    AxServiceConfig &
+    GaugeConfig &
+    SpeedTestConfig
 >;
 
 export interface Widget {

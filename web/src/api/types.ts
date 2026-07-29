@@ -129,11 +129,21 @@ export interface ContainerInfo {
 
 export interface HostStats {
   cpus: number;
+  cpu_pct: number;
   load1: number;
   load5: number;
   load15: number;
   mem_total: number;
   mem_used: number;
+  swap_total: number;
+  swap_used: number;
+  disk_path: string;
+  disk_total: number;
+  disk_used: number;
+  disk_read_bps: number;
+  disk_write_bps: number;
+  net_rx_bps: number;
+  net_tx_bps: number;
   uptime_sec: number;
 }
 

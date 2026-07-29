@@ -26,6 +26,8 @@ import releases from "./releases";
 import customapi from "./customapi";
 import axdnsd from "./axdnsd";
 import axlbd from "./axlbd";
+import gauge from "./gauge";
+import speedtest from "./speedtest";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -55,6 +57,8 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   customapi,
   axdnsd,
   axlbd,
+  gauge,
+  speedtest,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

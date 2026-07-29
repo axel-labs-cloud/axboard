@@ -1,72 +1,39 @@
-import type {
-  NotesConfig,
-  WidgetConfigProps,
-  WidgetDefinition,
-  WidgetProps,
-} from "../types";
+import { useEffect, useRef, useState } from "react";
+import type { NotesConfig, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
-// Notes widget — a free-text scratchpad persisted in config.yaml. Edited from
-// the config panel (widget content is inert in edit mode); the surface renders
-// the text with URLs auto-linked.
+// Notes widget — a free-text scratchpad persisted in config.yaml. Edited
+// directly in the widget (no edit mode needed, like the checklist); writes are
+// debounced so we don't PUT config on every keystroke.
 // ---------------------------------------------------------------------------
 
-const URL_RE = /(https?:\/\/[^\s]+)/g;
+function NotesComponent({ config, save }: WidgetProps<NotesConfig>) {
+  const [val, setVal] = useState(config?.text ?? "");
+  const timer = useRef<number | null>(null);
 
-function linkify(text: string): React.ReactNode[] {
-  const out: React.ReactNode[] = [];
-  let last = 0;
-  for (const m of text.matchAll(URL_RE)) {
-    const i = m.index ?? 0;
-    if (i > last) out.push(text.slice(last, i));
-    out.push(
-      <a
-        key={i}
-        href={m[0]}
-        target="_blank"
-        rel="noreferrer noopener"
-        className="text-accent hover:underline break-all"
-      >
-        {m[0]}
-      </a>,
-    );
-    last = i + m[0].length;
-  }
-  if (last < text.length) out.push(text.slice(last));
-  return out;
-}
+  // Reflect external edits (hand-edited config.yaml, restore) when we're not
+  // mid-type — a pending debounce means the local value is the source of truth.
+  useEffect(() => {
+    if (timer.current == null) setVal(config?.text ?? "");
+  }, [config?.text]);
 
-function NotesComponent({ config }: WidgetProps<NotesConfig>) {
-  const text = config?.text ?? "";
-  if (!text.trim()) {
-    return (
-      <div className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
-        Empty note — open config to write something.
-      </div>
-    );
-  }
+  const onChange = (t: string) => {
+    setVal(t);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => {
+      timer.current = null;
+      save({ text: t });
+    }, 500);
+  };
+
   return (
-    <div className="h-full overflow-auto p-3 text-[13px] text-text-secondary whitespace-pre-wrap leading-relaxed">
-      {linkify(text)}
-    </div>
-  );
-}
-
-function NotesConfigPanel({ config, save }: WidgetConfigProps<NotesConfig>) {
-  return (
-    <div className="space-y-1.5">
-      <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-        Note text
-      </label>
-      <textarea
-        value={config?.text ?? ""}
-        onChange={(e) => save({ text: e.target.value })}
-        rows={8}
-        placeholder="Anything — reminders, links, a todo…"
-        className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent resize-y font-mono"
-      />
-      <p className="text-[11px] text-text-muted">URLs become clickable links.</p>
-    </div>
+    <textarea
+      value={val}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder="Write anything — reminders, links, a todo…"
+      spellCheck={false}
+      className="h-full w-full resize-none bg-transparent p-3 text-[13px] text-text-secondary leading-relaxed focus:outline-none placeholder:text-text-muted/50"
+    />
   );
 }
 
@@ -101,7 +68,6 @@ const definition: WidgetDefinition<NotesConfig> = {
   defaultH: 3,
   defaultConfig: { text: "" },
   Component: NotesComponent,
-  ConfigPanel: NotesConfigPanel,
 };
 
 export default definition;
