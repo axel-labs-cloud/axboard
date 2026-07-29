@@ -102,6 +102,25 @@ function RingIcon({ pct, size, metric, cfg }: { pct: number; size: number; metri
   );
 }
 
+// Compact icon + bar for short-and-wide tiles: no text, just the metric icon
+// and a fill bar.
+function BarIcon({ pct, w, h, metric, cfg }: { pct: number; w: number; h: number; metric: string; cfg: GaugeConfig }) {
+  const cur = scaleColor(pct, cfg as ColorConfig, OPTS);
+  const glow = cfg.glow !== false;
+  const icon = Math.max(14, Math.min(h - 10, 26));
+  const barH = Math.max(6, Math.min(h - 12, 12));
+  return (
+    <div className="w-full h-full flex items-center gap-2.5 px-3" style={{ width: w }} title={`${metric.toUpperCase()} ${Math.round(pct)}%`}>
+      <svg viewBox="0 0 24 24" width={icon} height={icon} fill="none" stroke={cur} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+        {METRIC_ICONS[metric] ?? METRIC_ICONS.cpu}
+      </svg>
+      <div className={`flex-1 rounded-full overflow-hidden ${cfg.track !== false ? "bg-bg-elevated" : ""}`} style={{ height: barH }}>
+        <div className="h-full rounded-full" style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: cur, transition: "width 0.6s ease, background 0.4s ease", boxShadow: glow ? `0 0 8px ${cur}` : undefined }} />
+      </div>
+    </div>
+  );
+}
+
 function BarStyle({ pct, big, sub, name, cfg }: { pct: number; big: string; sub: string; name: string; cfg: GaugeConfig }) {
   const cur = scaleColor(pct, cfg as ColorConfig, OPTS);
   const glow = cfg.glow !== false;
@@ -181,18 +200,17 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   // tile falls back to a bar; a short square becomes a compact ring with the
   // metric's icon in the centre (this wins over the configured style, since
   // that's all that fits).
-  let style: "ring" | "bar" | "spark" | "ringicon" = cfg.style ?? "ring";
+  let style: "ring" | "bar" | "spark" | "ringicon" | "baricon" = cfg.style ?? "ring";
   const short = box.h > 0 && box.h < 96;
   const wide = box.w > box.h * 1.5;
-  if (short) {
-    if (!wide) style = "ringicon";
-    else if (style === "ring") style = "bar";
-  }
+  if (short) style = wide ? "baricon" : "ringicon";
 
   let body: React.ReactNode;
   if (style === "ringicon") {
     const size = Math.max(24, Math.min(box.w - 8, box.h - 8, 120));
     body = <RingIcon pct={m.pct} size={size} metric={metric} cfg={cfg} />;
+  } else if (style === "baricon") {
+    body = <BarIcon pct={m.pct} w={box.w} h={box.h} metric={metric} cfg={cfg} />;
   } else if (style === "bar") {
     body = <BarStyle pct={m.pct} big={m.big} sub={m.sub} name={name} cfg={cfg} />;
   } else if (style === "spark") {
