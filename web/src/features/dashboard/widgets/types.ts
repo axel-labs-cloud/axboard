@@ -267,6 +267,15 @@ export interface GaugeConfig {
   metric?: "cpu" | "ram" | "disk" | "swap";
   style?: "ring" | "bar" | "arc" | "spark";
   label?: string; // overrides the default metric name
+  /** How the fill colour is chosen. threshold = green/amber/red by health,
+   *  gradient = smooth green→red spectrum, solid = the picked colour. */
+  colorScale?: "threshold" | "gradient" | "solid";
+  /** Named colour used by the "solid" scale (and as a tint elsewhere). */
+  color?: "accent" | "emerald" | "cyan" | "blue" | "violet" | "amber" | "rose";
+  /** Add a soft neon glow around the fill. Default on. */
+  glow?: boolean;
+  /** Show a faint track behind the fill. Default on. */
+  track?: boolean;
 }
 
 /** Internet speed test — client-side download/upload/latency via Cloudflare. */

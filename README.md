@@ -37,6 +37,8 @@ podman compose up -d      # or: docker compose up -d
 Open **http://localhost:8080**. Edit `config/config.yaml` in your editor — the server hot-reloads on save. The bundled [`config.example.yaml`](./config.example.yaml) is a full, working starter (services, groups, a global top bar, and two themed dashboards).
 
 > The compose file mounts a read-only Podman socket for **auto-discovery** (it suggests services from running containers) and adds `NET_RAW` for ICMP health checks. Both are optional — comment them out if you don't want them.
+>
+> It also runs with **`network_mode: host`** so the **Host stats** and **Resource gauge** widgets can read real host **network I/O** (`/proc/net/dev` is per-network-namespace — under bridged networking the container only sees its own interface). With host networking the container binds the host port directly, so there is no `ports:` mapping. Drop `network_mode: host` to go back to bridged networking; CPU / memory / disk still report the host, but network I/O will show only the container's own traffic.
 
 ### Single binary
 
@@ -92,7 +94,7 @@ Add widgets from the **⋯ menu → Add widget** (filterable by category and sea
 | Category | Widgets |
 | --- | --- |
 | **System** | Clock (with extra timezones) |
-| **Infrastructure** | Apps grid · Single app tile · Status summary · Host stats · Containers (Docker/Podman) · Uptime monitor · Public IP / VPN · Custom API (any JSON endpoint) · axdnsd · axlbd |
+| **Infrastructure** | Apps grid · Single app tile · Status summary · Host stats · Resource gauge (CPU/RAM/disk · ring/arc/bar/spark) · Speed test (Cloudflare) · Containers (Docker/Podman) · Uptime monitor · Public IP / VPN · Custom API (any JSON endpoint) · axdnsd · axlbd |
 | **Productivity** | Bookmarks · Search · Checklist · Notes · Countdown · Pomodoro · Image · Section label |
 | **External** | Weather (hourly + forecast) · Sun (sunrise/sunset/UV) · Markets (crypto + stocks, live charts) · Releases (GitHub/GitLab) · Calendar (iCal) · RSS/Atom · Embed (iframe) · Concentus (now-playing) |
 

@@ -148,8 +148,9 @@ function HostConfigPanel({ config, save }: WidgetConfigProps<HostConfig>) {
         Show load average
       </label>
       <p className="text-[11px] text-text-muted leading-snug">
-        CPU / memory / disk report the host. Network I/O reflects the container's interface
-        (its own traffic) unless axboard runs with host networking.
+        Reports the host directly. Network I/O needs host networking
+        (<span className="font-mono">network_mode: host</span> in compose.yaml) — without it
+        the container only sees its own interface.
       </p>
     </div>
   );

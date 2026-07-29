@@ -184,17 +184,31 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   );
   useDownAlerts(alertsEnabled);
 
-  const [density, setDensityState] = useState<string>(
-    () => (typeof window !== "undefined" && window.localStorage.getItem("axboard-density")) || "cozy",
-  );
-  const setDensity = useCallback((d: string) => {
-    setDensityState(d);
+  // Board density is remembered per theme — each look keeps its own spacing.
+  const [densityMap, setDensityMap] = useState<Record<string, string>>(() => {
     try {
-      window.localStorage.setItem("axboard-density", d);
+      return JSON.parse(window.localStorage.getItem("axboard-density-map") || "{}");
     } catch {
-      /* ignore */
+      return {};
     }
-  }, []);
+  });
+  const legacyDensity =
+    (typeof window !== "undefined" && window.localStorage.getItem("axboard-density")) || "cozy";
+  const density = densityMap[theme] || legacyDensity;
+  const setDensity = useCallback(
+    (d: string) => {
+      setDensityMap((m) => {
+        const next = { ...m, [theme]: d };
+        try {
+          window.localStorage.setItem("axboard-density-map", JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    },
+    [theme],
+  );
 
   const toggleAlerts = useCallback(async () => {
     if (!alertsEnabled) {

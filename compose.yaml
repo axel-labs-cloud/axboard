@@ -13,8 +13,14 @@ services:
     # below together if you don't use discovery.
     security_opt:
       - label=disable
-    ports:
-      - "8080:8080"
+    # Host networking so the container shares the host's network namespace.
+    # This lets the host-stats / gauge widgets read real host network I/O from
+    # /proc/net/dev (which is per-netns — under the default bridge the container
+    # only sees its own veth). It also means the app binds directly to the host
+    # port, so the `ports:` mapping below is intentionally omitted. Drop this
+    # line to go back to bridged networking (network I/O will then show only the
+    # container's own traffic).
+    network_mode: host
     volumes:
       # Bind-mount the parent directory rather than the file. Hot reload via
       # fsnotify needs to see CREATE/RENAME events in the directory, which

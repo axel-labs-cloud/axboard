@@ -363,7 +363,7 @@ export function DashboardTabBar({
               className="fixed z-[300] w-[264px] max-h-[80vh] overflow-auto bg-bg-elevated border border-border rounded-lg shadow-2xl ring-1 ring-white/5 py-1"
               style={{ top: menuPos.top, right: menuPos.right }}
             >
-              {/* Top-level primary actions — the two things reached most often. */}
+              {/* Top-level primary actions — the things reached most often. */}
               <MenuItem
                 label={editing ? "Done editing" : "Edit dashboard"}
                 icon={GROUP_ICONS.dashboard}
@@ -374,34 +374,27 @@ export function DashboardTabBar({
                 icon={GROUP_ICONS.widgets}
                 onClick={() => { setMenuOpen(false); onAddWidget(); }}
               />
+              <MenuItem
+                label="Manage services"
+                icon={GROUP_ICONS.services}
+                onClick={() => { setMenuOpen(false); onManageServices(); }}
+              />
+              <MenuItem
+                label="Appearance & themes…"
+                icon={GROUP_ICONS.display}
+                onClick={() => { setMenuOpen(false); setAppearanceOpen(true); }}
+              />
               <div className="my-1 border-t border-border-subtle/60" />
 
               <MenuGroup
-                label="Widgets & services"
-                icon={GROUP_ICONS.widgets}
-                open={openGroup === "widgets"}
-                onToggle={() => setOpenGroup((g) => (g === "widgets" ? null : "widgets"))}
-              >
-                <MenuItem label="Manage services" onClick={() => { setMenuOpen(false); onManageServices(); }} />
-              </MenuGroup>
-
-              <MenuGroup
-                label="This dashboard"
-                icon={GROUP_ICONS.dashboard}
+                label="Dashboard & backup"
+                icon={GROUP_ICONS.backup}
                 open={openGroup === "dashboard"}
                 onToggle={() => setOpenGroup((g) => (g === "dashboard" ? null : "dashboard"))}
               >
                 <MenuItem label="Export this dashboard" onClick={() => { setMenuOpen(false); onExport(); }} />
                 <MenuItem label={copiedShare ? "Copied to clipboard ✓" : "Copy dashboard (share)"} onClick={() => onCopyDashboard()} />
                 <MenuItem label="Import a dashboard…" onClick={() => { setMenuOpen(false); importInputRef.current?.click(); }} />
-              </MenuGroup>
-
-              <MenuGroup
-                label="Backup & config"
-                icon={GROUP_ICONS.backup}
-                open={openGroup === "backup"}
-                onToggle={() => setOpenGroup((g) => (g === "backup" ? null : "backup"))}
-              >
                 <MenuItem label="New dashboard from template…" onClick={() => { setMenuOpen(false); onNewFromTemplate(); }} />
                 <MenuItem label="Edit config.yaml…" onClick={() => { setMenuOpen(false); onEditConfig(); }} />
                 <MenuItem label="Back up everything" onClick={() => { setMenuOpen(false); onBackup(); }} />
@@ -414,26 +407,8 @@ export function DashboardTabBar({
                 open={openGroup === "display"}
                 onToggle={() => setOpenGroup((g) => (g === "display" ? null : "display"))}
               >
-                <MenuItem label="Appearance…" onClick={() => { setMenuOpen(false); setAppearanceOpen(true); }} />
                 <MenuItem label={alertsEnabled ? "Desktop alerts: on" : "Desktop alerts: off"} onClick={() => { setMenuOpen(false); onToggleAlerts(); }} />
                 <MenuItem label="Enter kiosk mode" onClick={() => { setMenuOpen(false); onEnterKiosk(); }} />
-                <div className="px-3 py-1.5">
-                  <div className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold mb-1.5">Density</div>
-                  <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card w-full">
-                    {(["compact", "cozy", "spacious"] as const).map((d) => (
-                      <button
-                        key={d}
-                        onClick={() => onSetDensity(d)}
-                        className={`flex-1 px-2 py-1 text-[11px] rounded capitalize transition-colors ${
-                          density === d ? "bg-bg-elevated text-text shadow-sm" : "text-text-muted hover:text-text-secondary"
-                        }`}
-                      >
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <MenuItem label="Themes & appearance…" onClick={() => { setMenuOpen(false); setAppearanceOpen(true); }} />
               </MenuGroup>
               <div className="px-3 py-2 border-t border-border-subtle flex items-center justify-between">
                 <span className="text-[10px] text-text-muted">axboard</span>
@@ -460,6 +435,8 @@ export function DashboardTabBar({
         setTheme={setTheme}
         accent={activeAccent}
         onSetAccent={onSetAccent}
+        density={density}
+        onSetDensity={onSetDensity}
       />
     </div>
   );
@@ -632,6 +609,14 @@ function MenuGroup({
 }
 
 const GROUP_ICONS: Record<string, React.ReactNode> = {
+  services: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+      <rect x="2" y="3" width="20" height="6" rx="1" />
+      <rect x="2" y="15" width="20" height="6" rx="1" />
+      <line x1="6" y1="6" x2="6.01" y2="6" />
+      <line x1="6" y1="18" x2="6.01" y2="18" />
+    </svg>
+  ),
   widgets: (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
       <rect x="3" y="3" width="7" height="7" rx="1" />

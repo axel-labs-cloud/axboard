@@ -37,6 +37,8 @@ interface Props {
   setTheme: (t: string) => void;
   accent?: string;
   onSetAccent: (color: string) => void;
+  density: string;
+  onSetDensity: (d: string) => void;
 }
 
 const BG_TYPES: { id: BackgroundDef["type"] | "none"; label: string }[] = [
@@ -152,7 +154,17 @@ function CustomCssSection() {
   );
 }
 
-function ThemesTab({ theme, setTheme }: { theme: string; setTheme: (t: string) => void }) {
+function ThemesTab({
+  theme,
+  setTheme,
+  density,
+  onSetDensity,
+}: {
+  theme: string;
+  setTheme: (t: string) => void;
+  density: string;
+  onSetDensity: (d: string) => void;
+}) {
   const [customs, setCustoms] = useState<CustomTheme[]>(() => loadCustomThemes());
   const [draft, setDraft] = useState<CustomTheme | null>(null);
 
@@ -215,6 +227,23 @@ function ThemesTab({ theme, setTheme }: { theme: string; setTheme: (t: string) =
             </button>
           ))}
         </div>
+      </Section>
+
+      <Section title="Board density">
+        <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card w-full">
+          {(["compact", "cozy", "spacious"] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => onSetDensity(d)}
+              className={`flex-1 px-2 py-1 text-[11px] rounded capitalize transition-colors ${
+                density === d ? "bg-bg-elevated text-text shadow-sm" : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-text-muted mt-1.5">Remembered per theme.</p>
       </Section>
 
       <Section title="Custom themes">
@@ -286,7 +315,7 @@ function ThemesTab({ theme, setTheme }: { theme: string; setTheme: (t: string) =
 }
 
 export function AppearancePanel(props: Props) {
-  const { open, onClose, background, onSetBackground, barStyle, onSetBarStyle, header, onSetHeader, apps, theme, setTheme, accent, onSetAccent } = props;
+  const { open, onClose, background, onSetBackground, barStyle, onSetBarStyle, header, onSetHeader, apps, theme, setTheme, accent, onSetAccent, density, onSetDensity } = props;
   const [tab, setTab] = useState<"dashboard" | "themes">("dashboard");
   const bg = background ?? {};
   const type = bg.type ?? "none";
@@ -362,7 +391,7 @@ export function AppearancePanel(props: Props) {
           </div>
         </div>
 
-        {tab === "themes" && <ThemesTab theme={theme} setTheme={setTheme} />}
+        {tab === "themes" && <ThemesTab theme={theme} setTheme={setTheme} density={density} onSetDensity={onSetDensity} />}
 
         <div className={`p-4 space-y-4 ${tab === "dashboard" ? "" : "hidden"}`}>
           {/* -------- Accent (per-dashboard) -------- */}

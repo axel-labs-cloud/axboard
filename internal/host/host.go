@@ -59,6 +59,11 @@ var diskMount = func() string {
 // wholeDisk matches whole block devices (not partitions) in /proc/diskstats.
 var wholeDisk = regexp.MustCompile(`^(sd[a-z]+|nvme\d+n\d+|vd[a-z]+|xvd[a-z]+|mmcblk\d+)$`)
 
+// physicalNet matches physical NICs in /proc/net/dev (en*, eth*, em*, wl*,
+// bond*, ib*). Whitelisting physical interfaces avoids double-counting traffic
+// that also traverses a bridge (br0) the NIC is enslaved to.
+var physicalNet = regexp.MustCompile(`^(en|eth|em\d|wl|bond\d|ib\d)`)
+
 type sample struct {
 	t         time.Time
 	cpuBusy   uint64
@@ -235,7 +240,7 @@ func readNet() (rx, tx uint64) {
 			continue
 		}
 		name := strings.TrimSpace(line[:i])
-		if name == "lo" || strings.HasPrefix(name, "veth") {
+		if !physicalNet.MatchString(name) {
 			continue
 		}
 		f := strings.Fields(line[i+1:])
