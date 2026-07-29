@@ -146,16 +146,31 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
 function MonitorConfigPanel({ config, save }: WidgetConfigProps<MonitorConfig>) {
   const targets = config?.targets ?? [];
   const set = (next: MonitorTarget[]) => save({ targets: next });
+  const move = (i: number, d: number) => {
+    const j = i + d;
+    if (j < 0 || j >= targets.length) return;
+    const next = [...targets];
+    [next[i], next[j]] = [next[j], next[i]];
+    set(next);
+  };
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
         {targets.map((t, i) => (
-          <div key={i} className="flex gap-1.5">
+          <div key={i} className="flex gap-1.5 items-center">
+            <div className="flex flex-col shrink-0">
+              <button onClick={() => move(i, -1)} disabled={i === 0} className={`w-4 h-3.5 flex items-center justify-center rounded ${i === 0 ? "text-text-muted/30" : "text-text-muted hover:text-text"}`} title="Move up">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5"><path d="M18 15l-6-6-6 6" /></svg>
+              </button>
+              <button onClick={() => move(i, 1)} disabled={i === targets.length - 1} className={`w-4 h-3.5 flex items-center justify-center rounded ${i === targets.length - 1 ? "text-text-muted/30" : "text-text-muted hover:text-text"}`} title="Move down">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5"><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+            </div>
             <input
               value={t.name}
               onChange={(e) => set(targets.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
               placeholder="name"
-              className="w-24 px-2 py-1.5 rounded bg-bg-card border border-border text-[11px] text-text focus:outline-none focus:border-accent"
+              className="w-20 px-2 py-1.5 rounded bg-bg-card border border-border text-[11px] text-text focus:outline-none focus:border-accent"
             />
             <input
               value={t.url}
@@ -165,7 +180,7 @@ function MonitorConfigPanel({ config, save }: WidgetConfigProps<MonitorConfig>) 
             />
             <button
               onClick={() => set(targets.filter((_, j) => j !== i))}
-              className="w-7 shrink-0 flex items-center justify-center rounded text-text-muted hover:text-danger"
+              className="w-6 shrink-0 flex items-center justify-center rounded text-text-muted hover:text-danger"
             >
               ×
             </button>

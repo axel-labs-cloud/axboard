@@ -134,6 +134,15 @@ interface DashboardPageProps {
   setTheme: (t: string) => void;
 }
 
+// URL slug for a dashboard name (e.g. "Dev Ops" → "dev-ops").
+function dashSlug(name: string): string {
+  return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+// The current path as a slug (empty for the base "/").
+function urlSlug(): string {
+  return decodeURIComponent(window.location.pathname.replace(/^\/+|\/+$/g, "")).toLowerCase();
+}
+
 export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const qc = useQueryClient();
   const { dashboards } = useDashboards();
@@ -256,16 +265,43 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     },
   });
 
+  // Initial selection: the URL path wins (so /dev opens the "Dev" dashboard),
+  // then the last-active, then the default. The base dashboard lives at "/".
   useEffect(() => {
     if (activeDashboardId === null && dashboards.length > 0) {
+      const path = urlSlug();
+      const byUrl = path ? dashboards.find((d) => dashSlug(d.name) === path || d.id === path) : null;
       const last = state?.lastActive;
       const target =
+        byUrl ||
         (last && dashboards.find((d) => d.id === last)) ||
         dashboards.find((d) => d.default) ||
         dashboards[0];
       setActiveDashboardId(target.id);
     }
   }, [dashboards, activeDashboardId, state?.lastActive]);
+
+  // Keep the URL in sync with the active dashboard (default → "/", others →
+  // "/<slug>"), and re-select on browser back/forward or manual URL edits.
+  useEffect(() => {
+    if (!activeDashboardId || dashboards.length === 0) return;
+    const dash = dashboards.find((d) => d.id === activeDashboardId);
+    if (!dash) return;
+    const target = dash.default ? "/" : `/${dashSlug(dash.name)}`;
+    if (window.location.pathname !== target) window.history.replaceState(null, "", target);
+  }, [activeDashboardId, dashboards]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const path = urlSlug();
+      const d = path
+        ? dashboards.find((x) => dashSlug(x.name) === path || x.id === path)
+        : dashboards.find((x) => x.default) || dashboards[0];
+      if (d) setActiveDashboardId(d.id);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [dashboards]);
 
   useEffect(() => {
     if (!containerRef.current) return;
