@@ -55,6 +55,7 @@ function clean(pages: StatusPageDef[]): StatusPageDef[] {
     if (p.groups?.length) c.groups = p.groups;
     if (p.apps?.length) c.apps = p.apps;
     if (p.enabled === false) c.enabled = false;
+    if (p.public === true) c.public = true;
     const notices = (p.notices ?? []).filter((n) => n.title?.trim() || n.message?.trim());
     if (notices.length) c.notices = notices;
     return c;
@@ -330,6 +331,10 @@ export function StatusPagesForm({
                 <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
                   <input type="checkbox" checked={cur.enabled !== false} onChange={(e) => update({ enabled: e.target.checked })} className="accent-accent" />
                   Enabled
+                </label>
+                <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer" title="When login is enabled: serve this page publicly (no sign-in). Off = requires a logged-in user. No effect when auth is disabled.">
+                  <input type="checkbox" checked={cur.public === true} onChange={(e) => update({ public: e.target.checked })} className="accent-accent" />
+                  Public (no login)
                 </label>
               </div>
 

@@ -145,6 +145,85 @@ func resolvePage(cfg *config.Config, slug string) (config.StatusPageConfig, bool
 	return config.StatusPageConfig{}, false
 }
 
+// statusPageAllowed reports whether the request may view a page. Auth off →
+// always (unchanged open behaviour). Auth on → only if the page is marked
+// public or the request carries a valid session.
+func (s *Server) statusPageAllowed(r *http.Request, page config.StatusPageConfig) bool {
+	if !s.authActive() {
+		return true
+	}
+	if page.Public != nil && *page.Public {
+		return true
+	}
+	_, ok := s.sessionUser(r)
+	return ok
+}
+
+// pageIncludesApp mirrors the group/app filter used when rendering a page.
+func pageIncludesApp(p config.StatusPageConfig, groupID, appID string) bool {
+	if len(p.Groups) > 0 {
+		in := false
+		for _, g := range p.Groups {
+			if g == groupID {
+				in = true
+				break
+			}
+		}
+		if !in {
+			return false
+		}
+	}
+	if len(p.Apps) > 0 {
+		in := false
+		for _, a := range p.Apps {
+			if a == appID {
+				in = true
+				break
+			}
+		}
+		if !in {
+			return false
+		}
+	}
+	return true
+}
+
+// badgeAllowed gates the per-app SVG badge. Auth on → allowed with a session,
+// or if the app appears on at least one enabled, public status page (so badges
+// embedded on a public page keep rendering).
+func (s *Server) badgeAllowed(r *http.Request, appID string) bool {
+	if !s.authActive() {
+		return true
+	}
+	if _, ok := s.sessionUser(r); ok {
+		return true
+	}
+	cfg := s.getConfig()
+	if cfg == nil {
+		return false
+	}
+	group := ""
+	for _, a := range cfg.Apps {
+		if a.ID == appID {
+			group = a.Group
+			break
+		}
+	}
+	pages := cfg.StatusPages
+	if len(pages) == 0 && cfg.StatusPage != nil {
+		pages = []config.StatusPageConfig{*cfg.StatusPage}
+	}
+	for _, p := range pages {
+		if p.Enabled != nil && !*p.Enabled {
+			continue
+		}
+		if p.Public != nil && *p.Public && pageIncludesApp(p, group, appID) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 	cfg := s.getConfig()
 	if cfg == nil {
@@ -154,6 +233,11 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 	page, ok := resolvePage(cfg, chi.URLParam(r, "slug"))
 	if !ok || (page.Enabled != nil && !*page.Enabled) {
 		http.NotFound(w, r)
+		return
+	}
+	if !s.statusPageAllowed(r, page) {
+		// Private page + no session: send to the SPA, which shows the login form.
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
 
@@ -322,6 +406,10 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 // at /status/badge/{id}. Value = recent uptime % (or the status word).
 func (s *Server) handleBadge(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	if !s.badgeAllowed(r, id) {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 	res := s.Health.Get(id)
 	hist := s.Health.HistorySnapshot()[id]
 

@@ -132,6 +132,7 @@ export interface StatusBackgroundDef {
 export interface StatusPageDef {
   slug?: string;
   enabled?: boolean;
+  public?: boolean; // when auth is on: serve without login (else requires a user)
   title?: string;
   header?: string;
   footer?: string;

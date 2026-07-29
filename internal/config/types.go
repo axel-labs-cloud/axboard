@@ -25,8 +25,12 @@ type Config struct {
 // design, so pages are served by default; set enabled: false to turn one off.
 type StatusPageConfig struct {
 	// Slug routes the page: empty/"default" → /status, otherwise → /status/<slug>.
-	Slug         string   `yaml:"slug,omitempty" json:"slug,omitempty"`
-	Enabled      *bool    `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	Slug    string `yaml:"slug,omitempty" json:"slug,omitempty"`
+	Enabled *bool  `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	// Public controls access when server.auth is enabled: true serves the page
+	// without a login, otherwise a valid session is required. Ignored (all pages
+	// public) when auth is off. Defaults to gated when auth is on.
+	Public       *bool    `yaml:"public,omitempty" json:"public,omitempty"`
 	Title        string   `yaml:"title,omitempty" json:"title,omitempty"`
 	Header       string   `yaml:"header,omitempty" json:"header,omitempty"` // sub-line under the title
 	Footer       string   `yaml:"footer,omitempty" json:"footer,omitempty"` // replaces the default footer

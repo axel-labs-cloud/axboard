@@ -87,7 +87,11 @@ dashboards:
       - { id: wx-1,    type: weather, title: Weather, config: { city: Barcelona, lat: 41.39, lon: 2.16, hourly: true } }
 ```
 
-See [`config.example.yaml`](./config.example.yaml) for the complete schema, including health-check options (`http` / `tcp` / `ping` / `none`), the global `topBar`, and per-dashboard backgrounds.
+Each check polls on its own `health.interval`. Set a fleet-wide default with
+`server.default_interval` (applied to any check that omits its own); it falls
+back to 60s when unset.
+
+See [`config.example.yaml`](./config.example.yaml) for the complete schema, including health-check options (`http` / `tcp` / `ping` / `dns` / `push` / `none`), the global `topBar`, and per-dashboard backgrounds.
 
 ## Widgets
 
@@ -160,12 +164,58 @@ warnings; auto-refreshes; needs no JS. Configure them from the UI —
 footer text, theme (dark/light), a group filter, and hide the axboard branding.
 Open the current one from **⋯ menu → Open status page**.
 
+When [authentication](#authentication) is enabled, status pages are gated behind
+a login by default. Tick **Public (no login)** on a page (`public: true` in
+config) to serve it without a session — so you can share a public status page
+while the rest of the dashboard stays private. With auth off, all pages are
+public as before.
+
+## Authentication
+
+axboard is **open by default** — LAN-bound, no login, meant to sit behind a
+reverse proxy. There is an **optional, opt-in** built-in login for when a proxy
+isn't in the picture. It stays off until you add a user.
+
+**Enable it:**
+
+1. Generate a password hash (argon2id). Run the `passwd` helper — interactively
+   (prompts, no echo) or piped:
+
+   ```sh
+   # against the running container
+   podman exec -it axboard /usr/local/bin/axboard passwd axel
+   # or, piping the password in
+   echo -n 'your-password' | ./axboard passwd axel
+   ```
+
+2. Paste the printed snippet into `config.yaml` (it's hot-reloaded, no restart):
+
+   ```yaml
+   server:
+     bind: 0.0.0.0:8080
+     auth:
+       session_ttl: 168h        # optional, default 7d
+       users:
+         - username: axel
+           password_hash: "$argon2id$v=19$m=65536,t=3,p=4$…"
+   ```
+
+With one or more users configured, the SPA shows a login screen and the whole
+`/api` surface requires a signed-cookie session — **except** heartbeat ingest
+(`/api/push/*`), `/healthz`, and `/metrics`, which stay open for external jobs
+and monitoring. **Log out** lives in the ⋯ dashboard menu.
+
+Credentials are never editable through the UI's structured save path and hashes
+are never sent to the browser — manage users by editing `config.yaml` (or the
+in-app raw-YAML editor) plus `axboard passwd`. The session-signing secret is
+auto-generated into `session.key` beside `state.yaml`; deleting it (or rotating
+it) logs everyone out.
+
+> Built-in login is a lightweight fallback, not an IdP. For WAN exposure, prefer
+> a reverse proxy with forward-auth (Authentik, Authelia, oauth2-proxy). Either
+> way, bind `server.bind` to a LAN address.
+
 ## Deployment & security
-
-axboard has **no authentication by design** — anyone who can reach the port can read and edit the config. That's fine for a LAN-bound single-user dashboard.
-
-- Bind `server.bind` to a LAN address.
-- To expose it beyond the LAN, put it behind a reverse proxy with forward-auth (Authentik, Authelia, oauth2-proxy). Don't add auth to axboard itself.
 
 CI publishes a **multi-arch (amd64/arm64)** image to the project's container registry; `v*` tags cut a GitLab Release. Pin `:latest`, a branch tag, or a specific `:v1.2.3` in your deployment.
 
