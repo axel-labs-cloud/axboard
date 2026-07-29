@@ -865,6 +865,27 @@ function ServiceForm({
         Critical service <span className="text-text-muted text-[11px]">— outage is a major (red) incident</span>
       </label>
 
+      <Field label="Wake-on-LAN" hint="MAC to wake this device; a wake button appears on its tile while it's down. Needs host networking.">
+        <div className="flex gap-2">
+          <input
+            value={app.wol?.mac ?? ""}
+            onChange={(e) => {
+              const mac = e.target.value;
+              onPatch({ wol: mac.trim() ? { mac, broadcast: app.wol?.broadcast } : undefined });
+            }}
+            placeholder="AA:BB:CC:DD:EE:FF"
+            className="flex-1 px-2.5 py-1.5 text-[12.5px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50 font-mono"
+          />
+          <input
+            value={app.wol?.broadcast ?? ""}
+            onChange={(e) => app.wol?.mac && onPatch({ wol: { mac: app.wol.mac, broadcast: e.target.value || undefined } })}
+            disabled={!app.wol?.mac}
+            placeholder="broadcast (optional)"
+            className="w-48 px-2.5 py-1.5 text-[12.5px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50 font-mono disabled:opacity-50"
+          />
+        </div>
+      </Field>
+
       <Field label="Icon" hint="si: · sh: · URL · or Upload">
         <div className="flex gap-2">
           <input

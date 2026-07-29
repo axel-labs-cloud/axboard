@@ -173,8 +173,17 @@ type App struct {
 	// Critical marks a service whose outage is a major incident: a single
 	// critical service down turns a status page's banner red. See
 	// StatusPageConfig.CriticalThreshold for how non-critical outages escalate.
-	Critical bool    `yaml:"critical,omitempty" json:"critical,omitempty"`
-	Health   *Health `yaml:"health,omitempty" json:"health,omitempty"`
+	Critical bool `yaml:"critical,omitempty" json:"critical,omitempty"`
+	// Wol, when set, adds a Wake-on-LAN button to the service's tile (shown while
+	// the service is not healthy) that broadcasts a magic packet to this MAC.
+	Wol    *WolConfig `yaml:"wol,omitempty" json:"wol,omitempty"`
+	Health *Health    `yaml:"health,omitempty" json:"health,omitempty"`
+}
+
+// WolConfig is a per-service Wake-on-LAN target.
+type WolConfig struct {
+	MAC       string `yaml:"mac" json:"mac"`
+	Broadcast string `yaml:"broadcast,omitempty" json:"broadcast,omitempty"` // optional, e.g. 10.10.0.255
 }
 
 type HealthType string

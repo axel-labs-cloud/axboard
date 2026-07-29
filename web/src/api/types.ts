@@ -25,7 +25,13 @@ export interface AppDef {
   group?: string;
   description?: string;
   critical?: boolean; // outage counts as a major (red) incident on status pages
+  wol?: WolPerService; // Wake-on-LAN target; adds a wake button while the service is down
   health?: HealthCheck;
+}
+
+export interface WolPerService {
+  mac: string;
+  broadcast?: string;
 }
 
 export interface GroupDef {
