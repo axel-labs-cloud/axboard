@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonLines } from "../../../../components/Skeleton";
+import { useSize } from "../useSize";
 import type {
   ReleasesConfig,
   WidgetConfigProps,
@@ -43,8 +44,9 @@ async function fetchOne(spec: string): Promise<Rel> {
   }
 }
 
-function ReleasesComponent({ config }: WidgetProps<ReleasesConfig>) {
+function ReleasesComponent({ config, editing }: WidgetProps<ReleasesConfig>) {
   const repos = config?.repos ?? [];
+  const box = useSize<HTMLDivElement>();
   const { data, isLoading } = useQuery({
     queryKey: ["releases", repos.join("|")],
     enabled: repos.length > 0,
@@ -54,40 +56,50 @@ function ReleasesComponent({ config }: WidgetProps<ReleasesConfig>) {
 
   if (repos.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
+      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
         Add repos (gh:owner/repo or gl:group/project) in config.
       </div>
     );
   }
-  if (isLoading) return <SkeletonLines rows={Math.min(repos.length, 4)} />;
+  if (isLoading) {
+    return (
+      <div ref={box.ref} className="h-full">
+        <SkeletonLines rows={Math.min(repos.length, 4)} />
+      </div>
+    );
+  }
+
+  const showDate = box.w >= 190; // secondary date line only when there's room
 
   return (
-    <div className="h-full overflow-auto p-2 divide-y divide-border-subtle">
-      {(data ?? []).map((rel) => (
-        <a
-          key={rel.repo}
-          href={rel.url || undefined}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="flex items-center gap-2 px-1.5 py-1.5 hover:bg-bg-hover rounded"
-        >
-          <div className="min-w-0 flex-1">
-            <div className="text-[12px] text-text-secondary truncate">{rel.repo}</div>
-            {rel.date && (
-              <div className="text-[10px] text-text-muted">
-                {new Date(rel.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-              </div>
-            )}
-          </div>
-          <span
-            className={`text-[11px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
-              rel.error ? "text-text-muted" : "bg-accent/10 text-accent"
-            }`}
-          >
-            {rel.error ? "—" : rel.tag}
-          </span>
-        </a>
-      ))}
+    <div ref={box.ref} className="h-full overflow-auto p-2 divide-y divide-border-subtle">
+      {(data ?? []).map((rel) => {
+        const inner = (
+          <>
+            <div className="min-w-0 flex-1">
+              <div className="text-[12px] text-text-secondary truncate">{rel.repo}</div>
+              {showDate && rel.date && (
+                <div className="text-[10px] text-text-muted">
+                  {new Date(rel.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                </div>
+              )}
+            </div>
+            <span
+              className={`text-[11px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
+                rel.error ? "text-text-muted" : "bg-accent/10 text-accent"
+              }`}
+            >
+              {rel.error ? "—" : rel.tag}
+            </span>
+          </>
+        );
+        const cls = "flex items-center gap-2 px-1.5 py-1.5 rounded";
+        return editing || !rel.url ? (
+          <div key={rel.repo} className={cls}>{inner}</div>
+        ) : (
+          <a key={rel.repo} href={rel.url} target="_blank" rel="noreferrer noopener" className={`${cls} hover:bg-bg-hover`}>{inner}</a>
+        );
+      })}
     </div>
   );
 }
