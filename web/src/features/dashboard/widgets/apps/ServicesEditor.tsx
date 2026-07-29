@@ -292,7 +292,7 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
       }}
     >
       <div
-        className="animate-pop-in relative bg-bg-elevated border border-border rounded-xl shadow-2xl shadow-black/50 w-full max-w-5xl h-[82vh] flex flex-col ring-1 ring-white/5 overflow-hidden"
+        className="animate-pop-in relative bg-bg-elevated border border-border rounded-xl shadow-2xl shadow-black/50 w-full max-w-6xl h-[82vh] flex flex-col ring-1 ring-white/5 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -306,13 +306,15 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
                 <rect x="14" y="14" width="7" height="7" rx="1" />
               </svg>
             </div>
-            <div className="flex items-center gap-1 rounded-md border border-border-subtle p-0.5">
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-bg-card/60 p-1">
               {(["services", "alerts"] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
-                  className={`px-2.5 py-1 text-[12px] rounded capitalize transition-colors ${
-                    tab === t ? "bg-accent/15 text-accent" : "text-text-muted hover:text-text"
+                  className={`px-3.5 py-1.5 text-[12px] font-medium rounded-md capitalize transition-colors ${
+                    tab === t
+                      ? "bg-accent text-white shadow-sm"
+                      : "text-text-secondary hover:text-text hover:bg-bg-hover"
                   }`}
                 >
                   {t}

@@ -410,6 +410,11 @@ export function DashboardTabBar({
                 onClick={() => { setMenuOpen(false); onOpenAlerts(); }}
               />
               <MenuItem
+                label="Open status page"
+                icon={ITEM_ICONS.external}
+                onClick={() => { setMenuOpen(false); window.open("/status", "_blank", "noopener"); }}
+              />
+              <MenuItem
                 label={alertsEnabled ? "Desktop alerts: on" : "Desktop alerts: off"}
                 icon={ITEM_ICONS.bell}
                 onClick={() => { setMenuOpen(false); onToggleAlerts(); }}
@@ -633,6 +638,8 @@ const ITEM_ICONS: Record<string, React.ReactNode> = {
   restore: I(<><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>),
   bell: I(<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></>),
   kiosk: I(<><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" /></>),
+  status: I(<><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></>),
+  external: I(<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6M10 14 21 3" /></>),
 };
 
 const GROUP_ICONS: Record<string, React.ReactNode> = {

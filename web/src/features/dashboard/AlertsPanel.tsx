@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "../../api/client";
 import type { AlertsDef } from "../../api/types";
 
@@ -39,7 +40,7 @@ function Field({
 
 function Section({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-lg border border-border-subtle/70 p-3 space-y-2.5">
+    <section className="rounded-lg border border-border-subtle/70 p-3 space-y-2.5 mb-4 [break-inside:avoid]">
       <div>
         <div className="text-[12px] font-semibold text-text">{title}</div>
         <div className="text-[11px] text-text-muted">{subtitle}</div>
@@ -63,6 +64,12 @@ export function AlertsForm({
   const [draft, setDraft] = useState<AlertsDef>(() => structuredClone(alerts ?? {}));
   const [testMsg, setTestMsg] = useState("");
   const [testing, setTesting] = useState(false);
+  const { data: statuses = {} } = useQuery({
+    queryKey: ["apps-status"],
+    queryFn: api.getStatus,
+    refetchInterval: 15_000,
+    enabled: !!apps && apps.length > 0,
+  });
 
   // Re-seed when a different config arrives (e.g. opening the panel fresh).
   useEffect(() => {
@@ -125,69 +132,77 @@ export function AlertsForm({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex-1 min-h-0 overflow-auto p-4 space-y-3">
-        <p className="text-[11px] text-text-muted leading-snug">
+      <div className="flex-1 min-h-0 overflow-auto p-4">
+        <p className="text-[11px] text-text-muted leading-snug mb-3">
           Notify when a health-checked service goes <span className="text-down">down</span> / <span className="text-up">recovers</span>,
           and before an HTTPS certificate expires. Every configured channel fires. Leave a section blank to disable it.
         </p>
 
-        <Section title="ntfy" subtitle="Zero infra — push to a topic on ntfy.sh or your own server.">
-          <Field label="Topic" value={ntfy.topic ?? ""} onChange={(v) => setNtfy({ topic: v })} placeholder="my-homelab-alerts" />
-          <Field label="Server" value={ntfy.server ?? ""} onChange={(v) => setNtfy({ server: v })} placeholder="https://ntfy.sh (default)" />
-          <Field label="Access token" value={ntfy.token ?? ""} onChange={(v) => setNtfy({ token: v })} placeholder="optional" type="password" />
-        </Section>
+        {/* Two-column masonry so everything fits without scrolling on desktop. */}
+        <div className="[column-count:2] [column-gap:1rem] max-lg:[column-count:1]">
+          <Section title="ntfy" subtitle="Zero infra — push to a topic on ntfy.sh or your own server.">
+            <Field label="Topic" value={ntfy.topic ?? ""} onChange={(v) => setNtfy({ topic: v })} placeholder="my-homelab-alerts" />
+            <Field label="Server" value={ntfy.server ?? ""} onChange={(v) => setNtfy({ server: v })} placeholder="https://ntfy.sh (default)" />
+            <Field label="Access token" value={ntfy.token ?? ""} onChange={(v) => setNtfy({ token: v })} placeholder="optional" type="password" />
+          </Section>
 
-        <Section title="Telegram" subtitle="A bot token from @BotFather + your chat id.">
-          <Field label="Bot token" value={tg.bot_token ?? ""} onChange={(v) => setTg({ bot_token: v })} placeholder="123456:ABC-DEF…" type="password" />
-          <Field label="Chat id" value={tg.chat_id ?? ""} onChange={(v) => setTg({ chat_id: v })} placeholder="987654321" />
-        </Section>
+          <Section title="Telegram" subtitle="A bot token from @BotFather + your chat id.">
+            <Field label="Bot token" value={tg.bot_token ?? ""} onChange={(v) => setTg({ bot_token: v })} placeholder="123456:ABC-DEF…" type="password" />
+            <Field label="Chat id" value={tg.chat_id ?? ""} onChange={(v) => setTg({ chat_id: v })} placeholder="987654321" />
+          </Section>
 
-        <Section title="Email" subtitle="Send through your SMTP relay.">
-          <div className="grid grid-cols-2 gap-2">
-            <Field label="SMTP host" value={email.smtp_host ?? ""} onChange={(v) => setEmail({ smtp_host: v })} placeholder="smtp.example.com" />
-            <Field label="Port" value={email.smtp_port ? String(email.smtp_port) : ""} onChange={(v) => setEmail({ smtp_port: parseInt(v) || undefined })} placeholder="587" />
-            <Field label="Username" value={email.username ?? ""} onChange={(v) => setEmail({ username: v })} placeholder="bot@example.com" />
-            <Field label="Password" value={email.password ?? ""} onChange={(v) => setEmail({ password: v })} placeholder="app password" type="password" />
-            <Field label="From" value={email.from ?? ""} onChange={(v) => setEmail({ from: v })} placeholder="axboard@example.com" />
-            <Field label="To" value={email.to ?? ""} onChange={(v) => setEmail({ to: v })} placeholder="you@example.com" />
-          </div>
-        </Section>
-
-        <Section title="Webhook" subtitle="A plain JSON POST — Discord, Slack, or a custom endpoint.">
-          <Field label="Webhook URL" value={draft.webhook_url ?? ""} onChange={(v) => setDraft((d) => ({ ...d, webhook_url: v }))} placeholder="https://hooks.example.com/…" />
-        </Section>
-
-        <Section title="Certificate expiry" subtitle="Alert this many days before an HTTPS cert expires (0 = off).">
-          <Field
-            label="Warn days before expiry"
-            value={draft.cert_expiry_days != null ? String(draft.cert_expiry_days) : ""}
-            onChange={(v) => setDraft((d) => ({ ...d, cert_expiry_days: v === "" ? undefined : Math.max(0, parseInt(v) || 0) }))}
-            placeholder="14 (default)"
-          />
-        </Section>
-
-        <Section title="Behavior" subtitle="Re-send the down alert periodically while a service stays down (0 = once).">
-          <Field
-            label="Resend interval (minutes)"
-            value={draft.resend_minutes ? String(draft.resend_minutes) : ""}
-            onChange={(v) => setDraft((d) => ({ ...d, resend_minutes: v === "" ? undefined : Math.max(0, parseInt(v) || 0) }))}
-            placeholder="0 (alert once)"
-          />
-        </Section>
-
-        {apps && apps.length > 0 && (
-          <Section title="Muted services" subtitle="Ticked services never send alerts.">
-            <div className="max-h-40 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
-              {apps.map((a) => (
-                <label key={a.id} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
-                  <input type="checkbox" checked={muted.has(a.id)} onChange={() => toggleMute(a.id)} className="accent-accent" />
-                  <span className="flex-1 truncate">{a.name}</span>
-                  {muted.has(a.id) && <span className="text-[10px] text-text-muted">muted</span>}
-                </label>
-              ))}
+          <Section title="Email" subtitle="Send through your SMTP relay.">
+            <div className="grid grid-cols-2 gap-2">
+              <Field label="SMTP host" value={email.smtp_host ?? ""} onChange={(v) => setEmail({ smtp_host: v })} placeholder="smtp.example.com" />
+              <Field label="Port" value={email.smtp_port ? String(email.smtp_port) : ""} onChange={(v) => setEmail({ smtp_port: parseInt(v) || undefined })} placeholder="587" />
+              <Field label="Username" value={email.username ?? ""} onChange={(v) => setEmail({ username: v })} placeholder="bot@example.com" />
+              <Field label="Password" value={email.password ?? ""} onChange={(v) => setEmail({ password: v })} placeholder="app password" type="password" />
+              <Field label="From" value={email.from ?? ""} onChange={(v) => setEmail({ from: v })} placeholder="axboard@example.com" />
+              <Field label="To" value={email.to ?? ""} onChange={(v) => setEmail({ to: v })} placeholder="you@example.com" />
             </div>
           </Section>
-        )}
+
+          <Section title="Webhook" subtitle="A plain JSON POST — Discord, Slack, or a custom endpoint.">
+            <Field label="Webhook URL" value={draft.webhook_url ?? ""} onChange={(v) => setDraft((d) => ({ ...d, webhook_url: v }))} placeholder="https://hooks.example.com/…" />
+          </Section>
+
+          <Section title="Certificate expiry" subtitle="Alert this many days before an HTTPS cert expires (0 = off).">
+            <Field
+              label="Warn days before expiry"
+              value={draft.cert_expiry_days != null ? String(draft.cert_expiry_days) : ""}
+              onChange={(v) => setDraft((d) => ({ ...d, cert_expiry_days: v === "" ? undefined : Math.max(0, parseInt(v) || 0) }))}
+              placeholder="14 (default)"
+            />
+          </Section>
+
+          <Section title="Behavior" subtitle="Re-send the down alert while a service stays down (0 = once).">
+            <Field
+              label="Resend interval (minutes)"
+              value={draft.resend_minutes ? String(draft.resend_minutes) : ""}
+              onChange={(v) => setDraft((d) => ({ ...d, resend_minutes: v === "" ? undefined : Math.max(0, parseInt(v) || 0) }))}
+              placeholder="0 (alert once)"
+            />
+          </Section>
+
+          {apps && apps.length > 0 && (
+            <Section title="Live status & mute" subtitle="Current health of each service — tick to silence its alerts.">
+              <div className="max-h-56 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
+                {apps.map((a) => {
+                  const st = statuses[a.id]?.status ?? "unknown";
+                  const dot = st === "healthy" ? "bg-up" : st === "degraded" ? "bg-degraded" : st === "down" ? "bg-down" : "bg-unknown/60";
+                  return (
+                    <label key={a.id} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} title={st} />
+                      <span className="flex-1 truncate">{a.name}</span>
+                      {muted.has(a.id) && <span className="text-[9px] px-1 rounded bg-bg-elevated text-text-muted">muted</span>}
+                      <input type="checkbox" checked={muted.has(a.id)} onChange={() => toggleMute(a.id)} className="accent-accent shrink-0" title="Mute alerts" />
+                    </label>
+                  );
+                })}
+              </div>
+            </Section>
+          )}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 px-4 py-3 border-t border-border-subtle shrink-0">
