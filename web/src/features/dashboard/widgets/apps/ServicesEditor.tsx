@@ -905,6 +905,15 @@ function ServiceForm({
                     className="w-24 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50"
                   />
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-text-muted w-24 shrink-0">Body contains</span>
+                  <input
+                    value={app.health?.body_contains ?? ""}
+                    onChange={(e) => onPatch({ health: { ...app.health!, type: "http", body_contains: e.target.value } })}
+                    placeholder="keyword (optional) — degraded if missing"
+                    className="flex-1 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50"
+                  />
+                </div>
               </>
             )}
 

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"sort"
@@ -28,6 +29,8 @@ type spService struct {
 	StatusText string
 	UptimePct  int
 	HasUptime  bool
+	AvgMS      int64
+	HasMS      bool
 	Bars       []string // per-check status classes (Uptime-Kuma-style strip)
 	CertDays   int
 	HasCert    bool
@@ -218,6 +221,18 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 			}
 			svc.HasUptime = true
 			svc.UptimePct = int(float64(healthy) / float64(len(pts)) * 100)
+			// Average response time over samples that recorded one.
+			var sum, n int64
+			for _, p := range pts {
+				if p.ResponseMS > 0 {
+					sum += p.ResponseMS
+					n++
+				}
+			}
+			if n > 0 {
+				svc.HasMS = true
+				svc.AvgMS = sum / n
+			}
 		}
 		// Always render a fixed strip; empty cells fill in from the right as
 		// checks accumulate (like a typical status page).
@@ -294,6 +309,63 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 	_ = statusPageTmpl.Execute(w, data)
 }
 
+// handleBadge renders an embeddable shields-style SVG uptime badge for one app
+// at /status/badge/{id}. Value = recent uptime % (or the status word).
+func (s *Server) handleBadge(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	res := s.Health.Get(id)
+	hist := s.Health.HistorySnapshot()[id]
+
+	label := "uptime"
+	value := statusText(string(res.Status))
+	color := "#9ca3af"
+	if len(hist) > 0 {
+		healthy := 0
+		for _, p := range hist {
+			if p.Status == health.StatusHealthy {
+				healthy++
+			}
+		}
+		pct := int(float64(healthy) / float64(len(hist)) * 100)
+		value = strconv.Itoa(pct) + "%"
+		switch {
+		case pct >= 99:
+			color = "#22c55e"
+		case pct >= 90:
+			color = "#84cc16"
+		case pct >= 75:
+			color = "#f59e0b"
+		default:
+			color = "#f43f5e"
+		}
+	} else {
+		switch res.Status {
+		case health.StatusHealthy:
+			color = "#22c55e"
+		case health.StatusDegraded:
+			color = "#f59e0b"
+		case health.StatusDown:
+			color = "#f43f5e"
+		}
+	}
+
+	lw := 6*len(label) + 12
+	vw := 6*len(value) + 14
+	total := lw + vw
+	svg := fmt.Sprintf(`<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="20" role="img" aria-label="%s: %s">
+<linearGradient id="s" x2="0" y2="100%%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
+<rect rx="3" width="%d" height="20" fill="#555"/>
+<rect rx="3" x="%d" width="%d" height="20" fill="%s"/>
+<rect rx="3" width="%d" height="20" fill="url(#s)"/>
+<g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
+<text x="%d" y="14">%s</text><text x="%d" y="14">%s</text></g></svg>`,
+		total, label, value, lw, lw, vw, color, total, lw/2, label, lw+vw/2, value)
+
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "no-cache")
+	_, _ = w.Write([]byte(svg))
+}
+
 func statusText(s string) string {
 	switch s {
 	case "healthy":
@@ -343,7 +415,8 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .bars{display:flex;gap:3px;align-items:stretch;height:26px;flex:1;min-width:90px;max-width:360px}
   .bars span{flex:1;border-radius:2px;background:var(--line);min-width:4px}
   .bars span.healthy{background:var(--up)} .bars span.degraded{background:var(--deg)} .bars span.down{background:var(--down)} .bars span.unknown{background:var(--unk)}
-  .pct{color:var(--mut);font-variant-numeric:tabular-nums;font-size:12px;width:64px;text-align:right}
+  .ms{color:var(--mut);font-variant-numeric:tabular-nums;font-size:11px;width:56px;text-align:right}
+  .pct{color:var(--mut);font-variant-numeric:tabular-nums;font-size:12px;width:56px;text-align:right}
   .st{font-size:12px;font-variant-numeric:tabular-nums;width:96px;text-align:right}
   .st.healthy{color:var(--up)} .st.degraded{color:var(--deg)} .st.down{color:var(--down)} .st.unknown{color:var(--mut)}
   footer{color:var(--mut);font-size:11px;text-align:center;margin-top:28px;white-space:pre-wrap}
@@ -381,6 +454,7 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
         <span class="name">{{.Name}}</span>
         {{if .Bars}}<span class="bars">{{range .Bars}}<span class="{{.}}"></span>{{end}}</span>{{end}}
         {{if .HasCert}}<span class="cert {{if lt .CertDays 0}}exp{{else if le .CertDays 14}}exp{{end}}">{{if lt .CertDays 0}}cert expired{{else}}cert {{.CertDays}}d{{end}}</span>{{end}}
+        {{if .HasMS}}<span class="ms">{{.AvgMS}}ms</span>{{end}}
         {{if .HasUptime}}<span class="pct">{{.UptimePct}}%</span>{{end}}
         <span class="st {{.Status}}">{{.StatusText}}</span>
       </div>

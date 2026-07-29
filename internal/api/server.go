@@ -174,6 +174,7 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 
 	// Public, auth-free status pages (server-rendered HTML): default + by slug.
 	r.Get("/status", s.handleStatusPage)
+	r.Get("/status/badge/{id}", s.handleBadge) // embeddable SVG uptime badge
 	r.Get("/status/{slug}", s.handleStatusPage)
 
 	if spaFS != nil {

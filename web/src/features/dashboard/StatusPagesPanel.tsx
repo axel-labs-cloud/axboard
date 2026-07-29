@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { GroupDef, NoticeDef, StatusPageDef } from "../../api/types";
 
+const COLORS = ["#0b0d13", "#111827", "#0f172a", "#1e293b", "#18181b", "#1a1a2e", "#0c4a6e", "#134e4a", "#3b0764", "#f6f7f9"];
 const GRADIENTS = [
   "linear-gradient(135deg,#0f172a,#1e293b)",
   "linear-gradient(135deg,#111827,#0b1220)",
@@ -200,7 +201,12 @@ export function StatusPagesForm({
                   ))}
                 </div>
                 {bg.type === "color" && (
-                  <input type="color" value={bg.color || "#0b0d13"} onChange={(e) => setBg({ color: e.target.value })} className="w-10 h-8 rounded bg-transparent border border-border cursor-pointer" />
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {COLORS.map((c) => (
+                      <button key={c} onClick={() => setBg({ color: c })} title={c} className={`w-7 h-7 rounded border ${bg.color === c ? "ring-2 ring-accent border-accent" : "border-border"}`} style={{ background: c }} />
+                    ))}
+                    <input type="color" value={bg.color || "#0b0d13"} onChange={(e) => setBg({ color: e.target.value })} className="w-8 h-7 rounded bg-transparent border border-border cursor-pointer" title="custom" />
+                  </div>
                 )}
                 {bg.type === "gradient" && (
                   <div className="space-y-1.5">
