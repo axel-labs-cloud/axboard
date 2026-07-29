@@ -128,26 +128,9 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
     title: app.description || app.name,
   };
 
-  // Wake-on-LAN button: shown while the service is not healthy. It sits in a
-  // relative shell as a sibling of the link (a <button> can't nest in an <a>).
-  const wolBtn = canWake(app, status) ? (
-    <WakeButton mac={app.wol!.mac} broadcast={app.wol!.broadcast} className="pointer-events-auto shadow" />
-  ) : null;
-  // shell wraps a layout's <a> with an optional top-right stats cluster and the
-  // wake button pinned to the bottom-right corner.
-  const shell = (inner: React.ReactNode, corner?: React.ReactNode) => (
-    <div className="relative w-full h-full">
-      {inner}
-      {corner}
-      {wolBtn && <div className="absolute bottom-1.5 right-1.5 z-10">{wolBtn}</div>}
-    </div>
-  );
-  const lastCheckedStr =
-    status?.last_checked ? new Date(status.last_checked).toLocaleTimeString() : null;
-
   // 1×1 — icon only, centered. Status dot floats in the top-right corner.
   if (w === 1 && h === 1) {
-    return shell(
+    return (
       <a {...props} className={`${linkClass} items-center justify-center p-2 relative`}>
         <Icon app={app} className="w-3/4 h-3/4 max-w-[64px] max-h-[64px]" />
         {hasHealth && (
@@ -155,7 +138,7 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
             <StatusDot status={status} size="sm" />
           </span>
         )}
-      </a>,
+      </a>
     );
   }
 
@@ -164,32 +147,46 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
   // (the 1×1 layout has p-2, so its effective icon size is ~50% of widget
   // height — using h-1/2 here keeps them consistent).
   if (h === 1) {
-    return shell(
-      <a {...props} className={`${linkClass} items-center gap-3 px-3`}>
-        <div className="h-1/2 aspect-square shrink-0 max-h-[44px]">
-          <Icon app={app} className="w-full h-full" />
-        </div>
-        <div className="min-w-0 flex-1 flex flex-col gap-0.5">
-          <span className="text-text font-medium text-[14px] truncate leading-tight">
-            {app.name}
-          </span>
-          {w >= 3 && showDescription && (
-            <span className="text-text-muted text-[11px] truncate leading-snug">{descText}</span>
-          )}
-        </div>
-        {w >= 3 && showResponseTime && status?.response_ms != null && (
-          <span className="text-[10px] text-text-muted/80 font-mono tabular-nums shrink-0">
-            {status.response_ms} ms
-          </span>
+    const showMs = showResponseTime && status?.response_ms != null;
+    return (
+      <div className="relative w-full h-full">
+        <a {...props} className={`${linkClass} items-center gap-3 pl-3 pr-14`}>
+          <div className="h-1/2 aspect-square shrink-0 max-h-[44px]">
+            <Icon app={app} className="w-full h-full" />
+          </div>
+          <div className="min-w-0 flex-1 flex flex-col gap-0.5">
+            <span className="text-text font-medium text-[14px] truncate leading-tight">
+              {app.name}
+            </span>
+            {w >= 3 && showDescription && (
+              <span className="text-text-muted text-[11px] truncate leading-snug">{descText}</span>
+            )}
+          </div>
+        </a>
+        {/* status + response time in the top-right corner */}
+        {(showStatus || showMs) && (
+          <div className="absolute top-1 right-2 z-10 flex items-center gap-1.5 pointer-events-none">
+            {showMs && (
+              <span className="text-[10px] text-text-muted/80 font-mono tabular-nums">
+                {status!.response_ms} ms
+              </span>
+            )}
+            {showStatus && <StatusDot status={status} size="md" />}
+          </div>
         )}
-        {showStatus && <StatusDot status={status} size="md" />}
-      </a>,
+        {/* wake button — bottom-right, only while the service is not healthy */}
+        {canWake(app, status) && (
+          <div className="absolute bottom-1 right-1.5 z-10">
+            <WakeButton mac={app.wol!.mac} broadcast={app.wol!.broadcast} className="pointer-events-auto shadow" />
+          </div>
+        )}
+      </div>
     );
   }
 
   // 2×1 — vertical column: icon top, name + dot below.
   if (w === 1) {
-    return shell(
+    return (
       <a {...props} className={`${linkClass} flex-col items-center justify-center p-2 gap-1.5`}>
         <div className="h-1/2 aspect-square">
           <Icon app={app} className="w-full h-full" />
@@ -198,47 +195,57 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
           <span className="text-text font-medium text-[12px] truncate">{app.name}</span>
           {showStatus && <StatusDot status={status} size="sm" />}
         </div>
-      </a>,
+      </a>
     );
   }
 
-  // 2×2 — square: big icon centered, name below. Status dot + wake move to the
-  // top-right corner so the icon/name stay put.
+  // 2×2 — square: big icon centered, name + dot below, optional description.
   if (w === 2 && h === 2) {
-    return shell(
+    return (
       <a {...props} className={`${linkClass} flex-col items-center justify-center p-3 gap-2`}>
         <div className="h-1/2 aspect-square">
           <Icon app={app} className="w-full h-full" />
         </div>
         <div className="flex flex-col items-center gap-0.5 min-w-0 max-w-full">
-          <span className="text-text font-medium text-[15px] truncate max-w-full">{app.name}</span>
+          <div className="flex items-center gap-2 min-w-0 max-w-full">
+            <span className="text-text font-medium text-[15px] truncate">{app.name}</span>
+            {showStatus && <StatusDot status={status} size="md" />}
+          </div>
           {showDescription && (
             <span className="text-text-muted text-[11px] truncate leading-snug max-w-full">
               {descText}
             </span>
           )}
         </div>
-      </a>,
-      showStatus ? (
-        <div className="absolute top-2 right-2.5 z-10 pointer-events-none">
-          <StatusDot status={status} size="md" />
-        </div>
-      ) : undefined,
+      </a>
     );
   }
 
-  // 2×3 — detail view: big icon left, name + description. Response time, last
-  // checked, status dot and the wake button move to the top-right corner so the
-  // icon and text keep their position.
-  return shell(
-    <a {...props} className={`${linkClass} items-center gap-3 px-3`}>
-      <div className="h-1/2 aspect-square shrink-0 max-h-[44px]">
+  // 2×3 — detail view: big icon left, name + description + response time on right.
+  return (
+    <a {...props} className={`${linkClass} items-center gap-4 px-4 py-3`}>
+      <div className="h-full max-h-[100px] aspect-square shrink-0 py-1">
         <Icon app={app} className="w-full h-full" />
       </div>
-      <div className="min-w-0 flex-1 flex flex-col gap-0.5 pr-12">
-        <span className="text-text font-semibold text-[15px] truncate leading-tight">{app.name}</span>
+      <div className="min-w-0 flex-1 flex flex-col gap-1">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-text font-semibold text-[16px] truncate">{app.name}</span>
+          {showStatus && <StatusDot status={status} size="lg" />}
+        </div>
         {showDescription && (
           <span className="text-text-muted text-[12px] truncate leading-snug">{descText}</span>
+        )}
+        {hasHealth && status && (showResponseTime || showLastChecked) && (
+          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-text-muted/80 font-mono">
+            {showResponseTime && status.response_ms != null && (
+              <span className="tabular-nums">{status.response_ms} ms</span>
+            )}
+            {showLastChecked && status.last_checked && (
+              <span className="tabular-nums">
+                {new Date(status.last_checked).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
         )}
         {hasHealth && h >= 3 && spark.length >= 2 && (
           <div className="mt-1.5">
@@ -254,16 +261,7 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
           </div>
         )}
       </div>
-    </a>,
-    <div className="absolute top-2.5 right-3 z-10 flex items-center gap-2 pointer-events-none">
-      {hasHealth && status && ((showResponseTime && status.response_ms != null) || (showLastChecked && lastCheckedStr)) && (
-        <div className="flex flex-col items-end leading-tight font-mono tabular-nums text-[10px] text-text-muted/80">
-          {showResponseTime && status.response_ms != null && <span>{status.response_ms} ms</span>}
-          {showLastChecked && lastCheckedStr && <span>{lastCheckedStr}</span>}
-        </div>
-      )}
-      {showStatus && <StatusDot status={status} size="lg" />}
-    </div>,
+    </a>
   );
 }
 

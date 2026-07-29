@@ -54,9 +54,8 @@ export function WakeButton({
       {state === "sending" ? (
         <span className="w-2.5 h-2.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
       ) : (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-          <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
-          <line x1="12" y1="2" x2="12" y2="12" />
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className="w-3 h-3">
+          <path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" />
         </svg>
       )}
     </button>
