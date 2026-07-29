@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
+import { useSize } from "../useSize";
 import type {
   PublicIPConfig,
   WidgetConfigProps,
@@ -14,6 +15,7 @@ import type {
 // ---------------------------------------------------------------------------
 
 function PublicIPComponent({ config }: WidgetProps<PublicIPConfig>) {
+  const box = useSize<HTMLDivElement>();
   const { data, isError } = useQuery({
     queryKey: ["publicip"],
     queryFn: api.getPublicIp,
@@ -23,7 +25,7 @@ function PublicIPComponent({ config }: WidgetProps<PublicIPConfig>) {
 
   if (isError || !data?.ip) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
+      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
         Public IP unavailable.
       </div>
     );
@@ -33,10 +35,14 @@ function PublicIPComponent({ config }: WidgetProps<PublicIPConfig>) {
   const ispText = `${data.isp ?? ""} ${data.org ?? ""}`.toLowerCase();
   const vpnOn = expect ? ispText.includes(expect) : null;
 
+  // Short → IP (+ VPN) only; taller → geo + ISP. IP grows with room.
+  const showGeo = box.h === 0 || box.h >= 82;
+  const bigIp = box.h >= 128 || box.w >= 268;
+
   return (
-    <div className="h-full flex flex-col justify-center gap-1.5 px-3.5 py-3">
-      <div className="flex items-center gap-2">
-        <span className="text-xl font-mono tabular-nums text-text leading-none truncate">{data.ip}</span>
+    <div ref={box.ref} className="h-full flex flex-col justify-center gap-1.5 px-3.5 py-3">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className={`${bigIp ? "text-2xl" : "text-xl"} font-mono tabular-nums text-text leading-none truncate`}>{data.ip}</span>
         {vpnOn !== null && (
           <span
             className={`text-[10px] px-2 py-0.5 rounded-full font-medium ring-1 shrink-0 ${
@@ -47,10 +53,14 @@ function PublicIPComponent({ config }: WidgetProps<PublicIPConfig>) {
           </span>
         )}
       </div>
-      <div className="text-[11px] text-text-muted truncate">
-        {[data.city, data.country].filter(Boolean).join(", ")}
-      </div>
-      {data.isp && <div className="text-[11px] text-text-secondary truncate">{data.isp}</div>}
+      {showGeo && (
+        <>
+          <div className="text-[11px] text-text-muted truncate">
+            {[data.city, data.country].filter(Boolean).join(", ")}
+          </div>
+          {data.isp && <div className="text-[11px] text-text-secondary truncate">{data.isp}</div>}
+        </>
+      )}
     </div>
   );
 }
@@ -90,8 +100,8 @@ const definition: WidgetDefinition<PublicIPConfig> = {
   description: "WAN IP + geo/ISP, with an optional VPN on/off check.",
   minW: 2,
   minH: 1,
-  maxW: 5,
-  maxH: 2,
+  maxW: 6,
+  maxH: 4,
   defaultW: 3,
   defaultH: 2,
   defaultConfig: {},

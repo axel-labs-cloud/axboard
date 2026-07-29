@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonLines } from "../../../../components/Skeleton";
+import { useSize } from "../useSize";
 import type {
   CustomApiConfig,
   CustomApiField,
@@ -39,6 +40,7 @@ function fmt(v: unknown): string {
 function CustomApiComponent({ config }: WidgetProps<CustomApiConfig>) {
   const url = config?.url?.trim();
   const fields = config?.fields ?? [];
+  const box = useSize<HTMLDivElement>();
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ["customapi", url],
@@ -53,22 +55,32 @@ function CustomApiComponent({ config }: WidgetProps<CustomApiConfig>) {
 
   if (!url) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
+      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
         Set a JSON endpoint + fields in config.
       </div>
     );
   }
-  if (isLoading) return <SkeletonLines rows={Math.max(2, fields.length)} />;
+  if (isLoading) {
+    return (
+      <div ref={box.ref} className="h-full">
+        <SkeletonLines rows={Math.max(2, fields.length)} />
+      </div>
+    );
+  }
   if (isError) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
+      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
         {(error as Error)?.message ?? "Request failed."}
       </div>
     );
   }
 
+  // Columns scale with width; values grow when there's vertical room and few fields.
+  const cols = box.w >= 460 ? 4 : box.w >= 320 ? 3 : box.w >= 188 ? 2 : 1;
+  const bigVal = box.h >= 150 && fields.length <= 4;
+
   return (
-    <div className="h-full flex flex-col p-3 gap-2 overflow-auto">
+    <div ref={box.ref} className="h-full flex flex-col p-3 gap-2 overflow-auto">
       {config?.title && (
         <div className="text-[11px] uppercase tracking-[0.08em] text-text-muted font-semibold shrink-0">
           {config.title}
@@ -77,11 +89,11 @@ function CustomApiComponent({ config }: WidgetProps<CustomApiConfig>) {
       {fields.length === 0 ? (
         <div className="text-[11px] text-text-muted">Add fields in config (label + JSON path).</div>
       ) : (
-        <div className="flex-1 grid grid-cols-2 gap-2 content-start">
+        <div className="flex-1 grid gap-2 content-start" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
           {fields.map((f, i) => (
-            <div key={i} className="rounded-md bg-bg-card/40 px-2.5 py-1.5 min-w-0">
+            <div key={i} className="rounded-md bg-bg-card/40 px-2.5 py-2 min-w-0">
               <div className="text-[10px] text-text-muted truncate">{f.label}</div>
-              <div className="text-[15px] font-mono tabular-nums text-text truncate">
+              <div className={`${bigVal ? "text-[22px]" : "text-[15px]"} font-mono tabular-nums text-text truncate leading-tight`}>
                 {fmt(getPath(data, f.path))}
               </div>
             </div>
