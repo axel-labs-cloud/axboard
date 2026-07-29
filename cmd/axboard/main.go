@@ -36,6 +36,9 @@ func main() {
 	}
 
 	pool := health.NewPool()
+	// Disk-backed uptime history (24h/7d/30d) next to state.yaml (persistent
+	// volume), so windowed uptime survives restarts.
+	pool.EnableUptime(filepath.Join(filepath.Dir(*statePath), "uptime.json"))
 	broadcaster := api.NewBroadcaster()
 
 	// Optional outbound alerting: fan a down/recovered transition out to every
@@ -73,6 +76,22 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Persist uptime buckets periodically so a crash loses at most a few minutes.
+	go func() {
+		t := time.NewTicker(5 * time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				if err := pool.SaveUptime(); err != nil {
+					slog.Warn("uptime save failed", "err", err)
+				}
+			}
+		}
+	}()
 
 	// Watch config: every (re)load triggers a health-pool reconcile and an SSE
 	// broadcast. Parse errors keep the last-good config serving but flip the
@@ -152,6 +171,9 @@ func main() {
 		slog.Warn("http shutdown error", "err", err)
 	}
 	pool.Stop()
+	if err := pool.SaveUptime(); err != nil {
+		slog.Warn("uptime save failed", "err", err)
+	}
 	cancel()
 	slog.Info("axboard stopped")
 }

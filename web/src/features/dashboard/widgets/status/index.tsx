@@ -108,7 +108,7 @@ function certDays(iso: string | undefined): number | null {
 }
 
 // Detail popover for one service — uptime %, response-time chart, last incident.
-function ServiceDetail({ name, points, certExpiry, certIssuer, certNotBefore, onClose }: { name: string; points: HistoryPoint[]; certExpiry?: string; certIssuer?: string; certNotBefore?: string; onClose: () => void }) {
+function ServiceDetail({ name, points, certExpiry, certIssuer, certNotBefore, windows, onClose }: { name: string; points: HistoryPoint[]; certExpiry?: string; certIssuer?: string; certNotBefore?: string; windows?: { "24h": number; "7d": number; "30d": number }; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -144,6 +144,19 @@ function ServiceDetail({ name, points, certExpiry, certIssuer, certNotBefore, on
             </div>
           ))}
         </div>
+        {windows && (
+          <div className="grid grid-cols-3 gap-2">
+            {(["24h", "7d", "30d"] as const).map((k) => (
+              <div key={k} className="rounded-lg bg-bg-card/50 border border-border-subtle/50 px-2.5 py-2">
+                <div className="text-[9px] uppercase tracking-wide text-text-muted">{k} uptime</div>
+                <div className={`text-[15px] font-mono tabular-nums font-semibold ${windows[k] < 0 ? "text-text-muted" : windows[k] >= 99 ? "text-up" : windows[k] >= 90 ? "text-degraded" : "text-down"}`}>
+                  {windows[k] < 0 ? "—" : `${windows[k]}%`}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div>
           <div className="text-[10px] uppercase tracking-wide text-text-muted mb-1">Response time · last {points.length} checks</div>
           <RtChart points={points} />
@@ -183,7 +196,7 @@ function ServiceDetail({ name, points, certExpiry, certIssuer, certNotBefore, on
 function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>) {
   const box = useSize<HTMLDivElement>();
   const qc = useQueryClient();
-  const [detail, setDetail] = useState<{ name: string; points: HistoryPoint[]; certExpiry?: string; certIssuer?: string; certNotBefore?: string } | null>(null);
+  const [detail, setDetail] = useState<{ name: string; points: HistoryPoint[]; certExpiry?: string; certIssuer?: string; certNotBefore?: string; windows?: { "24h": number; "7d": number; "30d": number } } | null>(null);
   const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
   const groups = cfg?.groups ?? [];
   const healthApps = useMemo(() => {
@@ -206,6 +219,12 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
     queryKey: ["apps-history"],
     queryFn: api.getHistory,
     refetchInterval: 15_000,
+    enabled: healthApps.length > 0,
+  });
+  const { data: uptime = {} } = useQuery({
+    queryKey: ["apps-uptime"],
+    queryFn: api.getUptime,
+    refetchInterval: 60_000,
     enabled: healthApps.length > 0,
   });
 
@@ -373,7 +392,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
                 <span className="ml-auto font-mono tabular-nums">{r.header.up}/{r.header.total}</span>
               </div>
             ) : (
-              <ServiceRow key={r.app!.id} name={r.app!.name} points={history[r.app!.id] ?? []} n={barCount} onOpen={() => setDetail({ name: r.app!.name, points: history[r.app!.id] ?? [], certExpiry: statuses[r.app!.id]?.cert_expiry, certIssuer: statuses[r.app!.id]?.cert_issuer, certNotBefore: statuses[r.app!.id]?.cert_not_before })} />
+              <ServiceRow key={r.app!.id} name={r.app!.name} points={history[r.app!.id] ?? []} n={barCount} onOpen={() => setDetail({ name: r.app!.name, points: history[r.app!.id] ?? [], certExpiry: statuses[r.app!.id]?.cert_expiry, certIssuer: statuses[r.app!.id]?.cert_issuer, certNotBefore: statuses[r.app!.id]?.cert_not_before, windows: uptime[r.app!.id] })} />
             ),
           )}
         </div>
@@ -408,7 +427,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
           </div>
         )
       )}
-      {detail && <ServiceDetail name={detail.name} points={detail.points} certExpiry={detail.certExpiry} certIssuer={detail.certIssuer} certNotBefore={detail.certNotBefore} onClose={() => setDetail(null)} />}
+      {detail && <ServiceDetail name={detail.name} points={detail.points} certExpiry={detail.certExpiry} certIssuer={detail.certIssuer} certNotBefore={detail.certNotBefore} windows={detail.windows} onClose={() => setDetail(null)} />}
     </div>
   );
 }

@@ -67,6 +67,8 @@ export const api = {
 
   getStatus: () => fetch("/api/apps/status").then(jsonOk<StatusMap>),
   getHistory: () => fetch("/api/apps/history").then(jsonOk<HistoryMap>),
+  getUptime: () =>
+    fetch("/api/apps/uptime").then(jsonOk<Record<string, { "24h": number; "7d": number; "30d": number }>>),
   discover: () =>
     fetch("/api/discover").then(jsonOk<{ services: DiscoveredService[]; error?: string }>),
   getContainers: (stats?: boolean) =>

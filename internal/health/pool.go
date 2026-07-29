@@ -40,7 +40,31 @@ type Pool struct {
 	histMu  sync.Mutex
 	history map[string][]HistPoint
 
-	pushLast sync.Map // map[string]time.Time — last heartbeat per push monitor
+	pushLast sync.Map     // map[string]time.Time — last heartbeat per push monitor
+	uptime   *UptimeStore // long-window uptime (nil until EnableUptime)
+}
+
+// EnableUptime attaches a disk-backed uptime store (24h/7d/30d windows).
+func (p *Pool) EnableUptime(path string) {
+	p.mu.Lock()
+	p.uptime = NewUptimeStore(path)
+	p.mu.Unlock()
+}
+
+// Uptime exposes the store (nil if persistence isn't enabled).
+func (p *Pool) Uptime() *UptimeStore {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	return p.uptime
+}
+
+// SaveUptime persists the uptime buckets (no-op if disabled).
+func (p *Pool) SaveUptime() error {
+	u := p.Uptime()
+	if u == nil {
+		return nil
+	}
+	return u.Save()
 }
 
 // Push records a heartbeat for a push/heartbeat monitor and forces a re-eval so
@@ -274,6 +298,9 @@ func (p *Pool) run(ctx context.Context, app config.App, w *worker) {
 		prev, _ := p.results.Load(app.ID)
 		p.results.Store(app.ID, res)
 		p.recordHistory(app.ID, res)
+		if u := p.Uptime(); u != nil {
+			u.Record(app.ID, res.Status == StatusHealthy, res.ResponseMS, time.Now())
+		}
 		prevStatus := StatusUnknown
 		if prev != nil {
 			prevStatus = prev.(Result).Status

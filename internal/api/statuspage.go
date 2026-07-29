@@ -211,16 +211,25 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 			up++
 		}
 		svc := spService{Name: a.Name, Status: st, StatusText: statusText(st)}
+		// Prefer the 30-day windowed uptime (disk-backed) when available.
+		if u := s.Health.Uptime(); u != nil {
+			if pct, ok := u.Window(a.ID, 30*24*time.Hour, time.Now()); ok {
+				svc.HasUptime = true
+				svc.UptimePct = pct
+			}
+		}
 		pts := hist[a.ID]
 		if len(pts) > 0 {
-			healthy := 0
-			for _, p := range pts {
-				if p.Status == health.StatusHealthy {
-					healthy++
+			if !svc.HasUptime { // fall back to recent history if no 30d data
+				healthy := 0
+				for _, p := range pts {
+					if p.Status == health.StatusHealthy {
+						healthy++
+					}
 				}
+				svc.HasUptime = true
+				svc.UptimePct = int(float64(healthy) / float64(len(pts)) * 100)
 			}
-			svc.HasUptime = true
-			svc.UptimePct = int(float64(healthy) / float64(len(pts)) * 100)
 			// Average response time over samples that recorded one.
 			var sum, n int64
 			for _, p := range pts {

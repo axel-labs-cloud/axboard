@@ -156,6 +156,7 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Put("/state", s.handlePutState)
 		r.Get("/apps/status", s.handleStatus)
 		r.Get("/apps/history", s.handleHistory)
+		r.Get("/apps/uptime", s.handleUptime)
 		r.Get("/discover", s.handleDiscover)
 		r.Get("/containers", s.handleContainers)
 		r.Post("/containers/{id}/restart", s.handleContainerRestart)
@@ -584,6 +585,16 @@ func (s *Server) handleStatus(w http.ResponseWriter, _ *http.Request) {
 
 func (s *Server) handleHistory(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, s.Health.HistorySnapshot())
+}
+
+// handleUptime returns per-app 24h/7d/30d uptime percentages (-1 = no data).
+func (s *Server) handleUptime(w http.ResponseWriter, _ *http.Request) {
+	u := s.Health.Uptime()
+	if u == nil {
+		writeJSON(w, http.StatusOK, map[string]map[string]int{})
+		return
+	}
+	writeJSON(w, http.StatusOK, u.Snapshot(time.Now()))
 }
 
 // handleDiscover returns candidate services from the Docker/Podman socket,
