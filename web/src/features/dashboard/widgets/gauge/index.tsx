@@ -151,7 +151,15 @@ function Spark({ hist, big, sub, name, w, h, cfg }: { hist: number[]; big: strin
   const color = scaleColor(cur, cfg as ColorConfig, OPTS);
   const glow = cfg.glow !== false;
   const step = pts.length > 1 ? width / (pts.length - 1) : width;
-  const coords = pts.map((v, i) => `${i * step},${height - (Math.min(100, v) / 100) * height}`);
+  // Auto-scale the y-axis to the data's own range (with headroom) so a low but
+  // varying value fills the chart instead of hugging the bottom.
+  const lo = Math.min(...pts);
+  const hi = Math.max(...pts);
+  const span = Math.max(hi - lo, 2);
+  const yMin = Math.max(0, lo - span * 0.2);
+  const yMax = hi + span * 0.2;
+  const y = (v: number) => height - ((v - yMin) / (yMax - yMin || 1)) * height;
+  const coords = pts.map((v, i) => `${i * step},${y(v)}`);
   const line = `M ${coords.join(" L ")}`;
   const area = `${line} L ${(pts.length - 1) * step},${height} L 0,${height} Z`;
   const fillId = "gauge-spark-fill";
@@ -224,15 +232,17 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   }
 
   if (metric2) {
-    // Split the tile: side-by-side when wide, stacked when tall.
+    // Split the tile: side-by-side when wide, stacked when tall. A ring doesn't
+    // fit a split half well, so fall back to a spark for dual gauges.
+    const dcfg: GaugeConfig = cfg.style === "ring" || !cfg.style ? { ...cfg, style: "spark" } : cfg;
     const row = box.w >= box.h;
     const halfW = row ? box.w / 2 : box.w;
     const halfH = row ? box.h : box.h / 2;
     return (
       <div ref={box.ref} className={`h-full w-full flex ${row ? "flex-row" : "flex-col"}`}>
-        <div className="flex-1 min-w-0 min-h-0 flex items-center justify-center">{gaugeBody(metric, data, cfg, halfW, halfH, hist.current[metric] ?? [])}</div>
+        <div className="flex-1 min-w-0 min-h-0 flex items-center justify-center">{gaugeBody(metric, data, dcfg, halfW, halfH, hist.current[metric] ?? [])}</div>
         <div className={row ? "w-px bg-border-subtle/60" : "h-px bg-border-subtle/60"} />
-        <div className="flex-1 min-w-0 min-h-0 flex items-center justify-center">{gaugeBody(metric2, data, cfg, halfW, halfH, hist.current[metric2] ?? [])}</div>
+        <div className="flex-1 min-w-0 min-h-0 flex items-center justify-center">{gaugeBody(metric2, data, dcfg, halfW, halfH, hist.current[metric2] ?? [])}</div>
       </div>
     );
   }
@@ -240,9 +250,15 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   return <div ref={box.ref} className="h-full flex flex-col items-center justify-center">{gaugeBody(metric, data, cfg, box.w, box.h, hist.current[metric] ?? [])}</div>;
 }
 
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function Chip({ active, onClick, disabled, children }: { active: boolean; onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className={`px-2 py-1.5 text-[11px] rounded border capitalize transition-colors ${active ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`px-2 py-1.5 text-[11px] rounded border capitalize transition-colors ${
+        disabled ? "border-border/40 text-text-muted/30 cursor-not-allowed" : active ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"
+      }`}
+    >
       {children}
     </button>
   );
@@ -251,6 +267,10 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 function GaugeConfigPanel({ config, save }: WidgetConfigProps<GaugeConfig>) {
   const metric = config?.metric ?? "cpu";
   const style = config?.style ?? "ring";
+  const dual = !!config?.metric2 && config.metric2 !== "none";
+  // Ring can't split, so choosing a second metric switches it to spark.
+  const setSecond = (m: "none" | "cpu" | "ram" | "disk" | "swap") =>
+    save(m !== "none" && style === "ring" ? { metric2: m, style: "spark" } : { metric2: m });
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
@@ -266,16 +286,16 @@ function GaugeConfigPanel({ config, save }: WidgetConfigProps<GaugeConfig>) {
         <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Second metric (split tile)</label>
         <div className="grid grid-cols-5 gap-1">
           {(["none", "cpu", "ram", "disk", "swap"] as const).map((mt) => (
-            <Chip key={mt} active={(config?.metric2 ?? "none") === mt} onClick={() => save({ metric2: mt })}>{mt}</Chip>
+            <Chip key={mt} active={(config?.metric2 ?? "none") === mt} onClick={() => setSecond(mt)}>{mt}</Chip>
           ))}
         </div>
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Style</label>
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Style{dual ? " · ring off in split" : ""}</label>
         <div className="grid grid-cols-3 gap-1">
           {(["ring", "bar", "spark"] as const).map((st) => (
-            <Chip key={st} active={style === st} onClick={() => save({ style: st })}>{st}</Chip>
+            <Chip key={st} active={style === st} disabled={dual && st === "ring"} onClick={() => save({ style: st })}>{st}</Chip>
           ))}
         </div>
       </div>

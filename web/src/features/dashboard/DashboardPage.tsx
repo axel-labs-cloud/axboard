@@ -1072,8 +1072,11 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       (m, it) => Math.max(m, it.y + it.h),
       0,
     );
-    const contentH = maxRow * (cell + gap) + gap;
-    const headroom = editing ? 3 * (cell + gap) : 0;
+    // The bottom-most widget ends at maxRow*(cell+gap). Don't add a trailing
+    // gap in view mode — it would push a board that fills the viewport exactly
+    // just over, spawning a phantom scrollbar. Edit mode keeps drag headroom.
+    const contentH = maxRow * (cell + gap);
+    const headroom = editing ? 3 * (cell + gap) + gap : 0;
     return Math.max(contentH + headroom, containerH);
   }, [layout.layouts, cell, gap, editing, containerH]);
 
