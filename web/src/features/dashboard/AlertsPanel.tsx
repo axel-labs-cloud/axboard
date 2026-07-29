@@ -38,12 +38,23 @@ function Field({
   );
 }
 
-function Section({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+function Section({ title, subtitle, children, onTest, testState }: { title: string; subtitle: string; children: React.ReactNode; onTest?: () => void; testState?: string }) {
   return (
-    <section className="rounded-lg border border-border-subtle/70 p-3 space-y-2.5 mb-4 [break-inside:avoid]">
-      <div>
-        <div className="text-[12px] font-semibold text-text">{title}</div>
-        <div className="text-[11px] text-text-muted">{subtitle}</div>
+    <section className="rounded-lg border border-border-subtle/70 p-3 space-y-2.5">
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="text-[12px] font-semibold text-text">{title}</div>
+          <div className="text-[11px] text-text-muted">{subtitle}</div>
+        </div>
+        {onTest && (
+          <button
+            onClick={onTest}
+            className="shrink-0 px-2 py-1 text-[10px] rounded border border-border text-text-muted hover:text-accent hover:border-accent/50 transition-colors"
+            title="Save & send a test to this channel"
+          >
+            {testState || "Test"}
+          </button>
+        )}
       </div>
       {children}
     </section>
@@ -130,78 +141,103 @@ export function AlertsForm({
     setTesting(false);
   };
 
+  // Per-channel: save first, then test just that channel.
+  const [chanTest, setChanTest] = useState<Record<string, string>>({});
+  const testChannel = async (ch: string) => {
+    setChanTest((s) => ({ ...s, [ch]: "…" }));
+    try {
+      onSave(clean());
+      await new Promise((r) => setTimeout(r, 400));
+      const res = await api.testAlert(ch);
+      setChanTest((s) => ({ ...s, [ch]: res.ok ? "sent ✓" : "not set" }));
+    } catch {
+      setChanTest((s) => ({ ...s, [ch]: "failed" }));
+    }
+    setTimeout(() => setChanTest((s) => ({ ...s, [ch]: "" })), 2500);
+  };
+
   return (
     <div className="flex flex-col h-full min-h-0">
-      <div className="flex-1 min-h-0 overflow-auto p-4">
-        <p className="text-[11px] text-text-muted leading-snug mb-3">
+      <div className="flex-1 min-h-0 p-4 flex flex-col">
+        <p className="text-[11px] text-text-muted leading-snug mb-3 shrink-0">
           Notify when a health-checked service goes <span className="text-down">down</span> / <span className="text-up">recovers</span>,
           and before an HTTPS certificate expires. Every configured channel fires. Leave a section blank to disable it.
         </p>
 
-        {/* Two-column masonry so everything fits without scrolling on desktop. */}
-        <div className="[column-count:2] [column-gap:1rem] max-lg:[column-count:1]">
-          <Section title="ntfy" subtitle="Zero infra — push to a topic on ntfy.sh or your own server.">
-            <Field label="Topic" value={ntfy.topic ?? ""} onChange={(v) => setNtfy({ topic: v })} placeholder="my-homelab-alerts" />
-            <Field label="Server" value={ntfy.server ?? ""} onChange={(v) => setNtfy({ server: v })} placeholder="https://ntfy.sh (default)" />
-            <Field label="Access token" value={ntfy.token ?? ""} onChange={(v) => setNtfy({ token: v })} placeholder="optional" type="password" />
-          </Section>
+        {/* Two panes: channels on the left, the rest + live status (filling to
+            the bottom) on the right. */}
+        <div className="flex-1 min-h-0 flex gap-4 max-lg:flex-col max-lg:overflow-auto">
+          <div className="flex-1 min-w-0 space-y-4 overflow-auto max-lg:overflow-visible">
+            <Section title="ntfy" subtitle="Zero infra — push to a topic on ntfy.sh or your own server." onTest={() => testChannel("ntfy")} testState={chanTest.ntfy}>
+              <Field label="Topic" value={ntfy.topic ?? ""} onChange={(v) => setNtfy({ topic: v })} placeholder="my-homelab-alerts" />
+              <Field label="Server" value={ntfy.server ?? ""} onChange={(v) => setNtfy({ server: v })} placeholder="https://ntfy.sh (default)" />
+              <Field label="Access token" value={ntfy.token ?? ""} onChange={(v) => setNtfy({ token: v })} placeholder="optional" type="password" />
+            </Section>
 
-          <Section title="Telegram" subtitle="A bot token from @BotFather + your chat id.">
-            <Field label="Bot token" value={tg.bot_token ?? ""} onChange={(v) => setTg({ bot_token: v })} placeholder="123456:ABC-DEF…" type="password" />
-            <Field label="Chat id" value={tg.chat_id ?? ""} onChange={(v) => setTg({ chat_id: v })} placeholder="987654321" />
-          </Section>
+            <Section title="Telegram" subtitle="A bot token from @BotFather + your chat id." onTest={() => testChannel("telegram")} testState={chanTest.telegram}>
+              <Field label="Bot token" value={tg.bot_token ?? ""} onChange={(v) => setTg({ bot_token: v })} placeholder="123456:ABC-DEF…" type="password" />
+              <Field label="Chat id" value={tg.chat_id ?? ""} onChange={(v) => setTg({ chat_id: v })} placeholder="987654321" />
+            </Section>
 
-          <Section title="Email" subtitle="Send through your SMTP relay.">
-            <div className="grid grid-cols-2 gap-2">
-              <Field label="SMTP host" value={email.smtp_host ?? ""} onChange={(v) => setEmail({ smtp_host: v })} placeholder="smtp.example.com" />
-              <Field label="Port" value={email.smtp_port ? String(email.smtp_port) : ""} onChange={(v) => setEmail({ smtp_port: parseInt(v) || undefined })} placeholder="587" />
-              <Field label="Username" value={email.username ?? ""} onChange={(v) => setEmail({ username: v })} placeholder="bot@example.com" />
-              <Field label="Password" value={email.password ?? ""} onChange={(v) => setEmail({ password: v })} placeholder="app password" type="password" />
-              <Field label="From" value={email.from ?? ""} onChange={(v) => setEmail({ from: v })} placeholder="axboard@example.com" />
-              <Field label="To" value={email.to ?? ""} onChange={(v) => setEmail({ to: v })} placeholder="you@example.com" />
-            </div>
-          </Section>
-
-          <Section title="Webhook" subtitle="A plain JSON POST — Discord, Slack, or a custom endpoint.">
-            <Field label="Webhook URL" value={draft.webhook_url ?? ""} onChange={(v) => setDraft((d) => ({ ...d, webhook_url: v }))} placeholder="https://hooks.example.com/…" />
-          </Section>
-
-          <Section title="Certificate expiry" subtitle="Alert this many days before an HTTPS cert expires (0 = off).">
-            <Field
-              label="Warn days before expiry"
-              value={draft.cert_expiry_days != null ? String(draft.cert_expiry_days) : ""}
-              onChange={(v) => setDraft((d) => ({ ...d, cert_expiry_days: v === "" ? undefined : Math.max(0, parseInt(v) || 0) }))}
-              placeholder="14 (default)"
-            />
-          </Section>
-
-          <Section title="Behavior" subtitle="Re-send the down alert while a service stays down (0 = once).">
-            <Field
-              label="Resend interval (minutes)"
-              value={draft.resend_minutes ? String(draft.resend_minutes) : ""}
-              onChange={(v) => setDraft((d) => ({ ...d, resend_minutes: v === "" ? undefined : Math.max(0, parseInt(v) || 0) }))}
-              placeholder="0 (alert once)"
-            />
-          </Section>
-
-          {apps && apps.length > 0 && (
-            <Section title="Live status & mute" subtitle="Current health of each service — tick to silence its alerts.">
-              <div className="max-h-56 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
-                {apps.map((a) => {
-                  const st = statuses[a.id]?.status ?? "unknown";
-                  const dot = st === "healthy" ? "bg-up" : st === "degraded" ? "bg-degraded" : st === "down" ? "bg-down" : "bg-unknown/60";
-                  return (
-                    <label key={a.id} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} title={st} />
-                      <span className="flex-1 truncate">{a.name}</span>
-                      {muted.has(a.id) && <span className="text-[9px] px-1 rounded bg-bg-elevated text-text-muted">muted</span>}
-                      <input type="checkbox" checked={muted.has(a.id)} onChange={() => toggleMute(a.id)} className="accent-accent shrink-0" title="Mute alerts" />
-                    </label>
-                  );
-                })}
+            <Section title="Email" subtitle="Send through your SMTP relay." onTest={() => testChannel("email")} testState={chanTest.email}>
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="SMTP host" value={email.smtp_host ?? ""} onChange={(v) => setEmail({ smtp_host: v })} placeholder="smtp.example.com" />
+                <Field label="Port" value={email.smtp_port ? String(email.smtp_port) : ""} onChange={(v) => setEmail({ smtp_port: parseInt(v) || undefined })} placeholder="587" />
+                <Field label="Username" value={email.username ?? ""} onChange={(v) => setEmail({ username: v })} placeholder="bot@example.com" />
+                <Field label="Password" value={email.password ?? ""} onChange={(v) => setEmail({ password: v })} placeholder="app password" type="password" />
+                <Field label="From" value={email.from ?? ""} onChange={(v) => setEmail({ from: v })} placeholder="axboard@example.com" />
+                <Field label="To" value={email.to ?? ""} onChange={(v) => setEmail({ to: v })} placeholder="you@example.com" />
               </div>
             </Section>
-          )}
+          </div>
+
+          <div className="flex-1 min-w-0 flex flex-col gap-4 min-h-0">
+            <Section title="Webhook" subtitle="A plain JSON POST — Discord, Slack, or a custom endpoint." onTest={() => testChannel("webhook")} testState={chanTest.webhook}>
+              <Field label="Webhook URL" value={draft.webhook_url ?? ""} onChange={(v) => setDraft((d) => ({ ...d, webhook_url: v }))} placeholder="https://hooks.example.com/…" />
+            </Section>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Section title="Certificate expiry" subtitle="Days before a cert expires (0 = off).">
+                <Field
+                  label="Warn days"
+                  value={draft.cert_expiry_days != null ? String(draft.cert_expiry_days) : ""}
+                  onChange={(v) => setDraft((d) => ({ ...d, cert_expiry_days: v === "" ? undefined : Math.max(0, parseInt(v) || 0) }))}
+                  placeholder="14 (default)"
+                />
+              </Section>
+              <Section title="Resend" subtitle="Re-alert while down (0 = once).">
+                <Field
+                  label="Interval (min)"
+                  value={draft.resend_minutes ? String(draft.resend_minutes) : ""}
+                  onChange={(v) => setDraft((d) => ({ ...d, resend_minutes: v === "" ? undefined : Math.max(0, parseInt(v) || 0) }))}
+                  placeholder="0 (once)"
+                />
+              </Section>
+            </div>
+
+            {apps && apps.length > 0 && (
+              <section className="rounded-lg border border-border-subtle/70 bg-black/20 p-3 flex flex-col min-h-0 flex-1">
+                <div className="mb-2">
+                  <div className="text-[12px] font-semibold text-text">Live status &amp; mute</div>
+                  <div className="text-[11px] text-text-muted">Current health of each service — tick to silence its alerts.</div>
+                </div>
+                <div className="flex-1 min-h-0 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle bg-bg-card/30">
+                  {apps.map((a) => {
+                    const st = statuses[a.id]?.status ?? "unknown";
+                    const dot = st === "healthy" ? "bg-up" : st === "degraded" ? "bg-degraded" : st === "down" ? "bg-down" : "bg-unknown/60";
+                    return (
+                      <label key={a.id} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} title={st} />
+                        <span className="flex-1 truncate">{a.name}</span>
+                        {muted.has(a.id) && <span className="text-[9px] px-1 rounded bg-bg-elevated text-text-muted">muted</span>}
+                        <input type="checkbox" checked={muted.has(a.id)} onChange={() => toggleMute(a.id)} className="accent-accent shrink-0" title="Mute alerts" />
+                      </label>
+                    );
+                  })}
+                </div>
+              </section>
+            )}
+          </div>
         </div>
       </div>
 

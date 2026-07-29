@@ -77,8 +77,8 @@ export const api = {
     fetch(`/api/containers/${encodeURIComponent(nameOrId)}/restart`, { method: "POST" }).then(
       jsonOk<{ ok: boolean; error?: string }>,
     ),
-  testAlert: () =>
-    fetch("/api/alerts/test", { method: "POST" }).then(
+  testAlert: (channel?: string) =>
+    fetch(`/api/alerts/test${channel ? `?channel=${encodeURIComponent(channel)}` : ""}`, { method: "POST" }).then(
       jsonOk<{ ok: boolean; channels?: string[]; error?: string }>,
     ),
   getHost: () => fetch("/api/host").then(jsonOk<HostStats>),

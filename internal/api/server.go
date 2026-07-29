@@ -395,7 +395,7 @@ func (s *Server) handleWoL(w http.ResponseWriter, r *http.Request) {
 
 // handleAlertTest fires a sample notification through the currently-configured
 // alert channels and reports which ones it triggered.
-func (s *Server) handleAlertTest(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) handleAlertTest(w http.ResponseWriter, r *http.Request) {
 	cfg := s.getConfig()
 	if cfg == nil {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "no config loaded"})
@@ -403,7 +403,7 @@ func (s *Server) handleAlertTest(w http.ResponseWriter, _ *http.Request) {
 	}
 	n := alert.New()
 	n.SetConfig(cfg.Alerts)
-	sent := n.SendTest()
+	sent := n.SendTest(r.URL.Query().Get("channel"))
 	writeJSON(w, http.StatusOK, map[string]any{"ok": len(sent) > 0, "channels": sent})
 }
 

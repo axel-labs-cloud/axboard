@@ -36,6 +36,12 @@ type spGroup struct {
 	Services []spService
 }
 
+type spNotice struct {
+	Severity string
+	Title    string
+	Message  string
+}
+
 type spData struct {
 	Title        string
 	Header       string
@@ -45,6 +51,7 @@ type spData struct {
 	Up           int
 	Total        int
 	AllUp        bool
+	Notices      []spNotice
 	Groups       []spGroup
 	UpdatedAt    string
 }
@@ -107,12 +114,18 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 	for _, g := range cfg.Groups {
 		groupName[g.ID] = g.Name
 	}
-	// Optional group filter.
-	var allow map[string]bool
+	// Optional filters: by group and/or by individual service (both must pass).
+	var allowGroup, allowApp map[string]bool
 	if len(page.Groups) > 0 {
-		allow = map[string]bool{}
+		allowGroup = map[string]bool{}
 		for _, g := range page.Groups {
-			allow[g] = true
+			allowGroup[g] = true
+		}
+	}
+	if len(page.Apps) > 0 {
+		allowApp = map[string]bool{}
+		for _, a := range page.Apps {
+			allowApp[a] = true
 		}
 	}
 
@@ -123,7 +136,10 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 		if a.Health == nil || a.Health.Type == config.HealthNone || a.Health.Type == "" {
 			continue
 		}
-		if allow != nil && !allow[a.Group] {
+		if allowGroup != nil && !allowGroup[a.Group] {
+			continue
+		}
+		if allowApp != nil && !allowApp[a.ID] {
 			continue
 		}
 		total++
@@ -168,6 +184,18 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 		groups = append(groups, spGroup{Name: name, Services: buckets[k]})
 	}
 
+	var notices []spNotice
+	for _, n := range page.Notices {
+		if n.Active != nil && !*n.Active {
+			continue
+		}
+		sev := strings.ToLower(n.Severity)
+		if sev == "" {
+			sev = "info"
+		}
+		notices = append(notices, spNotice{Severity: sev, Title: n.Title, Message: n.Message})
+	}
+
 	data := spData{
 		Title:        title,
 		Header:       page.Header,
@@ -177,6 +205,7 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 		Up:           up,
 		Total:        total,
 		AllUp:        total > 0 && up == total,
+		Notices:      notices,
 		Groups:       groups,
 		UpdatedAt:    time.Now().Format("Jan 2, 15:04:05 MST"),
 	}
@@ -230,10 +259,23 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .st.healthy{color:var(--up)} .st.degraded{color:var(--deg)} .st.down{color:var(--down)} .st.unknown{color:var(--mut)}
   footer{color:var(--mut);font-size:11px;text-align:center;margin-top:28px;white-space:pre-wrap}
   a{color:inherit}
+  .notice{border:1px solid var(--line);border-left-width:4px;border-radius:10px;padding:12px 14px;margin-bottom:12px;background:var(--card)}
+  .notice .nt{font-weight:600;font-size:13px;margin-bottom:2px}
+  .notice .nm{color:var(--mut);font-size:12px;white-space:pre-wrap}
+  .notice.info{border-left-color:#3b82f6} .notice.info .nt{color:#3b82f6}
+  .notice.warning{border-left-color:var(--deg)} .notice.warning .nt{color:var(--deg)}
+  .notice.critical{border-left-color:var(--down)} .notice.critical .nt{color:var(--down)}
+  .notice.maintenance{border-left-color:#8b5cf6} .notice.maintenance .nt{color:#8b5cf6}
 </style></head><body><div class="wrap">
   <h1>{{.Title}}</h1>
   {{if .Header}}<div class="hdr">{{.Header}}</div>{{end}}
   <div class="sub">Updated {{.UpdatedAt}} · refreshes automatically</div>
+  {{range .Notices}}
+  <div class="notice {{.Severity}}">
+    {{if .Title}}<div class="nt">{{.Title}}</div>{{end}}
+    {{if .Message}}<div class="nm">{{.Message}}</div>{{end}}
+  </div>
+  {{end}}
   <div class="banner {{if .AllUp}}ok{{else}}bad{{end}}">
     <span class="big"></span>
     <span>{{if .AllUp}}All systems operational{{else}}{{.Up}} of {{.Total}} operational{{end}}</span>

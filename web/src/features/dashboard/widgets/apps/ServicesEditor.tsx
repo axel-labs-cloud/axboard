@@ -314,15 +314,15 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
                 <rect x="14" y="14" width="7" height="7" rx="1" />
               </svg>
             </div>
-            <div className="flex items-center gap-1 rounded-lg border border-border bg-bg-card/60 p-1">
+            <div className="flex items-center gap-1 rounded-lg border border-border-subtle bg-bg-card/70 p-1">
               {(["services", "alerts", "status"] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
                   className={`px-3.5 py-1.5 text-[12px] font-medium rounded-md capitalize transition-colors ${
                     tab === t
-                      ? "bg-accent text-white shadow-sm"
-                      : "text-text-secondary hover:text-text hover:bg-bg-hover"
+                      ? "bg-bg-elevated text-text shadow-sm ring-1 ring-border-subtle"
+                      : "text-text-muted hover:text-text"
                   }`}
                 >
                   {t === "status" ? "Status pages" : t}
@@ -373,7 +373,12 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
         )}
 
         {tab === "status" && (
-          <StatusPagesForm pages={cached?.status_pages} groups={groups} onSave={saveStatusPages} />
+          <StatusPagesForm
+            pages={cached?.status_pages}
+            groups={groups}
+            apps={apps.filter((a) => a.health && a.health.type !== "none").map((a) => ({ id: a.id, name: a.name, group: a.group }))}
+            onSave={saveStatusPages}
+          />
         )}
 
         {tab === "services" && (

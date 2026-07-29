@@ -112,6 +112,13 @@ export interface AlertsDef {
   muted?: string[];
 }
 
+export interface NoticeDef {
+  severity?: string; // info | warning | critical | maintenance
+  title?: string;
+  message?: string;
+  active?: boolean;
+}
+
 export interface StatusPageDef {
   slug?: string;
   enabled?: boolean;
@@ -120,7 +127,9 @@ export interface StatusPageDef {
   footer?: string;
   hide_branding?: boolean;
   groups?: string[];
+  apps?: string[];
   theme?: string; // "dark" | "light"
+  notices?: NoticeDef[];
 }
 
 export interface Config {

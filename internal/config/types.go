@@ -32,7 +32,19 @@ type StatusPageConfig struct {
 	Footer       string   `yaml:"footer,omitempty" json:"footer,omitempty"` // replaces the default footer
 	HideBranding bool     `yaml:"hide_branding,omitempty" json:"hide_branding,omitempty"`
 	Groups       []string `yaml:"groups,omitempty" json:"groups,omitempty"` // group IDs to include (empty = all)
+	Apps         []string `yaml:"apps,omitempty" json:"apps,omitempty"`     // app IDs to include (empty = all)
 	Theme        string   `yaml:"theme,omitempty" json:"theme,omitempty"`   // dark (default) | light
+	// Notices are manual announcement banners shown at the top of this page
+	// (maintenance, incidents, upcoming changes) — independent of health checks.
+	Notices []Notice `yaml:"notices,omitempty" json:"notices,omitempty"`
+}
+
+// Notice is a manual status-page banner with a severity.
+type Notice struct {
+	Severity string `yaml:"severity,omitempty" json:"severity,omitempty"` // info | warning | critical | maintenance
+	Title    string `yaml:"title,omitempty" json:"title,omitempty"`
+	Message  string `yaml:"message,omitempty" json:"message,omitempty"`
+	Active   *bool  `yaml:"active,omitempty" json:"active,omitempty"` // nil/true = shown
 }
 
 // TopBar is global (shared across all dashboards): the bar style and the header

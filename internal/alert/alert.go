@@ -160,16 +160,51 @@ func (n *Notifier) NotifyCert(app string, daysLeft int, today string) {
 }
 
 // SendTest fires a sample notification to every configured channel and returns
-// the channel names it triggered (so the UI can confirm what's wired up).
-func (n *Notifier) SendTest() []string {
-	return n.dispatch(event{
+// the channel names it triggered (so the UI can confirm what's wired up). When
+// `only` is non-empty, just that channel is tested.
+func (n *Notifier) SendTest(only string) []string {
+	e := event{
 		app:   "axboard",
 		title: "axboard test alert",
 		body:  "This is a test notification from axboard — your alerts are working.",
 		down:  false,
 		prev:  "healthy",
 		cur:   "healthy",
-	})
+	}
+	if only == "" {
+		return n.dispatch(e)
+	}
+	return n.dispatchOne(only, e)
+}
+
+// dispatchOne sends the event to a single named channel (for per-channel tests).
+func (n *Notifier) dispatchOne(channel string, e event) []string {
+	n.mu.RLock()
+	cfg := n.cfg
+	n.mu.RUnlock()
+	switch channel {
+	case "webhook":
+		if cfg.WebhookURL != "" {
+			go n.sendWebhook(cfg.WebhookURL, e)
+			return []string{"webhook"}
+		}
+	case "ntfy":
+		if cfg.Ntfy != nil && cfg.Ntfy.Topic != "" {
+			go n.sendNtfy(*cfg.Ntfy, e)
+			return []string{"ntfy"}
+		}
+	case "telegram":
+		if cfg.Telegram != nil && cfg.Telegram.BotToken != "" && cfg.Telegram.ChatID != "" {
+			go n.sendTelegram(*cfg.Telegram, e)
+			return []string{"telegram"}
+		}
+	case "email":
+		if cfg.Email != nil && cfg.Email.SMTPHost != "" && cfg.Email.To != "" {
+			go n.sendEmail(*cfg.Email, e)
+			return []string{"email"}
+		}
+	}
+	return nil
 }
 
 // dispatch fans an event out to every configured channel and reports which
