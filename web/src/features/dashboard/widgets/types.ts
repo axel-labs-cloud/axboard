@@ -285,6 +285,8 @@ export interface GaugeConfig {
   glow?: boolean;
   /** Show a faint track behind the fill. Default on. */
   track?: boolean;
+  /** History window for the sparkline style. */
+  window?: "1m" | "5m" | "15m" | "1h";
 }
 
 /** Internet speed test — client-side download/upload/latency via Cloudflare. */
@@ -359,6 +361,7 @@ export interface NetGraphConfig {
   style?: "mirror" | "stack";
   colorIn?: string; // palette key for download
   colorOut?: string; // palette key for upload
+  window?: "1m" | "5m" | "15m" | "1h";
 }
 
 /** Battery / UPS widget — power supplies from /sys/class/power_supply. */

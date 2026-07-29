@@ -3,16 +3,26 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
 import { ColorControls, scaleColor, type ColorConfig } from "../colorScale";
+import { WindowChips, windowPoints, maxBuffer, type TimeWindow } from "../timeWindow";
 import type { GaugeConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 import type { HostStats } from "../../../../api/types";
 
 // ---------------------------------------------------------------------------
 // Resource gauge — one host metric (CPU / RAM / disk / swap) as a ring, chunky
-// bar, or live sparkline. Colour comes from the shared scale (health with
-// configurable breakpoints / value gradient / solid / accent); optional glow.
+// bar, or live sparkline. Adapts to size: a short-and-wide tile falls back to a
+// bar, and a tiny square shows a compact ring with the metric's icon. Colour
+// from the shared scale; optional glow.
 // ---------------------------------------------------------------------------
 
 const OPTS = { lo: 0, hi: 100, warn: 75, crit: 90 };
+const POLL_MS = 5000;
+
+const METRIC_ICONS: Record<string, React.ReactNode> = {
+  cpu: <><rect x="4" y="4" width="16" height="16" rx="2" /><rect x="9" y="9" width="6" height="6" /><path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" /></>,
+  ram: <><rect x="2" y="7" width="20" height="10" rx="1" /><path d="M6 7v10M10 7v10M14 7v10M18 7v10" /></>,
+  disk: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="2.5" /></>,
+  swap: <><path d="M17 2l4 4-4 4" /><path d="M3 6h18M7 22l-4-4 4-4M21 18H3" /></>,
+};
 
 function fmtBytes(n: number): string {
   if (n <= 0) return "0 B";
@@ -66,6 +76,29 @@ function Ring({ pct, size, big, name, cfg }: { pct: number; size: number; big: s
         <span className="font-mono tabular-nums font-semibold leading-none" style={{ fontSize: size * 0.24, color: cur }}>{big}</span>
         <span className="text-text-muted uppercase tracking-wide" style={{ fontSize: Math.max(8, size * 0.1) }}>{name}</span>
       </div>
+    </div>
+  );
+}
+
+// Compact ring for tiny (≈1×1) tiles: the metric's icon sits in the centre.
+function RingIcon({ pct, size, metric, cfg }: { pct: number; size: number; metric: string; cfg: GaugeConfig }) {
+  const cur = scaleColor(pct, cfg as ColorConfig, OPTS);
+  const glow = cfg.glow !== false;
+  const stroke = Math.max(4, Math.round(size * 0.1));
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const off = c * (1 - Math.min(100, Math.max(0, pct)) / 100);
+  const iconSize = size * 0.34;
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }} title={`${metric.toUpperCase()} ${Math.round(pct)}%`}>
+      <svg width={size} height={size} className="-rotate-90">
+        {cfg.track !== false && <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-bg-elevated, #1e2130)" strokeWidth={stroke} />}
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={cur} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off}
+          style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.4s ease", filter: glow ? `drop-shadow(0 0 ${stroke * 0.6}px ${cur})` : undefined }} />
+      </svg>
+      <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} fill="none" stroke={cur} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute">
+        {METRIC_ICONS[metric] ?? METRIC_ICONS.cpu}
+      </svg>
     </div>
   );
 }
@@ -126,16 +159,15 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   const box = useSize<HTMLDivElement>();
   const cfg = config ?? {};
   const metric = cfg.metric ?? "cpu";
-  const style = cfg.style ?? "ring";
   const hist = useRef<number[]>([]);
   const [, tick] = useState(0);
 
-  const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: 5_000 });
+  const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: POLL_MS });
 
   useEffect(() => {
     if (!data) return;
     const m = readMetric(data, metric);
-    hist.current = [...hist.current, m.pct].slice(-40);
+    hist.current = [...hist.current, m.pct].slice(-maxBuffer(POLL_MS));
     tick((n) => n + 1);
   }, [data, metric]);
 
@@ -146,11 +178,23 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   const m = readMetric(data, metric);
   const name = cfg.label || m.name;
 
+  // Adapt to size: a short tile can't hold a ring. If it's short-and-wide, use
+  // a bar; if it's a tiny square, use the compact icon ring.
+  let style: "ring" | "bar" | "spark" | "ringicon" = cfg.style ?? "ring";
+  const short = box.h > 0 && box.h < 96;
+  const wide = box.w > box.h * 1.5;
+  if (short && style === "ring") style = wide ? "bar" : "ringicon";
+
   let body: React.ReactNode;
-  if (style === "bar") {
+  if (style === "ringicon") {
+    const size = Math.max(40, Math.min(box.w - 12, box.h - 12, 120)) || 56;
+    body = <RingIcon pct={m.pct} size={size} metric={metric} cfg={cfg} />;
+  } else if (style === "bar") {
     body = <BarStyle pct={m.pct} big={m.big} sub={m.sub} name={name} cfg={cfg} />;
   } else if (style === "spark") {
-    body = <Spark hist={hist.current} big={m.big} sub={m.sub} name={name} w={box.w} cfg={cfg} />;
+    const win = (cfg.window ?? "5m") as TimeWindow;
+    const view = hist.current.slice(-windowPoints(win, POLL_MS));
+    body = <Spark hist={view} big={m.big} sub={m.sub} name={name} w={box.w} cfg={cfg} />;
   } else {
     const size = Math.max(60, Math.min(box.w - 24, box.h - 24, 200)) || 96;
     body = <Ring pct={m.pct} size={size} big={m.big} name={name} cfg={cfg} />;
@@ -189,6 +233,13 @@ function GaugeConfigPanel({ config, save }: WidgetConfigProps<GaugeConfig>) {
           ))}
         </div>
       </div>
+
+      {style === "spark" && (
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Time window</label>
+          <WindowChips value={(config?.window ?? "5m") as TimeWindow} onChange={(w) => save({ window: w })} />
+        </div>
+      )}
 
       <ColorControls cfg={config} save={save} opts={OPTS} unit="%" />
 
@@ -229,9 +280,9 @@ const definition: WidgetDefinition<GaugeConfig> = {
   title: "Resource gauge",
   icon: GaugeIcon,
   category: "infrastructure",
-  description: "One host metric (CPU/RAM/disk/swap) as a ring, bar or live sparkline — configurable colours + glow.",
-  minW: 2,
-  minH: 2,
+  description: "One host metric (CPU/RAM/disk/swap) as a ring, bar or live sparkline — configurable colours + glow. Adapts to size.",
+  minW: 1,
+  minH: 1,
   maxW: 6,
   maxH: 6,
   defaultW: 2,

@@ -15,21 +15,27 @@ function fmtMem(b: number): string {
   return gb >= 1 ? `${gb.toFixed(1)}G` : `${Math.round(b / 1e6)}M`;
 }
 
+const ROW_H = 26; // px per process row
+
 function TopProcComponent({ config }: WidgetProps<TopProcConfig>) {
   const box = useSize<HTMLDivElement>();
-  const count = config?.count ?? 8;
   const sortBy = config?.sort ?? "cpu";
+  // How many rows fit the current height (header ~26px). The config `count`
+  // caps it, but the widget never overflows or leaves blank space.
+  const fit = box.h > 0 ? Math.max(1, Math.floor((box.h - 26) / ROW_H)) : 8;
+  const want = Math.min(fit, config?.count ?? 30);
+
   const { data, isError } = useQuery({
-    queryKey: ["host-procs", count],
-    queryFn: () => api.getHostProcs(Math.max(count, 12)),
+    queryKey: ["host-procs"],
+    queryFn: () => api.getHostProcs(30),
     refetchInterval: 3_000,
   });
 
   const rows = useMemo(() => {
     const p = [...(data?.procs ?? [])];
     p.sort((a, b) => (sortBy === "mem" ? b.rss - a.rss : b.cpu - a.cpu));
-    return p.slice(0, count);
-  }, [data, sortBy, count]);
+    return p.slice(0, want);
+  }, [data, sortBy, want]);
 
   if (isError) {
     return <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">Process list unavailable.</div>;
@@ -38,7 +44,7 @@ function TopProcComponent({ config }: WidgetProps<TopProcConfig>) {
   const showMem = box.w >= 220;
 
   return (
-    <div ref={box.ref} className="h-full flex flex-col">
+    <div ref={box.ref} className="h-full flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-3 pt-2 pb-1 shrink-0 text-[10px] uppercase tracking-wide text-text-muted">
         <span>Process</span>
         <span className="flex gap-3">
@@ -46,10 +52,10 @@ function TopProcComponent({ config }: WidgetProps<TopProcConfig>) {
           {showMem && <span className={sortBy === "mem" ? "text-text-secondary" : ""}>MEM</span>}
         </span>
       </div>
-      <div className="flex-1 min-h-0 overflow-auto px-2 pb-2 divide-y divide-border-subtle">
+      <div className="flex-1 min-h-0 px-2 divide-y divide-border-subtle">
         {rows.length === 0 && <div className="text-[11px] text-text-muted px-1 py-2">No data (needs pid: host).</div>}
         {rows.map((p) => (
-          <div key={p.pid} className="flex items-center gap-2 px-1.5 py-1">
+          <div key={p.pid} className="flex items-center gap-2 px-1.5" style={{ height: ROW_H }}>
             <span className="text-[12px] text-text-secondary truncate flex-1 font-mono" title={`pid ${p.pid}`}>{p.name}</span>
             <span className="font-mono tabular-nums text-[11px] text-text w-11 text-right">{p.cpu.toFixed(0)}%</span>
             {showMem && <span className="font-mono tabular-nums text-[11px] text-text-muted w-11 text-right">{fmtMem(p.rss)}</span>}

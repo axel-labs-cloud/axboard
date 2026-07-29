@@ -508,3 +508,25 @@
 *::-webkit-scrollbar-thumb:hover {
   background: var(--color-border-subtle);
 }
+
+/* Widget surfaces never show a scrollbar — content still scrolls (wheel/drag),
+   but the bar itself is hidden so tiles stay clean. Config panels and modals
+   live outside the grid and keep their scrollbars. */
+.react-grid-item ::-webkit-scrollbar,
+.react-grid-item::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+}
+.react-grid-item *,
+.react-grid-item {
+  scrollbar-width: none;
+}
+
+/* Reusable opt-out utility for any other scroll container. */
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}

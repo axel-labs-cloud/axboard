@@ -20,6 +20,14 @@ function fmtBytes(n: number): string {
   return `${(n / 1024 ** i).toFixed(i >= 3 ? 1 : 0)}${u[i]}`;
 }
 
+const NET_FS = /^(nfs|cifs|smb|fuse\.sshfs)/;
+function netTag(type: string): string | null {
+  if (!NET_FS.test(type)) return null;
+  if (type.startsWith("nfs")) return "NFS";
+  if (type.startsWith("cifs") || type.startsWith("smb")) return "SMB";
+  return "SSHFS";
+}
+
 function DisksComponent({ config }: WidgetProps<DisksConfig>) {
   const box = useSize<HTMLDivElement>();
   const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: 15_000 });
@@ -41,15 +49,19 @@ function DisksComponent({ config }: WidgetProps<DisksConfig>) {
   const cols = box.w >= 440 ? 2 : 1;
 
   return (
-    <div ref={box.ref} className="h-full overflow-auto px-3 py-2.5">
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, columnGap: "14px", rowGap: "9px" }}>
+    <div ref={box.ref} className="h-full overflow-auto px-3 py-2.5 flex flex-col justify-center">
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, columnGap: "14px", rowGap: "10px" }}>
         {fs.map((d) => {
           const pct = d.total > 0 ? (d.used / d.total) * 100 : 0;
           const color = scaleColor(pct, config as ColorConfig, OPTS);
+          const tag = netTag(d.type);
           return (
             <div key={d.path} className="space-y-1">
               <div className="flex items-baseline justify-between text-[11px] gap-2">
-                <span className="text-text-secondary font-mono truncate">{d.path}</span>
+                <span className="text-text-secondary font-mono truncate flex items-center gap-1.5">
+                  {tag && <span className="px-1 py-px rounded bg-accent/15 text-accent text-[9px] font-sans font-semibold not-italic shrink-0">{tag}</span>}
+                  <span className="truncate">{d.path}</span>
+                </span>
                 <span className="font-mono tabular-nums text-text-muted shrink-0">{fmtBytes(d.used)}/{fmtBytes(d.total)}</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-bg-elevated overflow-hidden">

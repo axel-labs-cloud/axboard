@@ -56,6 +56,7 @@ type Battery struct {
 
 type Filesystem struct {
 	Path  string `json:"path"`
+	Type  string `json:"type"`
 	Total uint64 `json:"total"`
 	Used  uint64 `json:"used"`
 }
@@ -328,10 +329,34 @@ func gatherBatteries() []Battery {
 	return out
 }
 
-// realFS is the set of on-disk filesystem types worth reporting.
+// realFS is the set of filesystem types worth reporting — on-disk plus common
+// network/remote mounts (NFS/CIFS/sshfs). Network mounts are statfs'd with a
+// timeout so a stale/unreachable server can't hang the request.
 var realFS = map[string]bool{
 	"ext2": true, "ext3": true, "ext4": true, "xfs": true, "btrfs": true,
 	"zfs": true, "f2fs": true, "vfat": true, "ntfs": true, "ntfs3": true, "exfat": true,
+	"nfs": true, "nfs4": true, "cifs": true, "smb3": true, "fuse.sshfs": true, "fuseblk": true,
+}
+
+// statfsTimeout runs statfs in a goroutine and gives up after 800ms — a stale
+// NFS/CIFS mount would otherwise block indefinitely.
+func statfsTimeout(path string) (syscall.Statfs_t, bool) {
+	type res struct {
+		fs  syscall.Statfs_t
+		err error
+	}
+	ch := make(chan res, 1)
+	go func() {
+		var fs syscall.Statfs_t
+		err := syscall.Statfs(path, &fs)
+		ch <- res{fs, err}
+	}()
+	select {
+	case r := <-ch:
+		return r.fs, r.err == nil
+	case <-time.After(800 * time.Millisecond):
+		return syscall.Statfs_t{}, false
+	}
 }
 
 // hostRoot, when set (AXBOARD_HOST_ROOT, e.g. /host with `- /:/host:ro` in
@@ -361,8 +386,8 @@ func gatherFilesystems() []Filesystem {
 		if hostRoot != "" {
 			statPath = hostRoot + f[1]
 		}
-		var fs syscall.Statfs_t
-		if err := syscall.Statfs(statPath, &fs); err != nil {
+		fs, ok := statfsTimeout(statPath)
+		if !ok {
 			continue
 		}
 		bs := uint64(fs.Bsize)
@@ -371,8 +396,8 @@ func gatherFilesystems() []Filesystem {
 			continue
 		}
 		seen[f[0]] = true
-		out = append(out, Filesystem{Path: f[1], Total: total, Used: (fs.Blocks - fs.Bfree) * bs})
-		if len(out) >= 12 {
+		out = append(out, Filesystem{Path: f[1], Type: f[2], Total: total, Used: (fs.Blocks - fs.Bfree) * bs})
+		if len(out) >= 16 {
 			break
 		}
 	}

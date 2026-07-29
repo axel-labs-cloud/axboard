@@ -63,8 +63,8 @@ function TempsComponent({ config }: WidgetProps<TempsConfig>) {
   }
 
   return (
-    <div ref={box.ref} className="h-full overflow-auto px-3 py-2.5">
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, columnGap: "14px", rowGap: "7px" }}>
+    <div ref={box.ref} className="h-full overflow-auto px-3 py-2.5 flex flex-col justify-center">
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, columnGap: "14px", rowGap: "9px" }}>
         {temps.map((t, i) => {
           const color = scaleColor(t.celsius, config as ColorConfig, OPTS);
           const w = Math.min(100, Math.max(0, ((t.celsius - BAR_LO) / (BAR_HI - BAR_LO)) * 100));

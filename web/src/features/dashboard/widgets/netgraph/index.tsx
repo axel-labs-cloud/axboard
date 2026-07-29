@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
 import { PALETTE } from "../colorScale";
+import { WindowChips, windowPoints, maxBuffer, type TimeWindow } from "../timeWindow";
 import type { NetGraphConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -11,7 +12,7 @@ import type { NetGraphConfig, WidgetConfigProps, WidgetDefinition, WidgetProps }
 // (both from the bottom) or "mirror" (in above / out below a centre line).
 // ---------------------------------------------------------------------------
 
-const MAX_POINTS = 90;
+const POLL_MS = 2000;
 
 function fmtRate(bps: number): string {
   if (bps < 1) return "0";
@@ -57,17 +58,18 @@ function col(key: string | undefined, fallback: string): string {
   return key ? PALETTE[key] ?? fallback : fallback;
 }
 
-function NetGraphComponent({ config }: WidgetProps<NetGraphConfig>) {
+function NetGraphComponent({ config, save }: WidgetProps<NetGraphConfig>) {
   const box = useSize<HTMLDivElement>();
   const rx = useRef<number[]>([]);
   const tx = useRef<number[]>([]);
   const [, tick] = useState(0);
-  const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: 2_000 });
+  const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: POLL_MS });
 
   useEffect(() => {
     if (!data) return;
-    rx.current = [...rx.current, data.net_rx_bps].slice(-MAX_POINTS);
-    tx.current = [...tx.current, data.net_tx_bps].slice(-MAX_POINTS);
+    const cap = maxBuffer(POLL_MS);
+    rx.current = [...rx.current, data.net_rx_bps].slice(-cap);
+    tx.current = [...tx.current, data.net_tx_bps].slice(-cap);
     tick((n) => n + 1);
   }, [data]);
 
@@ -76,27 +78,31 @@ function NetGraphComponent({ config }: WidgetProps<NetGraphConfig>) {
   }
 
   const style = config?.style ?? "stack";
+  const win = (config?.window ?? "5m") as TimeWindow;
+  const n = windowPoints(win, POLL_MS);
+  const rxV = rx.current.slice(-n);
+  const txV = tx.current.slice(-n);
   const inColor = col(config?.colorIn, "var(--color-up, #10b981)");
   const outColor = col(config?.colorOut, "var(--color-accent, #818cf8)");
 
   const w = Math.max(40, box.w);
   const chartH = Math.max(24, box.h - 30);
   const fixed = config?.scaleMbit ? (config.scaleMbit * 1e6) / 8 : 0;
-  const peak = Math.max(1, fixed || Math.max(...rx.current, ...tx.current, 1) * 1.15);
+  const peak = Math.max(1, fixed || Math.max(...rxV, ...txV, 1) * 1.15);
 
-  const inP = paths(rx.current, w, style === "mirror" ? chartH / 2 : chartH, peak, false);
-  const outP = paths(tx.current, w, style === "mirror" ? chartH / 2 : chartH, peak, style === "mirror");
+  const inP = paths(rxV, w, style === "mirror" ? chartH / 2 : chartH, peak, false);
+  const outP = paths(txV, w, style === "mirror" ? chartH / 2 : chartH, peak, style === "mirror");
   const grid = style === "mirror" ? [chartH / 2] : [chartH * 0.33, chartH * 0.66];
 
   return (
     <div ref={box.ref} className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-3 pt-1.5 shrink-0 text-[11px]">
-        <span className="flex items-center gap-1.5" style={{ color: inColor }}>
-          <span className="w-2 h-2 rounded-sm" style={{ background: inColor }} /> In {fmtRate(data.net_rx_bps)}
+      <div className="flex items-center justify-between px-3 pt-1.5 shrink-0 text-[11px] gap-2">
+        <span className="flex items-center gap-1.5 min-w-0" style={{ color: inColor }}>
+          <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: inColor }} /> <span className="truncate">In {fmtRate(data.net_rx_bps)}</span>
         </span>
-        <span className="font-mono text-[9px] text-text-muted/70">↑{fmtRate(peak)}</span>
-        <span className="flex items-center gap-1.5" style={{ color: outColor }}>
-          Out {fmtRate(data.net_tx_bps)} <span className="w-2 h-2 rounded-sm" style={{ background: outColor }} />
+        {box.w >= 300 && <WindowChips value={win} onChange={(wv) => save({ window: wv })} size="xs" />}
+        <span className="flex items-center gap-1.5 min-w-0 justify-end" style={{ color: outColor }}>
+          <span className="truncate">Out {fmtRate(data.net_tx_bps)}</span> <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: outColor }} />
         </span>
       </div>
       <svg width={w} height={chartH} className="w-full flex-1" preserveAspectRatio="none" viewBox={`0 0 ${w} ${chartH}`}>
@@ -160,6 +166,10 @@ function NetGraphConfigPanel({ config, save }: WidgetConfigProps<NetGraphConfig>
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Time window</label>
+        <WindowChips value={(config?.window ?? "5m") as TimeWindow} onChange={(w) => save({ window: w })} />
+      </div>
+      <div className="space-y-1.5">
         <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Style</label>
         <div className="grid grid-cols-2 gap-1">
           {([
@@ -210,7 +220,7 @@ const definition: WidgetDefinition<NetGraphConfig> = {
   maxH: 6,
   defaultW: 4,
   defaultH: 2,
-  defaultConfig: { style: "stack" },
+  defaultConfig: { style: "stack", window: "5m" },
   Component: NetGraphComponent,
   ConfigPanel: NetGraphConfigPanel,
 };

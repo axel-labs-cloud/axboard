@@ -148,7 +148,7 @@ export interface HostStats {
   per_cpu: number[];
   temps: { label: string; celsius: number }[];
   batteries: { name: string; pct: number; status: string }[];
-  filesystems: { path: string; total: number; used: number }[];
+  filesystems: { path: string; type: string; total: number; used: number }[];
 }
 
 export interface ProcInfo {
