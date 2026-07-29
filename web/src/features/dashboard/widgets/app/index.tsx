@@ -133,11 +133,13 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
   const wolBtn = canWake(app, status) ? (
     <WakeButton mac={app.wol!.mac} broadcast={app.wol!.broadcast} className="pointer-events-auto shadow" />
   ) : null;
-  // shell wraps a layout's <a> with optional corner overlays.
+  // shell wraps a layout's <a> with an optional top-right stats cluster and the
+  // wake button pinned to the bottom-right corner.
   const shell = (inner: React.ReactNode, corner?: React.ReactNode) => (
     <div className="relative w-full h-full">
       {inner}
       {corner}
+      {wolBtn && <div className="absolute bottom-1.5 right-1.5 z-10">{wolBtn}</div>}
     </div>
   );
   const lastCheckedStr =
@@ -154,7 +156,6 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
           </span>
         )}
       </a>,
-      wolBtn && <div className="absolute bottom-1 right-1 z-10">{wolBtn}</div>,
     );
   }
 
@@ -183,7 +184,6 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
         )}
         {showStatus && <StatusDot status={status} size="md" />}
       </a>,
-      wolBtn && <div className="absolute top-1 right-1 z-10">{wolBtn}</div>,
     );
   }
 
@@ -199,7 +199,6 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
           {showStatus && <StatusDot status={status} size="sm" />}
         </div>
       </a>,
-      wolBtn && <div className="absolute top-1 right-1 z-10">{wolBtn}</div>,
     );
   }
 
@@ -220,10 +219,11 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
           )}
         </div>
       </a>,
-      <div className="absolute top-2 right-2.5 z-10 flex items-center gap-1.5 pointer-events-none">
-        {showStatus && <StatusDot status={status} size="md" />}
-        {wolBtn}
-      </div>,
+      showStatus ? (
+        <div className="absolute top-2 right-2.5 z-10 pointer-events-none">
+          <StatusDot status={status} size="md" />
+        </div>
+      ) : undefined,
     );
   }
 
@@ -231,12 +231,12 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
   // checked, status dot and the wake button move to the top-right corner so the
   // icon and text keep their position.
   return shell(
-    <a {...props} className={`${linkClass} items-center gap-4 px-4 py-3`}>
-      <div className="h-full max-h-[100px] aspect-square shrink-0 py-1">
+    <a {...props} className={`${linkClass} items-center gap-3 px-3`}>
+      <div className="h-1/2 aspect-square shrink-0 max-h-[44px]">
         <Icon app={app} className="w-full h-full" />
       </div>
-      <div className="min-w-0 flex-1 flex flex-col gap-1 pr-12">
-        <span className="text-text font-semibold text-[16px] truncate">{app.name}</span>
+      <div className="min-w-0 flex-1 flex flex-col gap-0.5 pr-12">
+        <span className="text-text font-semibold text-[15px] truncate leading-tight">{app.name}</span>
         {showDescription && (
           <span className="text-text-muted text-[12px] truncate leading-snug">{descText}</span>
         )}
@@ -255,7 +255,7 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
         )}
       </div>
     </a>,
-    <div className="absolute top-3 right-3.5 z-10 flex items-center gap-2 pointer-events-none">
+    <div className="absolute top-2.5 right-3 z-10 flex items-center gap-2 pointer-events-none">
       {hasHealth && status && ((showResponseTime && status.response_ms != null) || (showLastChecked && lastCheckedStr)) && (
         <div className="flex flex-col items-end leading-tight font-mono tabular-nums text-[10px] text-text-muted/80">
           {showResponseTime && status.response_ms != null && <span>{status.response_ms} ms</span>}
@@ -263,7 +263,6 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
         </div>
       )}
       {showStatus && <StatusDot status={status} size="lg" />}
-      {wolBtn}
     </div>,
   );
 }
