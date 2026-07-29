@@ -141,9 +141,11 @@ function BarStyle({ pct, big, sub, name, h, cfg }: { pct: number; big: string; s
   );
 }
 
-function Spark({ hist, big, sub, name, w, cfg }: { hist: number[]; big: string; sub: string; name: string; w: number; cfg: GaugeConfig }) {
+function Spark({ hist, big, sub, name, w, h, cfg }: { hist: number[]; big: string; sub: string; name: string; w: number; h: number; cfg: GaugeConfig }) {
   const width = Math.max(80, w - 32);
-  const height = 46;
+  // Fill the available height: header (~26) + sub (~18) + padding leave the rest
+  // for the chart, clamped to a sensible range.
+  const height = Math.max(28, Math.min((h || 120) - 52, 220));
   const pts = hist.length ? hist : [0];
   const cur = pts[pts.length - 1] ?? 0;
   const color = scaleColor(cur, cfg as ColorConfig, OPTS);
@@ -192,7 +194,7 @@ function gaugeBody(metric: string, d: HostStats, cfg: GaugeConfig, w: number, h:
   if (style === "bar") return <BarStyle pct={m.pct} big={m.big} sub={m.sub} name={name} h={h} cfg={cfg} />;
   if (style === "spark") {
     const win = (cfg.window ?? "5m") as TimeWindow;
-    return <Spark hist={hist.slice(-windowPoints(win, POLL_MS))} big={m.big} sub={m.sub} name={name} w={w} cfg={cfg} />;
+    return <Spark hist={hist.slice(-windowPoints(win, POLL_MS))} big={m.big} sub={m.sub} name={name} w={w} h={h} cfg={cfg} />;
   }
   const size = Math.max(60, Math.min(w - 24, h - 24, 200)) || 96;
   return <Ring pct={m.pct} size={size} big={m.big} name={name} cfg={cfg} />;

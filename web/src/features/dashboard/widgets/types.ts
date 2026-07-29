@@ -391,6 +391,7 @@ export interface WolTarget {
 }
 export interface WolConfig {
   targets?: WolTarget[];
+  title?: string;
 }
 
 export type WidgetConfigByType = {

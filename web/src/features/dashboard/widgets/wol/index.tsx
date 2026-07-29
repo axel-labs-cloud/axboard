@@ -13,46 +13,67 @@ type Sent = "idle" | "sending" | "ok" | "err";
 function WolComponent({ config }: WidgetProps<WolConfig>) {
   const box = useSize<HTMLDivElement>();
   const targets = config?.targets ?? [];
+  const title = config?.title ?? "Wake-on-LAN";
   const [state, setState] = useState<Record<string, Sent>>({});
+  // Increments per-target on a successful wake to (re)trigger the flash.
+  const [flash, setFlash] = useState<Record<string, number>>({});
 
   const wake = async (t: WolTarget) => {
     setState((s) => ({ ...s, [t.mac]: "sending" }));
     try {
       const r = await api.wol(t.mac, t.broadcast);
       setState((s) => ({ ...s, [t.mac]: r.ok ? "ok" : "err" }));
+      if (r.ok) setFlash((f) => ({ ...f, [t.mac]: (f[t.mac] ?? 0) + 1 }));
     } catch {
       setState((s) => ({ ...s, [t.mac]: "err" }));
     }
     window.setTimeout(() => setState((s) => ({ ...s, [t.mac]: "idle" })), 2500);
   };
 
+  const header = (
+    <div className="flex items-center gap-1.5 px-3 pt-2.5 pb-1.5 shrink-0" style={{ height: 34 }}>
+      <span className="text-text-muted shrink-0">{WolIcon}</span>
+      <span className="text-[12px] font-medium text-text-secondary truncate">{title}</span>
+    </div>
+  );
+
   if (targets.length === 0) {
     return (
-      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
-        Open config → add a device (name + MAC).
+      <div ref={box.ref} className="h-full flex flex-col overflow-hidden">
+        {header}
+        <div className="flex-1 flex items-center justify-center text-text-muted/70 text-[11px] px-3 text-center">
+          Open config → add a device (name + MAC).
+        </div>
       </div>
     );
   }
 
+  const bodyH = box.h - 34;
   const cols = box.w >= 420 ? 3 : box.w >= 240 ? 2 : 1;
 
   return (
-    <div ref={box.ref} className="h-full overflow-auto p-3">
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, gap: "8px" }}>
+    <div ref={box.ref} className="h-full flex flex-col overflow-hidden">
+      {header}
+      <div
+        className="flex-1 min-h-0 px-3 pb-3"
+        style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, gridAutoRows: "1fr", gap: "8px" }}
+      >
         {targets.map((t) => {
           const st = state[t.mac] ?? "idle";
+          const iconSmall = bodyH / Math.ceil(targets.length / cols) < 64;
           return (
             <button
               key={t.mac + t.name}
               onClick={() => wake(t)}
               disabled={st === "sending"}
-              className={`flex flex-col items-center gap-1 px-2 py-2.5 rounded-lg border transition-colors ${
+              className={`relative overflow-hidden flex flex-col items-center justify-center gap-1 px-2 rounded-lg border transition-colors ${
                 st === "ok" ? "border-up/50 bg-up/10 text-up"
                   : st === "err" ? "border-down/50 bg-down/10 text-down"
                   : "border-border bg-bg-card/40 text-text-secondary hover:border-accent/50 hover:text-accent"
               }`}
             >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              {flash[t.mac] ? <span key={flash[t.mac]} className="wol-flash" /> : null}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={iconSmall ? "w-3.5 h-3.5" : "w-4 h-4"}>
                 <path d="M18.36 6.64a9 9 0 1 1-12.73 0" /><line x1="12" y1="2" x2="12" y2="12" />
               </svg>
               <span className="text-[11px] font-medium truncate max-w-full">{t.name}</span>
@@ -78,6 +99,15 @@ function WolConfigPanel({ config, save }: WidgetConfigProps<WolConfig>) {
 
   return (
     <div className="space-y-2.5">
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Title</label>
+        <input
+          value={config?.title ?? ""}
+          onChange={(e) => save({ title: e.target.value })}
+          placeholder="Wake-on-LAN"
+          className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
+        />
+      </div>
       {targets.map((t, i) => (
         <div key={i} className="space-y-1.5 rounded border border-border-subtle p-2">
           <div className="flex gap-1.5">

@@ -530,3 +530,21 @@
 .no-scrollbar {
   scrollbar-width: none;
 }
+
+/* Wake-on-LAN "packet sent" flash — a yellow wash that fades out. */
+@keyframes wol-flash {
+  0% {
+    opacity: 0.75;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.wol-flash {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #facc15;
+  pointer-events: none;
+  animation: wol-flash 0.9s ease-out forwards;
+}
