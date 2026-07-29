@@ -376,7 +376,7 @@ export function DashboardTabBar({
                 onClick={() => { setMenuOpen(false); onAddWidget(); }}
               />
               <MenuItem
-                label="Configure (services, alerts, status)…"
+                label="Configure"
                 icon={ITEM_ICONS.gear}
                 onClick={() => { setMenuOpen(false); onManageServices(); }}
               />

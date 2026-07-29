@@ -1180,7 +1180,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     const acts: SpotlightAction[] = [
       { label: editing ? "Exit edit mode" : "Edit dashboard", run: () => setEditing((e) => !e) },
       { label: "Add widget", run: () => setAddWidgetOpen(true) },
-      { label: "Manage services", run: () => openServices("services") },
+      { label: "Configure", run: () => openServices("services") },
       { label: "New dashboard from template", run: () => setTemplatePickerOpen(true) },
       { label: "Edit config.yaml", run: () => setConfigEditorOpen(true) },
       { label: "Back up everything", run: () => handleBackup() },

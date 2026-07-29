@@ -59,8 +59,12 @@ type spData struct {
 	BgStyle      template.CSS
 	Dim          int
 	Up           int
+	Degraded     int
+	Down         int
 	Total        int
 	AllUp        bool
+	Headline     string // human summary, e.g. "All systems operational"
+	State        string // ok | degraded | down — worst current state
 	Notices      []spNotice
 	Groups       []spGroup
 	UpdatedAt    string
@@ -274,7 +278,7 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 
 	order := []string{}
 	buckets := map[string][]spService{}
-	up, total := 0, 0
+	up, degraded, down, total := 0, 0, 0, 0
 	for _, a := range cfg.Apps {
 		if a.Health == nil || a.Health.Type == config.HealthNone || a.Health.Type == "" {
 			continue
@@ -291,8 +295,13 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 		if st == "" {
 			st = "unknown"
 		}
-		if st == "healthy" {
+		switch st {
+		case "healthy":
 			up++
+		case "degraded":
+			degraded++
+		case "down":
+			down++
 		}
 		svc := spService{Name: a.Name, Status: st, StatusText: statusText(st)}
 		// Prefer the 30-day windowed uptime (disk-backed) when available.
@@ -380,6 +389,15 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 	if page.Background != nil {
 		dim = page.Background.Dim
 	}
+	state, headline := "ok", "All systems operational"
+	switch {
+	case total == 0:
+		state, headline = "ok", "No services monitored"
+	case down > 0:
+		state, headline = "down", "Service disruption"
+	case degraded > 0:
+		state, headline = "degraded", "Degraded performance"
+	}
 	data := spData{
 		Title:        title,
 		Header:       page.Header,
@@ -392,8 +410,12 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 		BgStyle:      bg,
 		Dim:          dim,
 		Up:           up,
+		Degraded:     degraded,
+		Down:         down,
 		Total:        total,
 		AllUp:        total > 0 && up == total,
+		Headline:     headline,
+		State:        state,
 		Notices:      notices,
 		Groups:       groups,
 		UpdatedAt:    time.Now().Format("Jan 2, 15:04:05 MST"),
@@ -493,12 +515,21 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   /* When a custom backdrop is set, make the cards glassy so it shows through. */
   body.themed .banner,body.themed .card,body.themed .notice{background:color-mix(in srgb,var(--card) 78%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
   h1{font-size:22px;margin:0 0 4px;color:var(--accent)}
-  .hdr{color:var(--mut);font-size:13px;margin:0 0 8px;white-space:pre-wrap}
+  .hdr{color:var(--mut);font-size:13px;margin:0 0 18px;white-space:pre-wrap}
   .sub{color:var(--mut);font-size:12px;margin-bottom:22px}
-  .banner{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:12px;margin-bottom:24px;font-weight:600;
-    border:1px solid var(--line);border-left:4px solid var(--accent);background:var(--card)}
-  .banner .big{width:12px;height:12px;border-radius:50%}
-  .banner.ok .big{background:var(--up)} .banner.bad .big{background:var(--down)}
+  .updated{color:var(--mut);font-size:11.5px;text-align:center;margin-top:26px}
+  .banner{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:14px;margin:6px 0 26px;
+    border:1px solid var(--line);border-left:4px solid var(--sc);background:var(--card)}
+  .banner .big{width:14px;height:14px;border-radius:50%;flex:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--sc) 22%,transparent)}
+  .banner .big{background:var(--sc)}
+  .bmeta{flex:1;min-width:0}
+  .bhead{font-weight:600;font-size:16px;color:var(--tx);line-height:1.25}
+  .bsub{font-size:12.5px;color:var(--mut);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 12px}
+  .bsub b{font-weight:600;font-variant-numeric:tabular-nums}
+  .bsub .o b{color:var(--up)} .bsub .d b{color:var(--deg)} .bsub .x b{color:var(--down)}
+  .bcount{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--tx);line-height:1;white-space:nowrap}
+  .bcount span{font-size:15px;font-weight:500;color:var(--mut)}
+  .banner.ok{--sc:var(--up)} .banner.degraded{--sc:var(--deg)} .banner.down{--sc:var(--down)}
   .grp{margin-bottom:22px}
   .grp h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--mut);margin:0 0 8px;font-weight:600}
   .card{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden}
@@ -530,16 +561,23 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   <div class="wrap">
   <h1>{{.Title}}</h1>
   {{if .Header}}<div class="hdr">{{.Header}}</div>{{end}}
-  <div class="sub">Updated {{.UpdatedAt}} · refreshes automatically</div>
   {{range .Notices}}
   <div class="notice {{.Severity}}">
     {{if .Title}}<div class="nt">{{.Title}}</div>{{end}}
     {{if .Message}}<div class="nm">{{.Message}}</div>{{end}}
   </div>
   {{end}}
-  <div class="banner {{if .AllUp}}ok{{else}}bad{{end}}">
+  <div class="banner {{.State}}">
     <span class="big"></span>
-    <span>{{if .AllUp}}All systems operational{{else}}{{.Up}} of {{.Total}} operational{{end}}</span>
+    <div class="bmeta">
+      <div class="bhead">{{.Headline}}</div>
+      <div class="bsub">
+        <span class="o"><b>{{.Up}}</b> operational</span>
+        {{if .Degraded}}<span class="d"><b>{{.Degraded}}</b> degraded</span>{{end}}
+        {{if .Down}}<span class="x"><b>{{.Down}}</b> down</span>{{end}}
+      </div>
+    </div>
+    {{if .Total}}<div class="bcount">{{.Up}}<span>/{{.Total}}</span></div>{{end}}
   </div>
   {{range .Groups}}
   <div class="grp">
@@ -559,5 +597,6 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
     </div>
   </div>
   {{end}}
+  <div class="updated">Updated {{.UpdatedAt}} · refreshes automatically</div>
   {{if .Footer}}<footer>{{.Footer}}</footer>{{else if not .HideBranding}}<footer>Powered by axboard</footer>{{end}}
 </div></body></html>`))
