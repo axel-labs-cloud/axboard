@@ -27,9 +27,10 @@ const SEV_COLOR: Record<string, string> = {
 // editor.
 // ---------------------------------------------------------------------------
 
-function pageUrl(p: StatusPageDef): string {
+function pageUrl(p: StatusPageDef, preview = false): string {
   const s = (p.slug ?? "").trim().toLowerCase();
-  return s && s !== "default" ? `/status/${encodeURIComponent(s)}` : "/status";
+  const base = s && s !== "default" ? `/status/${encodeURIComponent(s)}` : "/status";
+  return preview ? `${base}?preview=1` : base;
 }
 
 function clean(pages: StatusPageDef[]): StatusPageDef[] {
@@ -163,38 +164,24 @@ export function StatusPagesForm({
           </div>
 
           {cur && (
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2">
-                <F label="Title" value={cur.title ?? ""} onChange={(v) => update({ title: v })} placeholder="Service status" />
+                <label className="block space-y-1">
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Title</span>
+                  <div className="flex items-center gap-1.5">
+                    <input value={cur.title ?? ""} onChange={(e) => update({ title: e.target.value })} placeholder="Service status" className="flex-1 min-w-0 px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent" />
+                    <input type="color" value={cur.accent || "#818cf8"} onChange={(e) => update({ accent: e.target.value })} title="Title colour" className="w-8 h-[30px] shrink-0 rounded bg-transparent border border-border cursor-pointer" />
+                    {cur.accent && <button onClick={() => update({ accent: undefined })} title="Reset title colour" className="shrink-0 text-[13px] text-text-muted hover:text-text px-0.5">✕</button>}
+                  </div>
+                </label>
                 <F label="Slug (URL)" value={cur.slug ?? ""} onChange={(v) => update({ slug: v })} placeholder="empty = /status" />
               </div>
               <T label="Header text (under the title)" value={cur.header ?? ""} onChange={(v) => update({ header: v })} placeholder="e.g. Real-time status of our services" />
               <T label="Footer text (blank = default / branding)" value={cur.footer ?? ""} onChange={(v) => update({ footer: v })} placeholder="© 2026 Axel Labs" />
 
-              <div className="flex items-center gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Theme</label>
-                  <div className="flex gap-1">
-                    {(["dark", "light"] as const).map((t) => (
-                      <button key={t} onClick={() => update({ theme: t })} className={`px-2.5 py-1 text-[11px] rounded border capitalize transition-colors ${(cur.theme ?? "dark") === t ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{t}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Width</label>
-                  <div className="flex gap-1">
-                    {(["narrow", "wide", "full"] as const).map((wv) => (
-                      <button key={wv} onClick={() => update({ width: wv })} className={`px-2.5 py-1 text-[11px] rounded border capitalize transition-colors ${(cur.width ?? "narrow") === wv ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{wv}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Accent</label>
-                  <input type="color" value={cur.accent || "#818cf8"} onChange={(e) => update({ accent: e.target.value })} className="w-7 h-7 rounded bg-transparent border border-border cursor-pointer" />
-                  {cur.accent && <button onClick={() => update({ accent: undefined })} className="text-[10px] text-text-muted hover:text-text">reset</button>}
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Banner</label>
+              <Section title="Status banner">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold w-12">Style</label>
                   <div className="flex gap-1 flex-wrap">
                     {(["tint", "minimal", "strip", "outline", "solid"] as const).map((bs) => (
                       <button key={bs} onClick={() => update({ banner_style: bs })} className={`px-2.5 py-1 text-[11px] rounded border capitalize transition-colors ${(cur.banner_style ?? "tint") === bs ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{bs}</button>
@@ -202,20 +189,40 @@ export function StatusPagesForm({
                   </div>
                 </div>
                 <div className="flex items-center gap-2" title="Banner turns red if a Critical service is down, or if at least this many non-critical services are down at once. 0 = non-critical outages stay amber.">
-                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Red at</label>
+                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold w-12">Red at</label>
                   <input
                     type="number" min={0} max={99}
                     value={cur.critical_threshold ?? 0}
                     onChange={(e) => update({ critical_threshold: Math.max(0, parseInt(e.target.value) || 0) })}
                     className="w-14 px-2 py-1 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent"
                   />
-                  <span className="text-[10px] text-text-muted">non-critical down (0 = off)</span>
+                  <span className="text-[10px] text-text-muted">non-critical services down (0 = off). A critical service down is always red.</span>
                 </div>
-              </div>
+              </Section>
+
+              <Section title="Layout &amp; theme">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Theme</label>
+                    <div className="flex gap-1">
+                      {(["dark", "light"] as const).map((t) => (
+                        <button key={t} onClick={() => update({ theme: t })} className={`px-2.5 py-1 text-[11px] rounded border capitalize transition-colors ${(cur.theme ?? "dark") === t ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{t}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Width</label>
+                    <div className="flex gap-1">
+                      {(["narrow", "wide", "full"] as const).map((wv) => (
+                        <button key={wv} onClick={() => update({ width: wv })} className={`px-2.5 py-1 text-[11px] rounded border capitalize transition-colors ${(cur.width ?? "narrow") === wv ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{wv}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </Section>
 
               {/* Background */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Background</label>
+              <Section title="Background">
                 <div className="flex gap-1 flex-wrap">
                   {([["", "None"], ["color", "Color"], ["gradient", "Gradient"], ["image", "Image"]] as const).map(([t, lbl]) => (
                     <button key={t} onClick={() => setBg({ type: t || undefined })} className={`px-2.5 py-1 text-[11px] rounded border transition-colors ${(bg.type ?? "") === t ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}>{lbl}</button>
@@ -269,51 +276,53 @@ export function StatusPagesForm({
                     <span className="w-8 tabular-nums">{bg.dim ?? 0}%</span>
                   </label>
                 )}
-              </div>
+              </Section>
 
-              {groups.length > 0 && (
-                <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Include groups (none = all)</label>
-                  <div className="flex flex-wrap gap-1.5">
-                    {groups.map((g) => (
-                      <button
-                        key={g.id}
-                        onClick={() => toggleGroup(g.id)}
-                        className={`px-2 py-1 rounded text-[11px] border transition-colors ${
-                          groupSel.has(g.id) ? "bg-accent/15 border-accent text-accent" : "bg-bg-card border-border text-text-muted hover:text-text"
-                        }`}
-                      >
-                        {g.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {apps.length > 0 && (
-                <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-                    Include services (none = all){groupSel.size > 0 ? " · in selected groups" : ""}
-                  </label>
-                  <div className="max-h-44 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
-                    {(groupSel.size > 0 ? apps.filter((a) => a.group && groupSel.has(a.group)) : apps).map((a) => (
-                      <label key={a.id} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
-                        <input type="checkbox" checked={appSel.size === 0 || appSel.has(a.id)} onChange={() => toggleApp(a.id)} className="accent-accent" />
-                        <span className="flex-1 truncate">{a.name}</span>
-                        {a.group && <span className="text-[10px] text-text-muted">{groups.find((g) => g.id === a.group)?.name ?? a.group}</span>}
+              {(groups.length > 0 || apps.length > 0) && (
+                <Section title="Services shown">
+                  {groups.length > 0 && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Groups (none = all)</label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {groups.map((g) => (
+                          <button
+                            key={g.id}
+                            onClick={() => toggleGroup(g.id)}
+                            className={`px-2 py-1 rounded text-[11px] border transition-colors ${
+                              groupSel.has(g.id) ? "bg-accent/15 border-accent text-accent" : "bg-bg-card border-border text-text-muted hover:text-text"
+                            }`}
+                          >
+                            {g.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {apps.length > 0 && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+                        Services (none = all){groupSel.size > 0 ? " · in selected groups" : ""}
                       </label>
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-text-muted">Groups pick whole categories; untick a service to hide just it.</p>
-                </div>
+                      <div className="max-h-44 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
+                        {(groupSel.size > 0 ? apps.filter((a) => a.group && groupSel.has(a.group)) : apps).map((a) => (
+                          <label key={a.id} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
+                            <input type="checkbox" checked={appSel.size === 0 || appSel.has(a.id)} onChange={() => toggleApp(a.id)} className="accent-accent" />
+                            <span className="flex-1 truncate">{a.name}</span>
+                            {a.group && <span className="text-[10px] text-text-muted">{groups.find((g) => g.id === a.group)?.name ?? a.group}</span>}
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-[10px] text-text-muted">Groups pick whole categories; untick a service to hide just it.</p>
+                    </div>
+                  )}
+                </Section>
               )}
 
               {/* Manual announcements / incidents / maintenance banners. */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Notices / announcements</label>
-                  <button onClick={addNotice} className="text-[11px] text-accent hover:underline">+ Notice</button>
-                </div>
+              <Section
+                title="Notices &amp; announcements"
+                action={<button onClick={addNotice} className="text-[11px] text-accent hover:underline">+ Notice</button>}
+              >
                 {notices.length === 0 && <p className="text-[10px] text-text-muted">Post a maintenance window, incident, or upcoming-change banner.</p>}
                 {notices.map((n, i) => (
                   <div key={i} className="rounded border border-border-subtle p-2 space-y-1.5">
@@ -341,22 +350,24 @@ export function StatusPagesForm({
                     <textarea value={n.message ?? ""} onChange={(e) => updNotice(i, { message: e.target.value })} placeholder="Message…" rows={2} className="w-full px-2 py-1 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent resize-y" />
                   </div>
                 ))}
-              </div>
+              </Section>
 
-              <div className="flex items-center gap-4 pt-0.5">
-                <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
-                  <input type="checkbox" checked={cur.hide_branding ?? false} onChange={(e) => update({ hide_branding: e.target.checked })} className="accent-accent" />
-                  Hide “Powered by axboard”
-                </label>
-                <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
-                  <input type="checkbox" checked={cur.enabled !== false} onChange={(e) => update({ enabled: e.target.checked })} className="accent-accent" />
-                  Enabled
-                </label>
-                <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer" title="When login is enabled: serve this page publicly (no sign-in). Off = requires a logged-in user. No effect when auth is disabled.">
-                  <input type="checkbox" checked={cur.public === true} onChange={(e) => update({ public: e.target.checked })} className="accent-accent" />
-                  Public (no login)
-                </label>
-              </div>
+              <Section title="Access &amp; visibility">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
+                    <input type="checkbox" checked={cur.hide_branding ?? false} onChange={(e) => update({ hide_branding: e.target.checked })} className="accent-accent" />
+                    Hide “Powered by axboard”
+                  </label>
+                  <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
+                    <input type="checkbox" checked={cur.enabled !== false} onChange={(e) => update({ enabled: e.target.checked })} className="accent-accent" />
+                    Enabled
+                  </label>
+                  <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer" title="When login is enabled: serve this page publicly (no sign-in). Off = requires a logged-in user. No effect when auth is disabled.">
+                    <input type="checkbox" checked={cur.public === true} onChange={(e) => update({ public: e.target.checked })} className="accent-accent" />
+                    Public (no login)
+                  </label>
+                </div>
+              </Section>
 
               {draft.length > 1 && (
                 <button onClick={() => removePage(sel)} className="text-[11px] text-text-muted hover:text-down">Delete this page</button>
@@ -371,12 +382,16 @@ export function StatusPagesForm({
             <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Live preview</span>
             <a href={cur ? pageUrl(cur) : "/status"} target="_blank" rel="noreferrer" className="text-[11px] text-accent hover:underline">Open ↗</a>
           </div>
-          <iframe
-            key={previewKey}
-            src={cur ? pageUrl(cur) : "/status"}
-            title="Status preview"
-            className="flex-1 w-full rounded-lg border border-border-subtle bg-white/5"
-          />
+          {/* Render at ~1.6x width then scale down so the page shows its real
+              desktop layout instead of a cramped narrow one. */}
+          <div className="flex-1 min-h-0 rounded-lg border border-border-subtle overflow-hidden bg-bg">
+            <iframe
+              key={previewKey}
+              src={cur ? pageUrl(cur, true) : "/status?preview=1"}
+              title="Status preview"
+              style={{ width: "160%", height: "160%", border: 0, transform: "scale(0.625)", transformOrigin: "top left" }}
+            />
+          </div>
         </div>
       </div>
 
@@ -384,6 +399,18 @@ export function StatusPagesForm({
         <span className="text-[11px] text-text-muted">Saved automatically · public — anyone who can reach axboard can view these pages.</span>
         {onClose && <button onClick={onClose} className="ml-auto px-3 py-1.5 text-[12px] rounded text-text-muted hover:text-text">Close</button>}
       </div>
+    </div>
+  );
+}
+
+function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border border-border-subtle bg-black/20 p-3 space-y-2.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">{title}</span>
+        {action}
+      </div>
+      {children}
     </div>
   );
 }

@@ -66,7 +66,8 @@ type spData struct {
 	AllUp        bool
 	Headline     string // human summary, e.g. "All systems operational"
 	State        string // ok | degraded | down — worst current state
-	BannerStyle  string // tint | minimal | strip | outline | solid | accent
+	BannerStyle  string // tint | minimal | strip | outline | solid
+	NoRefresh    bool   // suppress the 30s meta-refresh (used by the editor preview) | accent
 	Notices      []spNotice
 	Groups       []spGroup
 	UpdatedAt    string
@@ -440,6 +441,7 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 		Headline:     headline,
 		State:        state,
 		BannerStyle:  bannerStyle,
+		NoRefresh:    r.URL.Query().Get("preview") != "",
 		Notices:      notices,
 		Groups:       groups,
 		UpdatedAt:    time.Now().Format("Jan 2, 15:04:05 MST"),
@@ -525,7 +527,7 @@ func statusText(s string) string {
 var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
 <html lang="en" class="{{if .Light}}light{{end}}"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="30">
+{{if not .NoRefresh}}<meta http-equiv="refresh" content="30">{{end}}
 <title>{{.Title}}</title>
 <style>
   :root{--bg:#0b0d13;--card:#141824;--line:#232838;--tx:#e6e8ee;--mut:#8b93a7;--up:#22c55e;--deg:#f59e0b;--down:#f43f5e;--unk:#6b7280;--accent:#818cf8}
