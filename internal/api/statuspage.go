@@ -221,7 +221,7 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 		}
 		// Always render a fixed strip; empty cells fill in from the right as
 		// checks accumulate (like a typical status page).
-		const barCount = 40
+		const barCount = 30
 		tail := pts
 		if len(tail) > barCount {
 			tail = tail[len(tail)-barCount:]
@@ -318,9 +318,11 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   {{if .Accent}}:root{--accent:{{.Accent}}}{{end}}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
-  .bglayer{position:fixed;inset:-24px;z-index:-2;{{.BgStyle}}}
+  .bglayer{position:fixed;inset:-60px;z-index:-2;transform:scale(1.08);{{.BgStyle}}}
   .bgdim{position:fixed;inset:0;z-index:-1;background:rgb(0 0 0 / {{.Dim}}%)}
   .wrap{max-width:{{.WrapW}};margin:0 auto;padding:40px 20px;position:relative}
+  /* When a custom backdrop is set, make the cards glassy so it shows through. */
+  body.themed .banner,body.themed .card,body.themed .notice{background:color-mix(in srgb,var(--card) 78%,transparent);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
   h1{font-size:22px;margin:0 0 4px}
   .hdr{color:var(--mut);font-size:13px;margin:0 0 8px;white-space:pre-wrap}
   .sub{color:var(--mut);font-size:12px;margin-bottom:22px}
@@ -338,8 +340,8 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .name{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cert{font-size:10px;padding:2px 6px;border-radius:6px;background:rgba(245,158,11,.15);color:var(--deg)}
   .cert.exp{background:rgba(244,63,94,.15);color:var(--down)}
-  .bars{display:flex;gap:2px;align-items:stretch;height:22px;flex:1;min-width:60px;max-width:260px}
-  .bars span{flex:1;border-radius:2px;background:var(--line)}
+  .bars{display:flex;gap:3px;align-items:stretch;height:26px;flex:1;min-width:90px;max-width:360px}
+  .bars span{flex:1;border-radius:2px;background:var(--line);min-width:4px}
   .bars span.healthy{background:var(--up)} .bars span.degraded{background:var(--deg)} .bars span.down{background:var(--down)} .bars span.unknown{background:var(--unk)}
   .pct{color:var(--mut);font-variant-numeric:tabular-nums;font-size:12px;width:64px;text-align:right}
   .st{font-size:12px;font-variant-numeric:tabular-nums;width:96px;text-align:right}
@@ -353,7 +355,7 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .notice.warning{border-left-color:var(--deg)} .notice.warning .nt{color:var(--deg)}
   .notice.critical{border-left-color:var(--down)} .notice.critical .nt{color:var(--down)}
   .notice.maintenance{border-left-color:#8b5cf6} .notice.maintenance .nt{color:#8b5cf6}
-</style></head><body>
+</style></head><body class="{{if .HasBg}}themed{{end}}">
   {{if .HasBg}}<div class="bglayer"></div>{{if gt .Dim 0}}<div class="bgdim"></div>{{end}}{{end}}
   <div class="wrap">
   <h1>{{.Title}}</h1>

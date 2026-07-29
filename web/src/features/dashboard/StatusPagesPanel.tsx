@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { GroupDef, NoticeDef, StatusPageDef } from "../../api/types";
 
+const GRADIENTS = [
+  "linear-gradient(135deg,#0f172a,#1e293b)",
+  "linear-gradient(135deg,#111827,#0b1220)",
+  "linear-gradient(135deg,#1e1b4b,#0f172a)",
+  "linear-gradient(135deg,#0c4a6e,#082f49)",
+  "linear-gradient(135deg,#134e4a,#042f2e)",
+  "linear-gradient(135deg,#3b0764,#1e1b4b)",
+  "linear-gradient(160deg,#0b0d13,#1f2937,#0b0d13)",
+  "radial-gradient(circle at 30% 20%,#1e293b,#0b0d13)",
+];
 const SEVERITIES = ["info", "warning", "critical", "maintenance"] as const;
 const SEV_COLOR: Record<string, string> = {
   info: "text-blue-400 border-blue-400/40",
@@ -193,7 +203,20 @@ export function StatusPagesForm({
                   <input type="color" value={bg.color || "#0b0d13"} onChange={(e) => setBg({ color: e.target.value })} className="w-10 h-8 rounded bg-transparent border border-border cursor-pointer" />
                 )}
                 {bg.type === "gradient" && (
-                  <input value={bg.gradient ?? ""} onChange={(e) => setBg({ gradient: e.target.value })} placeholder="linear-gradient(135deg,#1e293b,#0f172a)" className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent" />
+                  <div className="space-y-1.5">
+                    <div className="flex gap-1.5 flex-wrap">
+                      {GRADIENTS.map((g) => (
+                        <button
+                          key={g}
+                          onClick={() => setBg({ gradient: g })}
+                          title={g}
+                          className={`w-9 h-7 rounded border ${bg.gradient === g ? "ring-2 ring-accent border-accent" : "border-border"}`}
+                          style={{ background: g }}
+                        />
+                      ))}
+                    </div>
+                    <input value={bg.gradient ?? ""} onChange={(e) => setBg({ gradient: e.target.value })} placeholder="linear-gradient(135deg,#1e293b,#0f172a)" className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent" />
+                  </div>
                 )}
                 {bg.type === "image" && (
                   <div className="space-y-2">
