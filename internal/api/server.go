@@ -317,7 +317,7 @@ func (s *Server) handleContainers(w http.ResponseWriter, r *http.Request) {
 	if c := s.getConfig(); c != nil && c.Discovery.DockerSocket != "" {
 		socket = c.Discovery.DockerSocket
 	}
-	list, err := discover.Containers(r.Context(), socket)
+	list, err := discover.Containers(r.Context(), socket, r.URL.Query().Get("stats") == "1")
 	if err != nil {
 		writeJSON(w, http.StatusOK, map[string]any{"containers": []discover.Container{}, "error": err.Error()})
 		return

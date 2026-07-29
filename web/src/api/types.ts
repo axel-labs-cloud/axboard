@@ -122,6 +122,9 @@ export interface ContainerInfo {
   image: string;
   state: string;
   status: string;
+  cpu?: number; // percent (running only, when stats requested)
+  mem?: number; // bytes in use
+  memLimit?: number; // bytes limit
 }
 
 export interface HostStats {

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -25,6 +26,7 @@ type Service struct {
 }
 
 type dockerContainer struct {
+	ID     string            `json:"Id"`
 	Names  []string          `json:"Names"`
 	Labels map[string]string `json:"Labels"`
 	Image  string            `json:"Image"`
@@ -33,29 +35,108 @@ type dockerContainer struct {
 }
 
 // Container is a running/stopped container surfaced by the container-status
-// widget.
+// widget. CPU/Mem are only populated when stats are requested (running only).
 type Container struct {
-	Name   string `json:"name"`
-	Image  string `json:"image"`
-	State  string `json:"state"`  // running, exited, created, paused…
-	Status string `json:"status"` // human string, e.g. "Up 2 hours"
+	Name     string  `json:"name"`
+	Image    string  `json:"image"`
+	State    string  `json:"state"`  // running, exited, created, paused…
+	Status   string  `json:"status"` // human string, e.g. "Up 2 hours"
+	CPU      float64 `json:"cpu,omitempty"`      // percent of a single core span
+	Mem      uint64  `json:"mem,omitempty"`      // bytes in use
+	MemLimit uint64  `json:"memLimit,omitempty"` // bytes limit
 }
 
-// Containers lists all containers (running + stopped) over the socket.
-func Containers(ctx context.Context, socketPath string) ([]Container, error) {
+// Containers lists all containers (running + stopped) over the socket. When
+// withStats is set, CPU% + memory are fetched (concurrently) for running ones.
+func Containers(ctx context.Context, socketPath string, withStats bool) ([]Container, error) {
 	var raw []dockerContainer
 	if err := getJSON(ctx, socketPath, "http://d/v1.41/containers/json?all=1", &raw); err != nil {
 		return nil, err
 	}
-	out := make([]Container, 0, len(raw))
-	for _, c := range raw {
+	out := make([]Container, len(raw))
+	for i, c := range raw {
 		name := "unknown"
 		if len(c.Names) > 0 {
 			name = strings.TrimPrefix(c.Names[0], "/")
 		}
-		out = append(out, Container{Name: name, Image: c.Image, State: c.State, Status: c.Status})
+		out[i] = Container{Name: name, Image: c.Image, State: c.State, Status: c.Status}
 	}
+	if !withStats {
+		return out, nil
+	}
+	// Fetch stats for running containers, bounded concurrency.
+	var wg sync.WaitGroup
+	sem := make(chan struct{}, 8)
+	for i, c := range raw {
+		if c.State != "running" || c.ID == "" {
+			continue
+		}
+		wg.Add(1)
+		go func(i int, id string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			if cpu, mem, lim, err := containerStats(ctx, socketPath, id); err == nil {
+				out[i].CPU = cpu
+				out[i].Mem = mem
+				out[i].MemLimit = lim
+			}
+		}(i, c.ID)
+	}
+	wg.Wait()
 	return out, nil
+}
+
+type dockerStats struct {
+	CPUStats struct {
+		CPUUsage struct {
+			TotalUsage  uint64   `json:"total_usage"`
+			PercpuUsage []uint64 `json:"percpu_usage"`
+		} `json:"cpu_usage"`
+		SystemUsage uint64 `json:"system_cpu_usage"`
+		OnlineCPUs  uint32 `json:"online_cpus"`
+	} `json:"cpu_stats"`
+	PreCPUStats struct {
+		CPUUsage struct {
+			TotalUsage uint64 `json:"total_usage"`
+		} `json:"cpu_usage"`
+		SystemUsage uint64 `json:"system_cpu_usage"`
+	} `json:"precpu_stats"`
+	MemoryStats struct {
+		Usage uint64            `json:"usage"`
+		Limit uint64            `json:"limit"`
+		Stats map[string]uint64 `json:"stats"`
+	} `json:"memory_stats"`
+}
+
+// containerStats returns CPU% (of one core), memory in use and the memory limit
+// from a one-shot stats sample (the Docker/Podman API fills precpu for the delta).
+func containerStats(ctx context.Context, socketPath, id string) (float64, uint64, uint64, error) {
+	var s dockerStats
+	if err := getJSON(ctx, socketPath, "http://d/v1.41/containers/"+id+"/stats?stream=false", &s); err != nil {
+		return 0, 0, 0, err
+	}
+	cpu := 0.0
+	cpuDelta := float64(s.CPUStats.CPUUsage.TotalUsage) - float64(s.PreCPUStats.CPUUsage.TotalUsage)
+	sysDelta := float64(s.CPUStats.SystemUsage) - float64(s.PreCPUStats.SystemUsage)
+	ncpu := float64(s.CPUStats.OnlineCPUs)
+	if ncpu == 0 {
+		ncpu = float64(len(s.CPUStats.CPUUsage.PercpuUsage))
+	}
+	if ncpu == 0 {
+		ncpu = 1
+	}
+	if sysDelta > 0 && cpuDelta > 0 {
+		cpu = (cpuDelta / sysDelta) * ncpu * 100
+	}
+	// Subtract page cache from usage when the kernel reports it (matches `docker stats`).
+	mem := s.MemoryStats.Usage
+	if cache, ok := s.MemoryStats.Stats["inactive_file"]; ok && cache <= mem {
+		mem -= cache
+	} else if cache, ok := s.MemoryStats.Stats["cache"]; ok && cache <= mem {
+		mem -= cache
+	}
+	return cpu, mem, s.MemoryStats.Limit, nil
 }
 
 func getJSON(ctx context.Context, socketPath, url string, dst any) error {

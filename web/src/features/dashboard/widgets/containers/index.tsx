@@ -27,14 +27,31 @@ function stateDot(state: string): string {
   }
 }
 
+function fmtMem(b?: number): string {
+  if (!b) return "";
+  const gb = b / 1e9;
+  return gb >= 1 ? `${gb.toFixed(1)}G` : `${Math.round(b / 1e6)}M`;
+}
+
+// CPU% + memory chip shown per running container when stats are on.
+function StatCol({ cpu, mem }: { cpu?: number; mem?: number }) {
+  return (
+    <div className="shrink-0 text-right font-mono leading-tight">
+      <div className="text-[11px] text-text-secondary tabular-nums">{cpu != null ? `${cpu.toFixed(0)}%` : "—"}</div>
+      <div className="text-[9.5px] text-text-muted tabular-nums">{fmtMem(mem) || "—"}</div>
+    </div>
+  );
+}
+
 function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
   const filter = config?.filter?.trim().toLowerCase() ?? "";
   const runningOnly = config?.runningOnly ?? false;
+  const stats = config?.stats ?? false;
   const box = useSize<HTMLDivElement>();
 
   const { data, isError, error } = useQuery({
-    queryKey: ["containers"],
-    queryFn: api.getContainers,
+    queryKey: ["containers", stats],
+    queryFn: () => api.getContainers(stats),
     refetchInterval: 15_000,
   });
 
@@ -102,6 +119,7 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
                 <div className="text-[12px] text-text-secondary truncate">{c.name}</div>
                 <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>
               </div>
+              {stats && c.state === "running" && <StatCol cpu={c.cpu} mem={c.mem} />}
             </div>
           ))}
         </div>
@@ -117,6 +135,7 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
                 <div className="text-[12px] text-text-secondary truncate">{c.name}</div>
                 {showSub && <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>}
               </div>
+              {stats && c.state === "running" && <StatCol cpu={c.cpu} mem={c.mem} />}
             </div>
           ))}
         </div>
@@ -148,8 +167,18 @@ function ContainersConfigPanel({ config, save }: WidgetConfigProps<ContainersCon
         />
         Running only
       </label>
+      <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
+        <input
+          type="checkbox"
+          checked={config?.stats ?? false}
+          onChange={(e) => save({ stats: e.target.checked })}
+          className="accent-accent"
+        />
+        Show CPU / memory
+      </label>
       <p className="text-[11px] text-text-muted leading-snug">
-        Reads the mounted Docker/Podman socket (same as auto-discovery).
+        Reads the mounted Docker/Podman socket (same as auto-discovery). CPU/memory adds a short
+        stats sample per running container.
       </p>
     </div>
   );

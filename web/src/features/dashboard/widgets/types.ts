@@ -178,6 +178,7 @@ export interface CalendarConfig {
 export interface ContainersConfig {
   filter?: string;
   runningOnly?: boolean;
+  stats?: boolean; // fetch + show per-container CPU / memory
 }
 
 /** Host-stats widget — no options yet. */

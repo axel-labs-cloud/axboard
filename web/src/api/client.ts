@@ -68,8 +68,10 @@ export const api = {
   getHistory: () => fetch("/api/apps/history").then(jsonOk<HistoryMap>),
   discover: () =>
     fetch("/api/discover").then(jsonOk<{ services: DiscoveredService[]; error?: string }>),
-  getContainers: () =>
-    fetch("/api/containers").then(jsonOk<{ containers: ContainerInfo[]; error?: string }>),
+  getContainers: (stats?: boolean) =>
+    fetch(`/api/containers${stats ? "?stats=1" : ""}`).then(
+      jsonOk<{ containers: ContainerInfo[]; error?: string }>,
+    ),
   getHost: () => fetch("/api/host").then(jsonOk<HostStats>),
   ping: (url: string) =>
     fetch(`/api/ping?url=${encodeURIComponent(url)}`).then(
