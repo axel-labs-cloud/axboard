@@ -142,10 +142,10 @@ function BarStyle({ pct, big, sub, name, h, cfg }: { pct: number; big: string; s
 }
 
 function Spark({ hist, big, sub, name, w, h, cfg }: { hist: number[]; big: string; sub: string; name: string; w: number; h: number; cfg: GaugeConfig }) {
-  const width = Math.max(80, w - 32);
-  // Fill the available height: header (~26) + sub (~18) + padding leave the rest
-  // for the chart, clamped to a sensible range.
-  const height = Math.max(28, Math.min((h || 120) - 52, 220));
+  const width = Math.max(80, w - 24);
+  // Fill the available height: header (~24) + sub (~16) leave the rest for the
+  // chart, clamped to a sensible range.
+  const height = Math.max(28, Math.min((h || 120) - 44, 220));
   const pts = hist.length ? hist : [0];
   const cur = pts[pts.length - 1] ?? 0;
   const color = scaleColor(cur, cfg as ColorConfig, OPTS);
@@ -156,7 +156,7 @@ function Spark({ hist, big, sub, name, w, h, cfg }: { hist: number[]; big: strin
   const area = `${line} L ${(pts.length - 1) * step},${height} L 0,${height} Z`;
   const fillId = "gauge-spark-fill";
   return (
-    <div className="w-full px-4">
+    <div className="w-full px-3">
       <div className="flex items-baseline justify-between mb-1">
         <span className="text-[12px] text-text-muted uppercase tracking-wide">{name}</span>
         <span className="font-mono tabular-nums text-[22px] font-semibold leading-none" style={{ color }}>{big}</span>

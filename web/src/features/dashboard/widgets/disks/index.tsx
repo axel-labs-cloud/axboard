@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
 import { ColorControls, scaleColor, type ColorConfig } from "../colorScale";
+import { ReorderPicker } from "../ReorderPicker";
 import type { DisksConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 import type { HostStats } from "../../../../api/types";
 
@@ -34,9 +35,13 @@ function DisksComponent({ config }: WidgetProps<DisksConfig>) {
 
   const fs = useMemo(() => {
     const all = data?.filesystems ?? [];
+    const byPath = new Map(all.map((f) => [f.path, f]));
     const sel = config?.mounts;
-    const filtered = sel && sel.length ? all.filter((f) => sel.includes(f.path)) : all;
-    return [...filtered].sort((a, b) => b.total - a.total);
+    if (sel && sel.length) {
+      // Preserve the user's chosen order.
+      return sel.map((p) => byPath.get(p)).filter(Boolean) as typeof all;
+    }
+    return [...all].sort((a, b) => b.total - a.total);
   }, [data, config?.mounts]);
 
   if (isError || !data) {
@@ -84,33 +89,19 @@ function DisksConfigPanel({ config, save }: WidgetConfigProps<DisksConfig>) {
   const qc = useQueryClient();
   const host = qc.getQueryData<HostStats>(["host"]);
   const all = host?.filesystems ?? [];
-  const sel = config?.mounts;
-  const enabledSet = new Set(sel && sel.length ? sel : all.map((f) => f.path));
-
-  const toggle = (path: string) => {
-    const base = sel && sel.length ? sel : all.map((f) => f.path);
-    const next = enabledSet.has(path) ? base.filter((p) => p !== path) : [...base, path];
-    save({ mounts: next });
-  };
+  const enabled = config?.mounts && config.mounts.length ? config.mounts : all.map((f) => f.path);
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Filesystems</label>
-        {all.length === 0 ? (
-          <p className="text-[11px] text-text-muted">No filesystems detected yet.</p>
-        ) : (
-          <div className="max-h-52 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
-            {all.map((f) => (
-              <label key={f.path} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
-                <input type="checkbox" checked={enabledSet.has(f.path)} onChange={() => toggle(f.path)} className="accent-accent" />
-                <span className="flex-1 truncate font-mono">{f.path}</span>
-                <span className="font-mono tabular-nums text-[11px] text-text-muted">{fmtBytes(f.total)}</span>
-              </label>
-            ))}
-          </div>
-        )}
-      </div>
+      {all.length === 0 ? (
+        <p className="text-[11px] text-text-muted">No filesystems detected yet.</p>
+      ) : (
+        <ReorderPicker
+          all={all.map((f) => ({ key: f.path, label: f.path, extra: fmtBytes(f.total) }))}
+          enabled={enabled}
+          onChange={(keys) => save({ mounts: keys })}
+        />
+      )}
       <ColorControls cfg={config} save={save} opts={OPTS} unit="%" />
     </div>
   );

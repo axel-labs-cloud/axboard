@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
 import { ColorControls, scaleColor, type ColorConfig } from "../colorScale";
+import { ReorderPicker } from "../ReorderPicker";
 import type { TempsConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 import type { HostStats } from "../../../../api/types";
 
@@ -29,12 +30,14 @@ function TempsComponent({ config }: WidgetProps<TempsConfig>) {
   const names = config?.names ?? {};
   const temps = useMemo(() => {
     const all = data?.temps ?? [];
+    const byLabel = new Map(all.map((t) => [t.label, t]));
     const enabled = config?.sensors ?? defaultSubset(all.map((t) => t.label));
-    const set = new Set(enabled);
-    return all
-      .filter((t) => set.has(t.label))
-      .map((t) => ({ ...t, display: names[t.label] || t.label }))
-      .sort((a, b) => b.celsius - a.celsius);
+    // Preserve the user's chosen order (from config); only fall back to a
+    // temperature sort for the default subset (when nothing is configured).
+    const ordered = enabled.map((l) => byLabel.get(l)).filter(Boolean) as typeof all;
+    const rows = ordered.map((t) => ({ ...t, display: names[t.label] || t.label }));
+    if (!config?.sensors) rows.sort((a, b) => b.celsius - a.celsius);
+    return rows;
   }, [data, config?.sensors, config?.names]);
 
   if (isError || !data) {
@@ -90,13 +93,8 @@ function TempsConfigPanel({ config, save }: WidgetConfigProps<TempsConfig>) {
   const host = qc.getQueryData<HostStats>(["host"]);
   const all = host?.temps ?? [];
   const enabled = config?.sensors ?? defaultSubset(all.map((t) => t.label));
-  const enabledSet = new Set(enabled);
 
   const names = config?.names ?? {};
-  const toggle = (label: string) => {
-    const next = enabledSet.has(label) ? enabled.filter((l) => l !== label) : [...enabled, label];
-    save({ sensors: next });
-  };
   const rename = (label: string, value: string) => {
     const next = { ...names };
     if (value.trim()) next[label] = value;
@@ -106,27 +104,17 @@ function TempsConfigPanel({ config, save }: WidgetConfigProps<TempsConfig>) {
 
   return (
     <div className="space-y-3">
-      <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Sensors — tick to show, rename to relabel</label>
-        {all.length === 0 ? (
-          <p className="text-[11px] text-text-muted">No sensors detected yet.</p>
-        ) : (
-          <div className="max-h-64 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
-            {all.map((t) => (
-              <div key={t.label} className="flex items-center gap-2 px-2 py-1.5">
-                <input type="checkbox" checked={enabledSet.has(t.label)} onChange={() => toggle(t.label)} className="accent-accent shrink-0" />
-                <input
-                  value={names[t.label] ?? ""}
-                  onChange={(e) => rename(t.label, e.target.value)}
-                  placeholder={t.label}
-                  className="flex-1 min-w-0 px-1.5 py-0.5 rounded bg-bg-card border border-transparent hover:border-border focus:border-accent text-[12px] text-text placeholder:text-text-muted/70 focus:outline-none"
-                />
-                <span className="font-mono tabular-nums text-[11px] text-text-muted shrink-0">{t.celsius.toFixed(0)}°</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      {all.length === 0 ? (
+        <p className="text-[11px] text-text-muted">No sensors detected yet.</p>
+      ) : (
+        <ReorderPicker
+          all={all.map((t) => ({ key: t.label, label: t.label, extra: `${t.celsius.toFixed(0)}°` }))}
+          enabled={enabled}
+          onChange={(keys) => save({ sensors: keys })}
+          names={names}
+          onRename={rename}
+        />
+      )}
       <ColorControls cfg={config} save={save} opts={OPTS} unit="°C" />
     </div>
   );
