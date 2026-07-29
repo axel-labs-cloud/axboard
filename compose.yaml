@@ -21,6 +21,10 @@ services:
     # line to go back to bridged networking (network I/O will then show only the
     # container's own traffic).
     network_mode: host
+    # Host PID namespace so the top-processes widget can see the host's
+    # processes (otherwise the container only sees its own). Drop it if you
+    # don't use that widget.
+    pid: host
     volumes:
       # Bind-mount the parent directory rather than the file. Hot reload via
       # fsnotify needs to see CREATE/RENAME events in the directory, which
@@ -30,6 +34,13 @@ services:
       # Read-only Podman socket for auto-discovery (Docker-API compatible).
       # Comment out to disable discovery.
       - ${XDG_RUNTIME_DIR:-/run/user/1000}/podman/podman.sock:/var/run/docker.sock:ro
+      # Read-only host root so the Filesystems widget can statfs the host's real
+      # mounts (paired with AXBOARD_HOST_ROOT below). Exposes host files to the
+      # container read-only — remove both if you don't want that. Without it the
+      # widget shows only the container's visible mounts.
+      - /:/host:ro,rslave
+    environment:
+      - AXBOARD_HOST_ROOT=/host
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/healthz || exit 1"]

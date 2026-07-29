@@ -30,7 +30,15 @@ export type WidgetType =
   | "axlbd"
   | "gauge"
   | "speedtest"
-  | "camera";
+  | "camera"
+  | "percpu"
+  | "temps"
+  | "topproc"
+  | "disks"
+  | "netgraph"
+  | "battery"
+  | "grafana"
+  | "wol";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -269,8 +277,9 @@ export interface GaugeConfig {
   style?: "ring" | "bar" | "arc" | "spark";
   label?: string; // overrides the default metric name
   /** How the fill colour is chosen. threshold = green/amber/red by health,
-   *  gradient = smooth green→red spectrum, solid = the picked colour. */
-  colorScale?: "threshold" | "gradient" | "solid";
+   *  gradient = smooth green→red spectrum, solid = the picked colour,
+   *  accent = follow the dashboard accent colour. */
+  colorScale?: "threshold" | "gradient" | "solid" | "accent";
   /** Named colour used by the "solid" scale (and as a tint elsewhere). */
   color?: "accent" | "emerald" | "cyan" | "blue" | "violet" | "amber" | "rose";
   /** Add a soft neon glow around the fill. Default on. */
@@ -305,6 +314,55 @@ export interface CameraConfig {
   link?: string;
 }
 
+/** Per-core CPU widget — one bar per logical core. */
+export interface PerCpuConfig {
+  /** Colour scale shared with the gauge: threshold / accent / solid hue. */
+  color?: "threshold" | "accent" | "emerald" | "cyan" | "violet" | "amber" | "rose";
+}
+
+/** Temperatures widget — hardware sensors from /sys/class/hwmon. */
+export interface TempsConfig {
+  filter?: string; // substring match on sensor label
+}
+
+/** Top-processes widget — highest CPU/mem processes. */
+export interface TopProcConfig {
+  count?: number;
+  sort?: "cpu" | "mem";
+}
+
+/** Filesystems widget — usage bars for every mounted real filesystem. */
+export interface DisksConfig {
+  filter?: string;
+}
+
+/** Network throughput graph — live rx/tx sparkline. */
+export interface NetGraphConfig {
+  /** Fixed scale in Mbit/s; 0/undefined = auto-scale to the window peak. */
+  scaleMbit?: number;
+}
+
+/** Battery / UPS widget — power supplies from /sys/class/power_supply. */
+export interface BatteryConfig {
+  empty?: never;
+}
+
+/** Grafana panel embed — an iframe pointed at a kiosk panel URL. */
+export interface GrafanaConfig {
+  url?: string;
+  refreshSec?: number;
+}
+
+/** Wake-on-LAN launcher — a grid of buttons that send magic packets. */
+export interface WolTarget {
+  name: string;
+  mac: string;
+  broadcast?: string;
+}
+export interface WolConfig {
+  targets?: WolTarget[];
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -336,6 +394,14 @@ export type WidgetConfigByType = {
   gauge: GaugeConfig;
   speedtest: SpeedTestConfig;
   camera: CameraConfig;
+  percpu: PerCpuConfig;
+  temps: TempsConfig;
+  topproc: TopProcConfig;
+  disks: DisksConfig;
+  netgraph: NetGraphConfig;
+  battery: BatteryConfig;
+  grafana: GrafanaConfig;
+  wol: WolConfig;
 };
 
 export type AnyWidgetConfig = Partial<
@@ -367,7 +433,15 @@ export type AnyWidgetConfig = Partial<
     AxServiceConfig &
     GaugeConfig &
     SpeedTestConfig &
-    CameraConfig
+    CameraConfig &
+    PerCpuConfig &
+    TempsConfig &
+    TopProcConfig &
+    DisksConfig &
+    NetGraphConfig &
+    BatteryConfig &
+    GrafanaConfig &
+    WolConfig
 >;
 
 export interface Widget {

@@ -6,6 +6,7 @@ import type {
   DiscoveredService,
   ContainerInfo,
   HostStats,
+  ProcInfo,
 } from "./types";
 
 async function jsonOk<T>(r: Response): Promise<T> {
@@ -73,6 +74,12 @@ export const api = {
       jsonOk<{ containers: ContainerInfo[]; error?: string }>,
     ),
   getHost: () => fetch("/api/host").then(jsonOk<HostStats>),
+  getHostProcs: (n = 8) =>
+    fetch(`/api/host/procs?n=${n}`).then(jsonOk<{ procs: ProcInfo[] }>),
+  wol: (mac: string, broadcast?: string) =>
+    fetch(`/api/wol?mac=${encodeURIComponent(mac)}${broadcast ? `&broadcast=${encodeURIComponent(broadcast)}` : ""}`, {
+      method: "POST",
+    }).then(jsonOk<{ ok: boolean; error?: string }>),
   ping: (url: string) =>
     fetch(`/api/ping?url=${encodeURIComponent(url)}`).then(
       jsonOk<{ ok: boolean; status?: number; ms?: number; error?: string }>,

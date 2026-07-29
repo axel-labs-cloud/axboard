@@ -145,6 +145,17 @@ export interface HostStats {
   net_rx_bps: number;
   net_tx_bps: number;
   uptime_sec: number;
+  per_cpu: number[];
+  temps: { label: string; celsius: number }[];
+  batteries: { name: string; pct: number; status: string }[];
+  filesystems: { path: string; total: number; used: number }[];
+}
+
+export interface ProcInfo {
+  pid: number;
+  name: string;
+  cpu: number;
+  rss: number;
 }
 
 export interface State {

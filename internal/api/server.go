@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -155,6 +157,8 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Get("/discover", s.handleDiscover)
 		r.Get("/containers", s.handleContainers)
 		r.Get("/host", s.handleHost)
+		r.Get("/host/procs", s.handleHostProcs)
+		r.Post("/wol", s.handleWoL)
 		r.Get("/ping", s.handleUptimePing)
 		r.Get("/publicip", s.handlePublicIP)
 		r.Get("/proxy", s.handleProxy)
@@ -328,6 +332,50 @@ func (s *Server) handleContainers(w http.ResponseWriter, r *http.Request) {
 // handleHost returns a shallow host snapshot (load/memory/uptime).
 func (s *Server) handleHost(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, host.Snapshot())
+}
+
+// handleHostProcs returns the top-N processes by CPU (default 8, max 30).
+func (s *Server) handleHostProcs(w http.ResponseWriter, r *http.Request) {
+	n := 8
+	if v, err := strconv.Atoi(r.URL.Query().Get("n")); err == nil && v > 0 && v <= 30 {
+		n = v
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"procs": host.TopProcs(n)})
+}
+
+// handleWoL sends a Wake-on-LAN magic packet to the given MAC. Requires host
+// networking to broadcast onto the LAN. Body/query: mac (aa:bb:cc:dd:ee:ff),
+// optional broadcast (default 255.255.255.255).
+func (s *Server) handleWoL(w http.ResponseWriter, r *http.Request) {
+	mac := r.URL.Query().Get("mac")
+	bcast := r.URL.Query().Get("broadcast")
+	if bcast == "" {
+		bcast = "255.255.255.255"
+	}
+	hw, err := net.ParseMAC(mac)
+	if err != nil || len(hw) != 6 {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": "invalid MAC"})
+		return
+	}
+	// Magic packet: 6×0xFF then the MAC repeated 16 times.
+	packet := make([]byte, 6, 102)
+	for i := range packet {
+		packet[i] = 0xFF
+	}
+	for i := 0; i < 16; i++ {
+		packet = append(packet, hw...)
+	}
+	conn, err := net.Dial("udp", net.JoinHostPort(bcast, "9"))
+	if err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	defer conn.Close()
+	if _, err := conn.Write(packet); err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 // handleUptimePing checks one URL for the uptime-monitor widget and returns

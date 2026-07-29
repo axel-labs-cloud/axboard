@@ -29,6 +29,14 @@ import axlbd from "./axlbd";
 import gauge from "./gauge";
 import speedtest from "./speedtest";
 import camera from "./camera";
+import percpu from "./percpu";
+import temps from "./temps";
+import topproc from "./topproc";
+import disks from "./disks";
+import netgraph from "./netgraph";
+import battery from "./battery";
+import grafana from "./grafana";
+import wol from "./wol";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -61,6 +69,14 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   gauge,
   speedtest,
   camera,
+  percpu,
+  temps,
+  topproc,
+  disks,
+  netgraph,
+  battery,
+  grafana,
+  wol,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

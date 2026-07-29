@@ -67,10 +67,36 @@ function Metric({ label, value, unit, tone }: { label: string; value: string; un
   );
 }
 
+const HIST_KEY = "axboard-speedtest-history";
+
+function loadHistory(): Result[] {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(HIST_KEY) || "[]");
+    return Array.isArray(raw) ? raw.slice(-30) : [];
+  } catch {
+    return [];
+  }
+}
+
+function Sparkline({ vals, color, w }: { vals: number[]; color: string; w: number }) {
+  const width = Math.max(60, w);
+  const height = 26;
+  if (vals.length < 2) return null;
+  const max = Math.max(...vals, 1);
+  const step = width / (vals.length - 1);
+  const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(height - (v / max) * height).toFixed(1)}`);
+  return (
+    <svg width={width} height={height} className="w-full" preserveAspectRatio="none" viewBox={`0 0 ${width} ${height}`}>
+      <path d={`M ${pts.join(" L ")}`} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function SpeedTestComponent({ config }: WidgetProps<SpeedTestConfig>) {
   const box = useSize<HTMLDivElement>();
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<Result | null>(null);
+  const [history, setHistory] = useState<Result[]>(() => loadHistory());
   const [err, setErr] = useState<string>("");
   const abortRef = useRef<AbortController | null>(null);
   const ranAuto = useRef(false);
@@ -90,7 +116,17 @@ function SpeedTestComponent({ config }: WidgetProps<SpeedTestConfig>) {
       setPhase("upload");
       const u1 = await measureUp(5_000_000, ac.signal);
       const u2 = await measureUp(10_000_000, ac.signal);
-      setResult({ down: Math.max(d1, d2), up: Math.max(u1, u2), ping });
+      const r: Result = { down: Math.max(d1, d2), up: Math.max(u1, u2), ping };
+      setResult(r);
+      setHistory((h) => {
+        const next = [...h, r].slice(-30);
+        try {
+          window.localStorage.setItem(HIST_KEY, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
       setPhase("done");
     } catch (e) {
       if ((e as Error).name === "AbortError") return;
@@ -136,6 +172,16 @@ function SpeedTestComponent({ config }: WidgetProps<SpeedTestConfig>) {
       )}
 
       {phase === "error" && <div className="text-[11px] text-down text-center px-2">{err}</div>}
+
+      {!compact && history.length >= 2 && (
+        <div className="w-full px-1">
+          <div className="flex items-center justify-between text-[9px] uppercase tracking-wide text-text-muted mb-0.5">
+            <span>Download history · {history.length} runs</span>
+            <span className="font-mono">{Math.max(...history.map((h) => h.down)).toFixed(0)} peak</span>
+          </div>
+          <Sparkline vals={history.map((h) => h.down)} color="var(--color-up, #10b981)" w={box.w - 24} />
+        </div>
+      )}
 
       {!running && (
         <button

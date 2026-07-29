@@ -64,6 +64,7 @@ function hue(pct: number): string {
 
 // Colour for the current value (used for numbers, spark line, solid fills).
 function currentColor(pct: number, cfg: GaugeConfig): string {
+  if (cfg.colorScale === "accent") return "var(--color-accent, #818cf8)";
   if (cfg.colorScale === "solid") return PALETTE[cfg.color ?? "accent"] ?? PALETTE.accent;
   if (cfg.colorScale === "gradient") return hue(pct);
   return threshold(pct);
@@ -325,17 +326,24 @@ function GaugeConfigPanel({ config, save }: WidgetConfigProps<GaugeConfig>) {
 
       <div className="space-y-1.5">
         <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Colour scale</label>
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-4 gap-1">
           {([
             ["threshold", "health"],
             ["gradient", "spectrum"],
             ["solid", "solid"],
+            ["accent", "accent"],
           ] as const).map(([sc, lbl]) => (
             <Chip key={sc} active={scale === sc} onClick={() => save({ colorScale: sc })}>{lbl}</Chip>
           ))}
         </div>
         <p className="text-[10px] text-text-muted">
-          {scale === "threshold" ? "Green → amber → red by load." : scale === "gradient" ? "Smooth spectrum by value." : "One fixed colour."}
+          {scale === "threshold"
+            ? "Green → amber → red by load."
+            : scale === "gradient"
+              ? "Smooth spectrum by value."
+              : scale === "accent"
+                ? "Follows the dashboard accent colour."
+                : "One fixed colour."}
         </p>
       </div>
 
