@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
+import { useSize } from "../useSize";
 import type {
   MonitorConfig,
   MonitorTarget,
@@ -10,7 +11,8 @@ import type {
 
 // ---------------------------------------------------------------------------
 // Uptime-monitor widget — pings a list of URLs (via the backend) and shows
-// up/down + latency. Distinct from app health checks: any URL, no config app.
+// up/down + latency. Size-responsive: a compact status pill when short, a full
+// adaptive list when there's room. Distinct from app health checks.
 // ---------------------------------------------------------------------------
 
 function host(u: string): string {
@@ -21,8 +23,15 @@ function host(u: string): string {
   }
 }
 
+type Ping = { ok: boolean; status?: number; ms?: number; error?: string };
+
+function dotClass(r: Ping | undefined): string {
+  return r === undefined ? "bg-unknown/60" : r.ok ? "bg-up" : "bg-down";
+}
+
 function MonitorComponent({ config }: WidgetProps<MonitorConfig>) {
   const targets = config?.targets ?? [];
+  const box = useSize<HTMLDivElement>();
   const { data } = useQuery({
     queryKey: ["monitor", targets.map((t) => t.url).join("|")],
     enabled: targets.length > 0,
@@ -31,44 +40,73 @@ function MonitorComponent({ config }: WidgetProps<MonitorConfig>) {
       Promise.all(
         targets.map(async (t) => ({
           t,
-          r: await api
-            .ping(t.url)
-            .catch(() => ({ ok: false }) as { ok: boolean; status?: number; ms?: number; error?: string }),
+          r: await api.ping(t.url).catch(() => ({ ok: false }) as Ping),
         })),
       ),
   });
 
   if (targets.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
+      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
         Add URLs to monitor in config.
       </div>
     );
   }
 
-  const rows = data ?? targets.map((t) => ({ t, r: undefined as undefined | { ok: boolean; ms?: number } }));
+  const rows = data ?? targets.map((t) => ({ t, r: undefined as Ping | undefined }));
   const up = rows.filter((x) => x.r?.ok).length;
+  const down = rows.filter((x) => x.r && !x.r.ok).length;
+
+  // Size-driven layout. Short → a summary pill; otherwise an adaptive list.
+  const compact = box.h > 0 && box.h < 104;
+  const showWord = box.w >= 150; // "up" / "endpoints up" text
+  const showHost = box.w >= 232; // secondary host line under a named row
+  const showLatency = box.w >= 168;
+
+  const Count = (
+    <span className="flex items-baseline gap-1.5">
+      <span className="text-2xl font-mono tabular-nums text-up leading-none">{up}</span>
+      <span className="text-[12px] text-text-muted">
+        / {targets.length}
+        {showWord ? (compact ? " up" : " endpoints up") : ""}
+      </span>
+    </span>
+  );
+
+  if (compact) {
+    return (
+      <div ref={box.ref} className="h-full flex flex-col justify-center gap-2.5 px-3">
+        <div className="flex items-center">
+          {Count}
+          {down > 0 && <span className="ml-auto text-[11px] font-mono text-down">{down} down</span>}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {rows.map(({ t, r }) => (
+            <span key={t.url} title={`${t.name || host(t.url)}${r?.ms != null ? ` · ${r.ms}ms` : ""}`} className={`w-2 h-2 rounded-full ${dotClass(r)}`} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-full flex flex-col">
+    <div ref={box.ref} className="h-full flex flex-col">
       <div className="flex items-center gap-2 px-3 pt-2.5 pb-1 shrink-0">
         <span className="text-text-muted shrink-0">{MonitorIcon}</span>
-        <span className="text-2xl font-mono tabular-nums text-up leading-none">{up}</span>
-        <span className="text-[12px] text-text-muted">/ {targets.length} endpoints up</span>
+        {Count}
+        {down > 0 && <span className="ml-auto text-[11px] font-mono text-down shrink-0">{down} down</span>}
       </div>
       <div className="flex-1 min-h-0 overflow-auto px-2 pb-2 divide-y divide-border-subtle">
         {rows.map(({ t, r }) => (
           <div key={t.url} className="flex items-center gap-2 px-1.5 py-1.5">
-            <span
-              className={`w-2 h-2 rounded-full shrink-0 ${
-                r === undefined ? "bg-unknown/60" : r.ok ? "bg-up" : "bg-down"
-              }`}
-            />
+            <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass(r)}`} />
             <div className="min-w-0 flex-1">
               <div className="text-[12px] text-text-secondary truncate">{t.name || host(t.url)}</div>
-              <div className="text-[10px] text-text-muted truncate font-mono">{host(t.url)}</div>
+              {showHost && t.name && (
+                <div className="text-[10px] text-text-muted truncate font-mono">{host(t.url)}</div>
+              )}
             </div>
-            {r?.ms != null && (
+            {showLatency && r?.ms != null && (
               <span className="text-[11px] font-mono tabular-nums text-text-muted shrink-0">{r.ms} ms</span>
             )}
           </div>
