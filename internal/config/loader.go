@@ -133,10 +133,16 @@ func validate(cfg *Config) error {
 				if app.Health.Host == "" {
 					return fmt.Errorf("apps[%d] (%s): health.host is required for type=ping", i, app.ID)
 				}
+			case HealthDNS:
+				if app.Health.Host == "" && app.Health.URL == "" {
+					return fmt.Errorf("apps[%d] (%s): health.host is required for type=dns", i, app.ID)
+				}
+			case HealthPush:
+				// passive: the monitored job pings /api/push/<id>; nothing required.
 			case HealthNone, "":
 				// none = no check; empty type tolerated as none.
 			default:
-				return fmt.Errorf("apps[%d] (%s): unknown health.type %q (want http|tcp|none)", i, app.ID, app.Health.Type)
+				return fmt.Errorf("apps[%d] (%s): unknown health.type %q (want http|tcp|ping|dns|push|none)", i, app.ID, app.Health.Type)
 			}
 		}
 	}

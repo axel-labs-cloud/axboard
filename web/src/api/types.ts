@@ -1,6 +1,6 @@
 import type { AnyWidgetConfig, GridItem } from "../features/dashboard/widgets/types";
 
-export type HealthType = "http" | "tcp" | "ping" | "none";
+export type HealthType = "http" | "tcp" | "ping" | "dns" | "push" | "none";
 export type AppStatusValue = "unknown" | "healthy" | "degraded" | "down";
 
 export interface HealthCheck {
@@ -161,6 +161,8 @@ export interface AppStatus {
   response_ms?: number;
   error?: string;
   cert_expiry?: string; // ISO datetime of the TLS leaf cert's NotAfter
+  cert_issuer?: string;
+  cert_not_before?: string;
 }
 
 export type StatusMap = Record<string, AppStatus>;

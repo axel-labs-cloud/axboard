@@ -18,7 +18,9 @@ type Result struct {
 	Error       string    `json:"error,omitempty"`
 	// CertExpiry is the leaf TLS certificate's NotAfter for an HTTPS check
 	// (zero when not HTTPS or unavailable). Powers cert-expiry display + alerts.
-	CertExpiry time.Time `json:"cert_expiry,omitzero"`
+	CertExpiry    time.Time `json:"cert_expiry,omitzero"`
+	CertIssuer    string    `json:"cert_issuer,omitempty"`
+	CertNotBefore time.Time `json:"cert_not_before,omitzero"`
 }
 
 // HistPoint is one entry in an app's rolling health history — enough to draw a

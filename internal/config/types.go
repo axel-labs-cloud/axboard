@@ -141,6 +141,8 @@ const (
 	HealthHTTP HealthType = "http"
 	HealthTCP  HealthType = "tcp"
 	HealthPing HealthType = "ping"
+	HealthDNS  HealthType = "dns"
+	HealthPush HealthType = "push"
 	HealthNone HealthType = "none"
 )
 

@@ -39,6 +39,30 @@ type Pool struct {
 
 	histMu  sync.Mutex
 	history map[string][]HistPoint
+
+	pushLast sync.Map // map[string]time.Time — last heartbeat per push monitor
+}
+
+// Push records a heartbeat for a push/heartbeat monitor and forces a re-eval so
+// the status updates immediately.
+func (p *Pool) Push(id string) {
+	p.pushLast.Store(id, time.Now())
+	p.Force(id)
+}
+
+// pushResult derives a push monitor's status from its last heartbeat. Down if
+// no beat yet, or the last beat is older than 2× the expected interval.
+func (p *Pool) pushResult(id string, interval time.Duration) Result {
+	v, ok := p.pushLast.Load(id)
+	now := time.Now()
+	if !ok {
+		return Result{Status: StatusDown, LastChecked: now, Error: "no heartbeat received yet"}
+	}
+	last := v.(time.Time)
+	if now.Sub(last) > 2*interval {
+		return Result{Status: StatusDown, LastChecked: now, Error: "heartbeat overdue"}
+	}
+	return Result{Status: StatusHealthy, LastChecked: now, ResponseMS: now.Sub(last).Milliseconds()}
 }
 
 type worker struct {
@@ -65,6 +89,8 @@ func NewPool() *Pool {
 			return CheckTCP(ctx, h)
 		case config.HealthPing:
 			return CheckICMP(ctx, h)
+		case config.HealthDNS:
+			return CheckDNS(ctx, h)
 		default:
 			return Result{Status: StatusUnknown, LastChecked: time.Now()}
 		}
@@ -227,7 +253,12 @@ func (p *Pool) run(ctx context.Context, app config.App, w *worker) {
 	fails := 0 // consecutive down results
 
 	check := func() {
-		res := p.check(ctx, app.Health)
+		var res Result
+		if app.Health.Type == config.HealthPush {
+			res = p.pushResult(app.ID, interval)
+		} else {
+			res = p.check(ctx, app.Health)
+		}
 		// Retry gating: a down result stays "degraded (retrying)" until it has
 		// failed more than `retries` times in a row, so a blip doesn't flap the
 		// status or fire a false alert.

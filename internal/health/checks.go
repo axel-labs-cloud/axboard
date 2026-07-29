@@ -67,9 +67,16 @@ func CheckHTTP(ctx context.Context, client *http.Client, h *config.Health) Resul
 
 	// Capture the leaf certificate's expiry for HTTPS endpoints (free, like
 	// Uptime Kuma) so the UI can show cert age and we can alert before expiry.
-	var certExpiry time.Time
+	var certExpiry, certNotBefore time.Time
+	var certIssuer string
 	if resp.TLS != nil && len(resp.TLS.PeerCertificates) > 0 {
-		certExpiry = resp.TLS.PeerCertificates[0].NotAfter
+		leaf := resp.TLS.PeerCertificates[0]
+		certExpiry = leaf.NotAfter
+		certNotBefore = leaf.NotBefore
+		certIssuer = leaf.Issuer.CommonName
+		if certIssuer == "" && len(leaf.Issuer.Organization) > 0 {
+			certIssuer = leaf.Issuer.Organization[0]
+		}
 	}
 
 	// Read a bounded prefix if we need to match the body; otherwise just drain
@@ -83,23 +90,55 @@ func CheckHTTP(ctx context.Context, client *http.Client, h *config.Health) Resul
 
 	if resp.StatusCode != expect {
 		return Result{
-			Status:      StatusDegraded,
-			LastChecked: time.Now(),
-			ResponseMS:  elapsed,
-			Error:       fmt.Sprintf("status %d (expected %d)", resp.StatusCode, expect),
-			CertExpiry:  certExpiry,
+			Status:        StatusDegraded,
+			LastChecked:   time.Now(),
+			ResponseMS:    elapsed,
+			Error:         fmt.Sprintf("status %d (expected %d)", resp.StatusCode, expect),
+			CertExpiry:    certExpiry,
+			CertIssuer:    certIssuer,
+			CertNotBefore: certNotBefore,
 		}
 	}
 	if !bodyMatched {
 		return Result{
-			Status:      StatusDegraded,
-			LastChecked: time.Now(),
-			ResponseMS:  elapsed,
-			Error:       fmt.Sprintf("body did not contain %q", h.BodyContains),
-			CertExpiry:  certExpiry,
+			Status:        StatusDegraded,
+			LastChecked:   time.Now(),
+			ResponseMS:    elapsed,
+			Error:         fmt.Sprintf("body did not contain %q", h.BodyContains),
+			CertExpiry:    certExpiry,
+			CertIssuer:    certIssuer,
+			CertNotBefore: certNotBefore,
 		}
 	}
-	return Result{Status: StatusHealthy, LastChecked: time.Now(), ResponseMS: elapsed, CertExpiry: certExpiry}
+	return Result{Status: StatusHealthy, LastChecked: time.Now(), ResponseMS: elapsed, CertExpiry: certExpiry, CertIssuer: certIssuer, CertNotBefore: certNotBefore}
+}
+
+// CheckDNS resolves the health host and reports healthy when it resolves. When
+// body_contains is set, the resolved addresses must include that substring.
+func CheckDNS(ctx context.Context, h *config.Health) Result {
+	timeout := h.Timeout.Duration()
+	if timeout == 0 {
+		timeout = 5 * time.Second
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	host := h.Host
+	if host == "" {
+		host = h.URL
+	}
+	start := time.Now()
+	addrs, err := net.DefaultResolver.LookupHost(reqCtx, host)
+	elapsed := time.Since(start).Milliseconds()
+	if err != nil {
+		return Result{Status: StatusDown, LastChecked: time.Now(), ResponseMS: elapsed, Error: err.Error()}
+	}
+	if len(addrs) == 0 {
+		return Result{Status: StatusDown, LastChecked: time.Now(), ResponseMS: elapsed, Error: "no records"}
+	}
+	if h.BodyContains != "" && !strings.Contains(strings.Join(addrs, ","), h.BodyContains) {
+		return Result{Status: StatusDegraded, LastChecked: time.Now(), ResponseMS: elapsed, Error: fmt.Sprintf("resolved %v, missing %q", addrs, h.BodyContains)}
+	}
+	return Result{Status: StatusHealthy, LastChecked: time.Now(), ResponseMS: elapsed}
 }
 
 // CheckICMP sends a single ICMP echo to h.Host by shelling out to `ping`

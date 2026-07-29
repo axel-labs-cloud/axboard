@@ -169,6 +169,8 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Post("/icons", s.handleUploadIcon)
 		r.Get("/icons/{name}", s.handleGetIcon)
 		r.Post("/apps/{id}/check", s.handleForceCheck)
+		r.Get("/push/{id}", s.handlePush) // heartbeat monitor beat (GET for curl/cron)
+		r.Post("/push/{id}", s.handlePush)
 		r.Get("/events", s.handleSSE)
 	})
 
@@ -208,11 +210,13 @@ type widgetOut struct {
 }
 
 type configOut struct {
-	Server     config.ServerConfig `json:"server"`
-	Apps       []config.App        `json:"apps,omitempty"`
-	Groups     []config.Group      `json:"groups,omitempty"`
-	TopBar     *config.TopBar      `json:"topBar,omitempty"`
-	Dashboards []dashboardOut      `json:"dashboards,omitempty"`
+	Server      config.ServerConfig       `json:"server"`
+	Apps        []config.App              `json:"apps,omitempty"`
+	Groups      []config.Group            `json:"groups,omitempty"`
+	TopBar      *config.TopBar            `json:"topBar,omitempty"`
+	Dashboards  []dashboardOut            `json:"dashboards,omitempty"`
+	Alerts      config.AlertsConfig       `json:"alerts,omitempty"`
+	StatusPages []config.StatusPageConfig `json:"status_pages,omitempty"`
 }
 
 func (s *Server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
@@ -222,11 +226,13 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	out := configOut{
-		Server:     c.Server,
-		Apps:       c.Apps,
-		Groups:     c.Groups,
-		TopBar:     c.TopBar,
-		Dashboards: make([]dashboardOut, 0, len(c.Dashboards)),
+		Server:      c.Server,
+		Apps:        c.Apps,
+		Groups:      c.Groups,
+		TopBar:      c.TopBar,
+		Alerts:      c.Alerts,
+		StatusPages: c.StatusPages,
+		Dashboards:  make([]dashboardOut, 0, len(c.Dashboards)),
 	}
 	for _, d := range c.Dashboards {
 		do := dashboardOut{
@@ -349,6 +355,14 @@ func (s *Server) handleContainerRestart(w http.ResponseWriter, r *http.Request) 
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
 		return
 	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// handlePush records a heartbeat for a push/heartbeat monitor. The monitored
+// job pings /api/push/<its app id> on its schedule; a missed window flips it
+// down. Auth-free by design (the id is the shared secret).
+func (s *Server) handlePush(w http.ResponseWriter, r *http.Request) {
+	s.Health.Push(chi.URLParam(r, "id"))
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 

@@ -239,6 +239,22 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
     setDirty(true);
   };
 
+  const cloneApp = (key: number) => {
+    const src = apps.find((a) => a._key === key);
+    if (!src) return;
+    const ids = new Set(apps.map((a) => a.id));
+    let id = `${src.id}-copy`;
+    let n = 2;
+    while (ids.has(id)) id = `${src.id}-copy${n++}`;
+    // Strip _key; keyed() assigns a fresh one.
+    const { _key, ...rest } = src;
+    void _key;
+    const dup = keyed({ ...rest, id, name: `${src.name} copy` });
+    setApps((prev) => [...prev, dup]);
+    setSelectedKey(dup._key);
+    setDirty(true);
+  };
+
   // ---- Group management ----
 
   const addGroup = () => {
@@ -612,7 +628,14 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
                         <td className="px-3 py-2 max-md:hidden">
                           <span className="font-mono text-text-muted truncate block max-w-[280px]">{app.health?.url || app.health?.host || app.url}</span>
                         </td>
-                        <td className="px-3 py-2 text-right">
+                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); cloneApp(app._key); }}
+                            className="text-text-muted hover:text-accent mr-2"
+                            title="Duplicate"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5 inline"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                          </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${app.name}"?`)) removeApp(app._key); }}
                             className="text-text-muted hover:text-down"
@@ -660,6 +683,14 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
             >
               <div className="flex items-center justify-between px-5 py-3.5 border-b border-border-subtle bg-bg-card/40 shrink-0">
                 <span className="text-[13px] font-semibold text-text">Edit service</span>
+                <div className="flex items-center gap-1">
+                <button
+                  onClick={() => selected && cloneApp(selected._key)}
+                  className="text-text-muted hover:text-accent w-6 h-6 flex items-center justify-center rounded hover:bg-bg-hover"
+                  title="Duplicate service"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                </button>
                 <button
                   onClick={() => setSelectedKey(null)}
                   className="text-text-muted hover:text-text w-6 h-6 flex items-center justify-center rounded hover:bg-bg-hover"
@@ -670,6 +701,7 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
                     <line x1="6" y1="6" x2="18" y2="18" />
                   </svg>
                 </button>
+                </div>
               </div>
               <div className="flex-1 min-h-0 overflow-auto p-5">
                 <ServiceForm
@@ -858,6 +890,10 @@ function ServiceForm({
                   onPatch({ health: { type: "http", url: app.url, interval: "60s" } });
                 else if (t === "ping")
                   onPatch({ health: { type: "ping", host: hostFromURL(app.url), interval: "60s" } });
+                else if (t === "dns")
+                  onPatch({ health: { type: "dns", host: hostFromURL(app.url), interval: "60s" } });
+                else if (t === "push")
+                  onPatch({ health: { type: "push", interval: "60s" } });
                 else
                   onPatch({
                     health: { type: "tcp", host: hostFromURL(app.url), port: 80, interval: "60s" },
@@ -869,6 +905,8 @@ function ServiceForm({
               <option value="http">HTTP — match status code</option>
               <option value="tcp">TCP — port open</option>
               <option value="ping">Ping — ICMP reachable</option>
+              <option value="dns">DNS — hostname resolves</option>
+              <option value="push">Push — heartbeat (job pings us)</option>
             </select>
 
             {healthType === "http" && (
@@ -959,6 +997,25 @@ function ServiceForm({
                   placeholder="60s"
                   className="w-24 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50"
                 />
+              </div>
+            )}
+
+            {healthType === "dns" && (
+              <input
+                value={app.health?.host ?? ""}
+                onChange={(e) => onPatch({ health: { ...app.health!, type: "dns", host: e.target.value } })}
+                placeholder="hostname to resolve, e.g. example.com"
+                className="w-full px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50 font-mono"
+              />
+            )}
+
+            {healthType === "push" && (
+              <div className="text-[11px] text-text-muted leading-snug space-y-1">
+                <p>Your job pings this URL on its schedule; if a beat is missed for 2× the interval, it flips down.</p>
+                <code className="block px-2 py-1.5 rounded bg-bg-card border border-border text-text-secondary font-mono break-all select-all">
+                  {location.origin}/api/push/{app.id || "<id>"}
+                </code>
+                <p>e.g. add <span className="font-mono">curl -fsS {location.origin}/api/push/{app.id || "<id>"}</span> to the end of your cron/backup.</p>
               </div>
             )}
 

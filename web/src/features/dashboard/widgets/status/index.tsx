@@ -108,7 +108,7 @@ function certDays(iso: string | undefined): number | null {
 }
 
 // Detail popover for one service — uptime %, response-time chart, last incident.
-function ServiceDetail({ name, points, certExpiry, onClose }: { name: string; points: HistoryPoint[]; certExpiry?: string; onClose: () => void }) {
+function ServiceDetail({ name, points, certExpiry, certIssuer, certNotBefore, onClose }: { name: string; points: HistoryPoint[]; certExpiry?: string; certIssuer?: string; certNotBefore?: string; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -157,12 +157,21 @@ function ServiceDetail({ name, points, certExpiry, onClose }: { name: string; po
           )}
         </div>
         {certDays(certExpiry) != null && (
-          <div className="text-[11px] text-text-muted">
-            Certificate:{" "}
-            <span className={certDays(certExpiry)! <= 14 ? "text-down" : certDays(certExpiry)! <= 30 ? "text-degraded" : "text-up"}>
-              {certDays(certExpiry)! < 0 ? "expired" : `expires in ${certDays(certExpiry)} day${certDays(certExpiry) === 1 ? "" : "s"}`}
-              {certExpiry ? ` · ${new Date(certExpiry).toLocaleDateString()}` : ""}
-            </span>
+          <div className="text-[11px] text-text-muted space-y-0.5">
+            <div>
+              Certificate:{" "}
+              <span className={certDays(certExpiry)! <= 14 ? "text-down" : certDays(certExpiry)! <= 30 ? "text-degraded" : "text-up"}>
+                {certDays(certExpiry)! < 0 ? "expired" : `expires in ${certDays(certExpiry)} day${certDays(certExpiry) === 1 ? "" : "s"}`}
+                {certExpiry ? ` · ${new Date(certExpiry).toLocaleDateString()}` : ""}
+              </span>
+            </div>
+            {(certIssuer || certNotBefore) && (
+              <div className="text-text-muted/80">
+                {certIssuer ? `Issued by ${certIssuer}` : ""}
+                {certIssuer && certNotBefore ? " · " : ""}
+                {certNotBefore ? `valid from ${new Date(certNotBefore).toLocaleDateString()}` : ""}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -174,7 +183,7 @@ function ServiceDetail({ name, points, certExpiry, onClose }: { name: string; po
 function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>) {
   const box = useSize<HTMLDivElement>();
   const qc = useQueryClient();
-  const [detail, setDetail] = useState<{ name: string; points: HistoryPoint[]; certExpiry?: string } | null>(null);
+  const [detail, setDetail] = useState<{ name: string; points: HistoryPoint[]; certExpiry?: string; certIssuer?: string; certNotBefore?: string } | null>(null);
   const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
   const groups = cfg?.groups ?? [];
   const healthApps = useMemo(() => {
@@ -364,7 +373,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
                 <span className="ml-auto font-mono tabular-nums">{r.header.up}/{r.header.total}</span>
               </div>
             ) : (
-              <ServiceRow key={r.app!.id} name={r.app!.name} points={history[r.app!.id] ?? []} n={barCount} onOpen={() => setDetail({ name: r.app!.name, points: history[r.app!.id] ?? [], certExpiry: statuses[r.app!.id]?.cert_expiry })} />
+              <ServiceRow key={r.app!.id} name={r.app!.name} points={history[r.app!.id] ?? []} n={barCount} onOpen={() => setDetail({ name: r.app!.name, points: history[r.app!.id] ?? [], certExpiry: statuses[r.app!.id]?.cert_expiry, certIssuer: statuses[r.app!.id]?.cert_issuer, certNotBefore: statuses[r.app!.id]?.cert_not_before })} />
             ),
           )}
         </div>
@@ -399,7 +408,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
           </div>
         )
       )}
-      {detail && <ServiceDetail name={detail.name} points={detail.points} certExpiry={detail.certExpiry} onClose={() => setDetail(null)} />}
+      {detail && <ServiceDetail name={detail.name} points={detail.points} certExpiry={detail.certExpiry} certIssuer={detail.certIssuer} certNotBefore={detail.certNotBefore} onClose={() => setDetail(null)} />}
     </div>
   );
 }
