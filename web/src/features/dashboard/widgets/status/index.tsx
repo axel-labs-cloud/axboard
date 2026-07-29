@@ -65,13 +65,14 @@ const SEGMENTS = [
   { key: "unknown", label: "Unknown", cls: "bg-unknown/60", text: "text-text-muted" },
 ] as const;
 
+// Compact single-line service row so more fit per unit height.
 function ServiceRow({ name, points, n }: { name: string; points: HistoryPoint[]; n: number }) {
   const win = points.slice(-40);
   const pct = win.length ? Math.round((win.filter((p) => p.status === "healthy").length / win.length) * 100) : null;
   return (
-    <div className="flex items-center gap-2.5">
-      <div className="min-w-0 flex-1">
-        <div className="text-[11px] text-text-secondary truncate leading-tight mb-1">{name}</div>
+    <div className="flex items-center gap-2.5 h-full min-h-0">
+      <span className="text-[11px] text-text-secondary truncate shrink-0 w-[34%] max-w-[130px]" title={name}>{name}</span>
+      <div className="flex-1 min-w-0">
         <HistoryBars points={points} n={n} />
       </div>
       <span className="text-[10px] font-mono text-text-muted tabular-nums shrink-0 w-9 text-right">
@@ -201,6 +202,32 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
   const headlineColor =
     counts.down > 0 ? "text-down" : counts.degraded > 0 ? "text-degraded" : "text-up";
 
+  // Fit-to-height: build the ordered rows (group headers + services) and keep
+  // only as many as fit the measured height, so the list never scrolls or
+  // leaves big blank space — each extra row of height shows more services.
+  type Row = { header?: { name: string; color?: string; up: number; total: number }; app?: AppDef };
+  const rows: Row[] = [];
+  if (config?.byGroup) {
+    for (const grp of appGroups) {
+      const upN = grp.apps.filter((a) => statuses[a.id]?.status === "healthy").length;
+      rows.push({ header: { name: grp.g?.name ?? "Ungrouped", color: grp.g?.color, up: upN, total: grp.apps.length } });
+      for (const a of grp.apps) rows.push({ app: a });
+    }
+  } else {
+    for (const a of healthApps) rows.push({ app: a });
+  }
+  const TOP_H = 44; // headline + proportion bar
+  const HEADER_H = 20;
+  const SVC_H = 27;
+  let budget = box.h - TOP_H - 10;
+  const shownRows: Row[] = [];
+  for (const r of rows) {
+    const hh = r.header ? HEADER_H : SVC_H;
+    if (budget - hh < -6) break;
+    budget -= hh;
+    shownRows.push(r);
+  }
+
   return (
     <div ref={box.ref} className="flex flex-col h-full px-3 py-2.5 gap-2">
       <div className="flex items-baseline gap-1.5 min-w-0">
@@ -238,26 +265,20 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
       )}
 
       {showBars ? (
-        <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-3 mt-0.5 pr-0.5">
-          {config?.byGroup
-            ? appGroups.map((grp) => {
-                const upN = grp.apps.filter((a) => statuses[a.id]?.status === "healthy").length;
-                return (
-                  <div key={grp.g?.id ?? "__ung"} className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.06em] text-text-muted">
-                      {grp.g?.color && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: grp.g.color }} />}
-                      <span className="truncate">{grp.g?.name ?? "Ungrouped"}</span>
-                      <span className="ml-auto font-mono tabular-nums">{upN}/{grp.apps.length}</span>
-                    </div>
-                    {grp.apps.map((a) => (
-                      <ServiceRow key={a.id} name={a.name} points={history[a.id] ?? []} n={barCount} />
-                    ))}
-                  </div>
-                );
-              })
-            : healthApps.map((a) => (
-                <ServiceRow key={a.id} name={a.name} points={history[a.id] ?? []} n={barCount} />
-              ))}
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col mt-0.5">
+          {shownRows.map((r, i) =>
+            r.header ? (
+              <div key={`h${i}`} className="flex items-center gap-2 text-[10px] uppercase tracking-[0.06em] text-text-muted shrink-0" style={{ height: HEADER_H }}>
+                {r.header.color && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: r.header.color }} />}
+                <span className="truncate">{r.header.name}</span>
+                <span className="ml-auto font-mono tabular-nums">{r.header.up}/{r.header.total}</span>
+              </div>
+            ) : (
+              <div key={r.app!.id} className="flex-1 min-h-0 flex items-center">
+                <ServiceRow name={r.app!.name} points={history[r.app!.id] ?? []} n={barCount} />
+              </div>
+            ),
+          )}
         </div>
       ) : config?.byGroup && h > 1 ? (
         <div className="flex-1 min-h-0 flex flex-col justify-center gap-1 overflow-auto">

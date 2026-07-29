@@ -86,7 +86,8 @@ function NetGraphComponent({ config, save }: WidgetProps<NetGraphConfig>) {
   const outColor = col(config?.colorOut, "var(--color-accent, #818cf8)");
 
   const w = Math.max(40, box.w);
-  const chartH = Math.max(24, box.h - 30);
+  const showHeader = box.h >= 58; // hide the legend row when very short (1H)
+  const chartH = Math.max(20, box.h - (showHeader ? 30 : 4));
   const fixed = config?.scaleMbit ? (config.scaleMbit * 1e6) / 8 : 0;
   const peak = Math.max(1, fixed || Math.max(...rxV, ...txV, 1) * 1.15);
 
@@ -96,15 +97,17 @@ function NetGraphComponent({ config, save }: WidgetProps<NetGraphConfig>) {
 
   return (
     <div ref={box.ref} className="h-full flex flex-col">
-      <div className="flex items-center justify-between px-3 pt-1.5 shrink-0 text-[11px] gap-2">
-        <span className="flex items-center gap-1.5 min-w-0" style={{ color: inColor }}>
-          <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: inColor }} /> <span className="truncate">In {fmtRate(data.net_rx_bps)}</span>
-        </span>
-        {box.w >= 300 && <WindowChips value={win} onChange={(wv) => save({ window: wv })} size="xs" />}
-        <span className="flex items-center gap-1.5 min-w-0 justify-end" style={{ color: outColor }}>
-          <span className="truncate">Out {fmtRate(data.net_tx_bps)}</span> <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: outColor }} />
-        </span>
-      </div>
+      {showHeader && (
+        <div className="flex items-center justify-between px-3 pt-1.5 shrink-0 text-[11px] gap-2">
+          <span className="flex items-center gap-1.5 min-w-0" style={{ color: inColor }}>
+            <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: inColor }} /> <span className="truncate">In {fmtRate(data.net_rx_bps)}</span>
+          </span>
+          {box.w >= 300 && <WindowChips value={win} onChange={(wv) => save({ window: wv })} size="xs" />}
+          <span className="flex items-center gap-1.5 min-w-0 justify-end" style={{ color: outColor }}>
+            <span className="truncate">Out {fmtRate(data.net_tx_bps)}</span> <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: outColor }} />
+          </span>
+        </div>
+      )}
       <svg width={w} height={chartH} className="w-full flex-1" preserveAspectRatio="none" viewBox={`0 0 ${w} ${chartH}`}>
         <defs>
           <linearGradient id="ng-in" x1="0" y1="0" x2="0" y2="1">
@@ -215,7 +218,7 @@ const definition: WidgetDefinition<NetGraphConfig> = {
   category: "infrastructure",
   description: "Live download/upload throughput as an area chart, with a legend.",
   minW: 3,
-  minH: 2,
+  minH: 1,
   maxW: 12,
   maxH: 6,
   defaultW: 4,

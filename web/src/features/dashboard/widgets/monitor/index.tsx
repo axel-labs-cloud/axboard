@@ -57,8 +57,8 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
   const up = rows.filter((x) => x.r?.ok).length;
   const down = rows.filter((x) => x.r && !x.r.ok).length;
 
-  // Size-driven layout. Short → a summary pill; otherwise an adaptive list.
-  const compact = box.h > 0 && box.h < 104;
+  // Size-driven layout. Very short → a summary pill; otherwise a fitted list.
+  const compact = box.h > 0 && box.h < 64;
   const showWord = box.w >= 150; // "up" / "endpoints up" text
   const showHost = box.w >= 232; // secondary host line under a named row
   const showLatency = box.w >= 168;
@@ -95,22 +95,32 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
     );
   }
 
+  // Fit-to-height: show down/unknown first, then as many rows as fit, and let
+  // them stretch to fill so there's no scrollbar and no big blank gap.
+  const rank = (r: Ping | undefined) => (r === undefined ? 1 : r.ok ? 2 : 0);
+  const sorted = [...rows].sort((a, b) => rank(a.r) - rank(b.r));
+  const HEADER_H = 26;
+  const ROW_H = 21;
+  const visible = Math.max(1, Math.floor((box.h - HEADER_H) / ROW_H));
+  const shown = sorted.slice(0, visible);
+  const hiddenDown = sorted.slice(visible).filter((x) => x.r && !x.r.ok).length;
+
   return (
-    <div ref={box.ref} className="h-full flex flex-col">
-      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1 shrink-0">
+    <div ref={box.ref} className="h-full flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 px-3 pt-1.5 pb-1 shrink-0" style={{ height: HEADER_H }}>
         <span className="text-text-muted shrink-0">{MonitorIcon}</span>
         {Count}
         {down > 0 && <span className="ml-auto text-[11px] font-mono text-down shrink-0">{down} down</span>}
       </div>
-      <div className="flex-1 min-h-0 overflow-auto px-2 pb-2 divide-y divide-border-subtle">
-        {rows.map(({ t, r }) => {
+      <div className="flex-1 min-h-0 flex flex-col px-2 divide-y divide-border-subtle">
+        {shown.map(({ t, r }) => {
           const inner = (
             <>
               <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass(r)}`} />
               <div className="min-w-0 flex-1">
-                <div className="text-[12px] text-text-secondary truncate">{t.name || host(t.url)}</div>
-                {showHost && t.name && (
-                  <div className="text-[10px] text-text-muted truncate font-mono">{host(t.url)}</div>
+                <div className="text-[12px] text-text-secondary truncate leading-tight">{t.name || host(t.url)}</div>
+                {showHost && t.name && box.h / visible > 30 && (
+                  <div className="text-[10px] text-text-muted truncate font-mono leading-tight">{host(t.url)}</div>
                 )}
               </div>
               {showLatency && r?.ms != null && (
@@ -118,13 +128,16 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
               )}
             </>
           );
-          const cls = "flex items-center gap-2 px-1.5 py-1.5";
+          const cls = "flex-1 min-h-0 flex items-center gap-2 px-1.5";
           return editing ? (
             <div key={t.url} className={cls}>{inner}</div>
           ) : (
             <a key={t.url} href={t.url} target="_blank" rel="noreferrer" className={`${cls} hover:bg-bg-hover transition-colors`}>{inner}</a>
           );
         })}
+        {hiddenDown > 0 && (
+          <div className="shrink-0 px-1.5 py-0.5 text-[10px] text-down font-mono">+{hiddenDown} more down</div>
+        )}
       </div>
     </div>
   );
@@ -195,7 +208,7 @@ const definition: WidgetDefinition<MonitorConfig> = {
   category: "infrastructure",
   description: "Ping a list of URLs and show up/down + latency.",
   minW: 2,
-  minH: 2,
+  minH: 1,
   maxW: 6,
   maxH: 12,
   defaultW: 3,

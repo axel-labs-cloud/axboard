@@ -178,16 +178,21 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   const m = readMetric(data, metric);
   const name = cfg.label || m.name;
 
-  // Adapt to size: a short tile can't hold a ring. If it's short-and-wide, use
-  // a bar; if it's a tiny square, use the compact icon ring.
+  // Adapt to size: a short tile can't hold a full ring + number. A short-wide
+  // tile falls back to a bar; a short square becomes a compact ring with the
+  // metric's icon in the centre (this wins over the configured style, since
+  // that's all that fits).
   let style: "ring" | "bar" | "spark" | "ringicon" = cfg.style ?? "ring";
   const short = box.h > 0 && box.h < 96;
   const wide = box.w > box.h * 1.5;
-  if (short && style === "ring") style = wide ? "bar" : "ringicon";
+  if (short) {
+    if (!wide) style = "ringicon";
+    else if (style === "ring") style = "bar";
+  }
 
   let body: React.ReactNode;
   if (style === "ringicon") {
-    const size = Math.max(40, Math.min(box.w - 12, box.h - 12, 120)) || 56;
+    const size = Math.max(24, Math.min(box.w - 8, box.h - 8, 120));
     body = <RingIcon pct={m.pct} size={size} metric={metric} cfg={cfg} />;
   } else if (style === "bar") {
     body = <BarStyle pct={m.pct} big={m.big} sub={m.sub} name={name} cfg={cfg} />;
