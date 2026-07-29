@@ -201,8 +201,10 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   // metric's icon in the centre (this wins over the configured style, since
   // that's all that fits).
   let style: "ring" | "bar" | "spark" | "ringicon" | "baricon" = cfg.style ?? "ring";
-  const short = box.h > 0 && box.h < 96;
-  const wide = box.w > box.h * 1.5;
+  // Compact = the text-free icon ring/bar. Forced by the config toggle, or
+  // triggered automatically when the tile is small.
+  const short = cfg.compact === true || (box.h > 0 && box.h < 110);
+  const wide = box.w > box.h * 1.4;
   if (short) style = wide ? "baricon" : "ringicon";
 
   let body: React.ReactNode;
@@ -264,6 +266,11 @@ function GaugeConfigPanel({ config, save }: WidgetConfigProps<GaugeConfig>) {
       )}
 
       <ColorControls cfg={config} save={save} opts={OPTS} unit="%" />
+
+      <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
+        <input type="checkbox" checked={config?.compact === true} onChange={(e) => save({ compact: e.target.checked })} className="accent-accent" />
+        Compact — icon only, no text
+      </label>
 
       <div className="flex items-center gap-4 pt-0.5">
         <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">

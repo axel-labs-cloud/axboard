@@ -287,6 +287,8 @@ export interface GaugeConfig {
   track?: boolean;
   /** History window for the sparkline style. */
   window?: "1m" | "5m" | "15m" | "1h";
+  /** Force the text-free icon ring/bar at any size. */
+  compact?: boolean;
 }
 
 /** Internet speed test — client-side download/upload/latency via Cloudflare. */
