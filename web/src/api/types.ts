@@ -110,6 +110,7 @@ export interface AlertsDef {
   cert_expiry_days?: number;
   resend_minutes?: number;
   muted?: string[];
+  paused_until?: string; // RFC3339; alerts suppressed until then (maintenance)
 }
 
 export interface NoticeDef {

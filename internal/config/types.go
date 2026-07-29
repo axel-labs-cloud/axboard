@@ -82,6 +82,10 @@ type AlertsConfig struct {
 	ResendMinutes int `yaml:"resend_minutes,omitempty" json:"resend_minutes,omitempty"`
 	// Muted is the set of app IDs excluded from all alerts.
 	Muted []string `yaml:"muted,omitempty" json:"muted,omitempty"`
+	// PausedUntil suppresses ALL alerts until this time (RFC3339). Empty = not
+	// paused. Used for maintenance windows — health checks + the status page
+	// keep working; only notifications are held.
+	PausedUntil string `yaml:"paused_until,omitempty" json:"paused_until,omitempty"`
 }
 
 // NtfyConfig — push via ntfy.sh (or a self-hosted ntfy). Zero infra.

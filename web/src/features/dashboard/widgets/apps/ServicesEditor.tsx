@@ -102,6 +102,7 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
   const [apps, setApps] = useState<WorkingApp[]>([]);
   const [groups, setGroups] = useState<WorkingGroup[]>([]);
   const [selectedKey, setSelectedKey] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
   const [iconPickerFor, setIconPickerFor] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
@@ -419,6 +420,22 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
           <ToolbarToggle active={groupsOpen} onClick={() => setGroupsOpen((o) => !o)}>
             Groups
           </ToolbarToggle>
+          <div className="flex items-center rounded-md border border-border-subtle overflow-hidden">
+            {(["grid", "table"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setViewMode(m)}
+                title={`${m} view`}
+                className={`px-2 py-1.5 flex items-center justify-center transition-colors ${viewMode === m ? "bg-bg-elevated text-accent" : "text-text-muted hover:text-text"}`}
+              >
+                {m === "grid" ? (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
+                ) : (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" /></svg>
+                )}
+              </button>
+            ))}
+          </div>
           <div className="flex-1" />
           <div className="relative">
             <svg
@@ -551,6 +568,64 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
                   Add your first service
                 </button>
               )}
+            </div>
+          ) : viewMode === "table" ? (
+            <div className="rounded-lg border border-border-subtle overflow-hidden">
+              <table className="w-full text-[12px]">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-wide text-text-muted bg-bg-card/40">
+                    <th className="text-left font-semibold px-3 py-2">Name</th>
+                    <th className="text-left font-semibold px-3 py-2">Group</th>
+                    <th className="text-left font-semibold px-3 py-2">Check</th>
+                    <th className="text-left font-semibold px-3 py-2 max-md:hidden">URL / target</th>
+                    <th className="px-3 py-2 w-8" />
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-subtle">
+                  {filtered.map((app) => {
+                    const g = groups.find((x) => x.id === app.group);
+                    return (
+                      <tr key={app._key} onClick={() => setSelectedKey(app._key)} className="cursor-pointer hover:bg-bg-hover transition-colors">
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <SimpleIcon slug={app.icon || app.name} size={16} className="rounded shrink-0" />
+                            <span className="text-text-secondary truncate">{app.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2">
+                          {g ? (
+                            <span className="inline-flex items-center gap-1.5 text-text-muted">
+                              {g.color && <span className="w-1.5 h-1.5 rounded-full" style={{ background: g.color }} />}
+                              {g.name}
+                            </span>
+                          ) : (
+                            <span className="text-text-muted/50">—</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2">
+                          {app.health && app.health.type !== "none" ? (
+                            <span className="font-mono text-text-muted">{app.health.type}{app.health.interval ? ` · ${app.health.interval}` : ""}{app.health.retries ? ` · ${app.health.retries}r` : ""}</span>
+                          ) : (
+                            <span className="text-text-muted/50">none</span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 max-md:hidden">
+                          <span className="font-mono text-text-muted truncate block max-w-[280px]">{app.health?.url || app.health?.host || app.url}</span>
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); if (confirm(`Delete "${app.name}"?`)) removeApp(app._key); }}
+                            className="text-text-muted hover:text-down"
+                            title="Delete"
+                          >
+                            ✕
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div
@@ -879,18 +954,40 @@ function ServiceForm({
             )}
 
             {healthType !== "none" && (
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-[11px] text-text-muted w-16 shrink-0">Retries</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={app.health?.retries ?? ""}
-                  onChange={(e) => onPatch({ health: { ...app.health!, retries: Number(e.target.value) || undefined } })}
-                  placeholder="0"
-                  className="w-20 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50"
-                />
-                <span className="text-[10px] text-text-muted">failures tolerated before “down” (avoids flapping)</span>
-              </div>
+              <>
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[11px] text-text-muted w-16 shrink-0">Every</span>
+                  {(["5s", "30s", "1m", "5m", "1h"] as const).map((iv) => (
+                    <button
+                      key={iv}
+                      onClick={() => onPatch({ health: { ...app.health!, interval: iv } })}
+                      className={`px-2 py-1 text-[11px] rounded border transition-colors ${
+                        (app.health?.interval || "") === iv ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"
+                      }`}
+                    >
+                      {iv}
+                    </button>
+                  ))}
+                  <input
+                    value={app.health?.interval ?? ""}
+                    onChange={(e) => onPatch({ health: { ...app.health!, interval: e.target.value } })}
+                    placeholder="custom"
+                    className="w-20 px-2 py-1 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50"
+                  />
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[11px] text-text-muted w-16 shrink-0">Retries</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={app.health?.retries ?? ""}
+                    onChange={(e) => onPatch({ health: { ...app.health!, retries: Number(e.target.value) || undefined } })}
+                    placeholder="0"
+                    className="w-20 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50"
+                  />
+                  <span className="text-[10px] text-text-muted">failures before “down” (avoids flapping)</span>
+                </div>
+              </>
             )}
           </div>
         </Field>

@@ -43,12 +43,19 @@ func main() {
 	// refreshed on every reload; sends are best-effort off the health pool.
 	notifier := alert.New()
 	pool.OnChange(func(id string, prev, cur health.Status) {
-		notifier.Notify(id, string(prev), string(cur), time.Now())
+		now := time.Now()
+		if notifier.Paused(now) { // maintenance window — hold notifications
+			return
+		}
+		notifier.Notify(id, string(prev), string(cur), now)
 	})
 	// On every check: re-send "down" alerts on the resend interval, and alert on
 	// near-expiry certs (both deduped inside the notifier).
 	pool.OnResult(func(id string, res health.Result) {
 		now := time.Now()
+		if notifier.Paused(now) {
+			return
+		}
 		notifier.MaybeResend(id, string(res.Status), now)
 		if !res.CertExpiry.IsZero() {
 			days := int(res.CertExpiry.Sub(now).Hours() / 24)

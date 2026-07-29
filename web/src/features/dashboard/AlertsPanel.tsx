@@ -111,7 +111,18 @@ export function AlertsForm({
     if (draft.cert_expiry_days != null) c.cert_expiry_days = draft.cert_expiry_days;
     if (draft.resend_minutes) c.resend_minutes = draft.resend_minutes;
     if (draft.muted?.length) c.muted = draft.muted;
+    if (draft.paused_until) c.paused_until = draft.paused_until;
     return c;
+  };
+
+  const paused = !!draft.paused_until && new Date(draft.paused_until).getTime() > Date.now();
+  const pauseFor = (hours: number) => {
+    const until = hours > 0 ? new Date(Date.now() + hours * 3600_000).toISOString() : undefined;
+    setDraft((d) => ({ ...d, paused_until: until }));
+    const c = clean();
+    if (until) c.paused_until = until;
+    else delete c.paused_until;
+    onSave(c);
   };
 
   const muted = new Set(draft.muted ?? []);
@@ -159,10 +170,30 @@ export function AlertsForm({
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex-1 min-h-0 p-4 flex flex-col">
-        <p className="text-[11px] text-text-muted leading-snug mb-3 shrink-0">
+        <p className="text-[11px] text-text-muted leading-snug mb-2 shrink-0">
           Notify when a health-checked service goes <span className="text-down">down</span> / <span className="text-up">recovers</span>,
           and before an HTTPS certificate expires. Every configured channel fires. Leave a section blank to disable it.
         </p>
+
+        {/* Maintenance window — suppress all alerts for a while (checks keep running). */}
+        <div className={`shrink-0 mb-3 flex items-center gap-2 flex-wrap rounded-lg border px-3 py-2 ${paused ? "border-degraded/40 bg-degraded/10" : "border-border-subtle bg-bg-card/40"}`}>
+          <span className="text-[12px] font-semibold text-text">Maintenance</span>
+          {paused ? (
+            <>
+              <span className="text-[11px] text-degraded">Alerts paused until {new Date(draft.paused_until!).toLocaleString()}</span>
+              <button onClick={() => pauseFor(0)} className="ml-auto px-2.5 py-1 text-[11px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20">Resume alerts</button>
+            </>
+          ) : (
+            <>
+              <span className="text-[11px] text-text-muted">Silence all alerts for a window:</span>
+              {[1, 4, 24].map((h) => (
+                <button key={h} onClick={() => pauseFor(h)} className="px-2 py-1 text-[11px] rounded border border-border text-text-muted hover:text-text hover:border-text-muted">
+                  Pause {h}h
+                </button>
+              ))}
+            </>
+          )}
+        </div>
 
         {/* Two panes: channels on the left, the rest + live status (filling to
             the bottom) on the right. */}

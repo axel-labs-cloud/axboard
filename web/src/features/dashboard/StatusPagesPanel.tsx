@@ -181,17 +181,19 @@ export function StatusPagesForm({
 
               {apps.length > 0 && (
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Include services (none = all)</label>
-                  <div className="max-h-40 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
-                    {apps.map((a) => (
+                  <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+                    Include services (none = all){groupSel.size > 0 ? " · in selected groups" : ""}
+                  </label>
+                  <div className="max-h-44 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
+                    {(groupSel.size > 0 ? apps.filter((a) => a.group && groupSel.has(a.group)) : apps).map((a) => (
                       <label key={a.id} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
                         <input type="checkbox" checked={appSel.size === 0 || appSel.has(a.id)} onChange={() => toggleApp(a.id)} className="accent-accent" />
                         <span className="flex-1 truncate">{a.name}</span>
-                        {a.group && <span className="text-[10px] text-text-muted">{a.group}</span>}
+                        {a.group && <span className="text-[10px] text-text-muted">{groups.find((g) => g.id === a.group)?.name ?? a.group}</span>}
                       </label>
                     ))}
                   </div>
-                  <p className="text-[10px] text-text-muted">Untick to hide a service from this page.</p>
+                  <p className="text-[10px] text-text-muted">Groups pick whole categories; untick a service to hide just it.</p>
                 </div>
               )}
 

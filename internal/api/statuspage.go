@@ -27,6 +27,7 @@ type spService struct {
 	StatusText string
 	UptimePct  int
 	HasUptime  bool
+	Bars       []string // per-check status classes (Uptime-Kuma-style strip)
 	CertDays   int
 	HasCert    bool
 }
@@ -161,6 +162,14 @@ func (s *Server) handleStatusPage(w http.ResponseWriter, r *http.Request) {
 			}
 			svc.HasUptime = true
 			svc.UptimePct = int(float64(healthy) / float64(len(pts)) * 100)
+			// Last ~40 checks as a coloured bar strip.
+			tail := pts
+			if len(tail) > 40 {
+				tail = tail[len(tail)-40:]
+			}
+			for _, p := range tail {
+				svc.Bars = append(svc.Bars, string(p.Status))
+			}
 		}
 		if !res.CertExpiry.IsZero() {
 			if d := int(time.Until(res.CertExpiry).Hours() / 24); d <= 30 {
@@ -254,7 +263,10 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .name{flex:1;min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .cert{font-size:10px;padding:2px 6px;border-radius:6px;background:rgba(245,158,11,.15);color:var(--deg)}
   .cert.exp{background:rgba(244,63,94,.15);color:var(--down)}
-  .pct{color:var(--mut);font-variant-numeric:tabular-nums;font-size:12px;width:80px;text-align:right}
+  .bars{display:flex;gap:2px;align-items:stretch;height:22px;flex:1;min-width:60px;max-width:260px}
+  .bars span{flex:1;border-radius:2px;background:var(--unk)}
+  .bars span.healthy{background:var(--up)} .bars span.degraded{background:var(--deg)} .bars span.down{background:var(--down)}
+  .pct{color:var(--mut);font-variant-numeric:tabular-nums;font-size:12px;width:64px;text-align:right}
   .st{font-size:12px;font-variant-numeric:tabular-nums;width:96px;text-align:right}
   .st.healthy{color:var(--up)} .st.degraded{color:var(--deg)} .st.down{color:var(--down)} .st.unknown{color:var(--mut)}
   footer{color:var(--mut);font-size:11px;text-align:center;margin-top:28px;white-space:pre-wrap}
@@ -288,8 +300,9 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
       <div class="row">
         <span class="dot {{.Status}}"></span>
         <span class="name">{{.Name}}</span>
+        {{if .Bars}}<span class="bars">{{range .Bars}}<span class="{{.}}"></span>{{end}}</span>{{end}}
         {{if .HasCert}}<span class="cert {{if lt .CertDays 0}}exp{{else if le .CertDays 14}}exp{{end}}">{{if lt .CertDays 0}}cert expired{{else}}cert {{.CertDays}}d{{end}}</span>{{end}}
-        {{if .HasUptime}}<span class="pct">{{.UptimePct}}% up</span>{{end}}
+        {{if .HasUptime}}<span class="pct">{{.UptimePct}}%</span>{{end}}
         <span class="st {{.Status}}">{{.StatusText}}</span>
       </div>
       {{end}}

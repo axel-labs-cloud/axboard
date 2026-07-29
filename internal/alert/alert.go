@@ -36,6 +36,19 @@ func New() *Notifier {
 	}
 }
 
+// Paused reports whether alerts are suppressed by a maintenance window
+// (alerts.paused_until in the future).
+func (n *Notifier) Paused(now time.Time) bool {
+	n.mu.RLock()
+	s := n.cfg.PausedUntil
+	n.mu.RUnlock()
+	if s == "" {
+		return false
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	return err == nil && now.Before(t)
+}
+
 // muted reports whether an app is excluded from alerts.
 func (n *Notifier) muted(app string) bool {
 	n.mu.RLock()
