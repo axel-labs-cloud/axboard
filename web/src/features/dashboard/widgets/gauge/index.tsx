@@ -121,10 +121,11 @@ function BarIcon({ pct, w, h, metric, cfg }: { pct: number; w: number; h: number
   );
 }
 
-function BarStyle({ pct, big, sub, name, cfg }: { pct: number; big: string; sub: string; name: string; cfg: GaugeConfig }) {
+function BarStyle({ pct, big, sub, name, h, cfg }: { pct: number; big: string; sub: string; name: string; h: number; cfg: GaugeConfig }) {
   const cur = scaleColor(pct, cfg as ColorConfig, OPTS);
   const glow = cfg.glow !== false;
   const showTrack = cfg.track !== false;
+  const showSub = h === 0 || h >= 78; // drop the used/total line when short
   const p = Math.min(100, Math.max(0, pct));
   return (
     <div className="w-full px-4">
@@ -135,7 +136,7 @@ function BarStyle({ pct, big, sub, name, cfg }: { pct: number; big: string; sub:
       <div className={`w-full h-5 rounded-[3px] overflow-hidden ${showTrack ? "bg-bg-elevated" : ""}`}>
         <div className="h-full rounded-[2px]" style={{ width: `${p}%`, background: cur, transition: "width 0.6s ease, background 0.4s ease", boxShadow: glow ? `0 0 8px ${cur}` : undefined }} />
       </div>
-      <div className="mt-1.5 text-[11px] font-mono text-text-muted whitespace-nowrap truncate">{sub}</div>
+      {showSub && <div className="mt-1.5 text-[11px] font-mono text-text-muted whitespace-nowrap truncate">{sub}</div>}
     </div>
   );
 }
@@ -201,11 +202,15 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   // metric's icon in the centre (this wins over the configured style, since
   // that's all that fits).
   let style: "ring" | "bar" | "spark" | "ringicon" | "baricon" = cfg.style ?? "ring";
-  // Compact = the text-free icon ring/bar. Forced by the config toggle, or
-  // triggered automatically when the tile is small.
-  const short = cfg.compact === true || (box.h > 0 && box.h < 110);
   const wide = box.w > box.h * 1.4;
-  if (short) style = wide ? "baricon" : "ringicon";
+  if (cfg.compact === true) {
+    // Explicit compact: text-free icon ring/bar at any size.
+    style = wide ? "baricon" : "ringicon";
+  } else if (style === "ring" && box.h > 0 && box.h < 96) {
+    // A ring can't render in a short tile — fall back (bar/spark are left as
+    // chosen; they render fine when short).
+    style = wide ? "baricon" : "ringicon";
+  }
 
   let body: React.ReactNode;
   if (style === "ringicon") {
@@ -214,7 +219,7 @@ function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   } else if (style === "baricon") {
     body = <BarIcon pct={m.pct} w={box.w} h={box.h} metric={metric} cfg={cfg} />;
   } else if (style === "bar") {
-    body = <BarStyle pct={m.pct} big={m.big} sub={m.sub} name={name} cfg={cfg} />;
+    body = <BarStyle pct={m.pct} big={m.big} sub={m.sub} name={name} h={box.h} cfg={cfg} />;
   } else if (style === "spark") {
     const win = (cfg.window ?? "5m") as TimeWindow;
     const view = hist.current.slice(-windowPoints(win, POLL_MS));
