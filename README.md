@@ -94,7 +94,7 @@ Add widgets from the **⋯ menu → Add widget** (filterable by category and sea
 | Category | Widgets |
 | --- | --- |
 | **System** | Clock (with extra timezones) |
-| **Infrastructure** | Apps grid · Single app tile · Status summary · Host stats · Resource gauge (CPU/RAM/disk · ring/arc/bar/spark) · Speed test (Cloudflare) · Containers (Docker/Podman) · Uptime monitor · Public IP / VPN · Custom API (any JSON endpoint) · axdnsd · axlbd |
+| **Infrastructure** | Apps grid · Single app tile · Status summary · Host stats · Resource gauge (CPU/RAM/disk · ring/arc/bar/spark) · Speed test (Cloudflare) · Camera (Frigate / MJPEG) · Containers (Docker/Podman) · Uptime monitor · Public IP / VPN · Custom API (any JSON endpoint) · axdnsd · axlbd |
 | **Productivity** | Bookmarks · Search · Checklist · Notes · Countdown · Pomodoro · Image · Section label |
 | **External** | Weather (hourly + forecast) · Sun (sunrise/sunset/UV) · Markets (crypto + stocks, live charts) · Releases (GitHub/GitLab) · Calendar (iCal) · RSS/Atom · Embed (iframe) · Concentus (now-playing) |
 

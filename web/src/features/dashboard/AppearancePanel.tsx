@@ -229,23 +229,6 @@ function ThemesTab({
         </div>
       </Section>
 
-      <Section title="Board density">
-        <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card w-full">
-          {(["compact", "cozy", "spacious"] as const).map((d) => (
-            <button
-              key={d}
-              onClick={() => onSetDensity(d)}
-              className={`flex-1 px-2 py-1 text-[11px] rounded capitalize transition-colors ${
-                density === d ? "bg-bg-elevated text-text shadow-sm" : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              {d}
-            </button>
-          ))}
-        </div>
-        <p className="text-[10px] text-text-muted mt-1.5">Remembered per theme.</p>
-      </Section>
-
       <Section title="Custom themes">
         {customs.length > 0 && (
           <div className="grid grid-cols-3 gap-1.5 mb-2">
@@ -305,6 +288,23 @@ function ThemesTab({
             <input type="file" accept="application/json,.json" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) importThemes(f); e.target.value = ""; }} />
           </label>
         </div>
+      </Section>
+
+      <Section title="Board density">
+        <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card w-full">
+          {(["compact", "cozy", "spacious"] as const).map((d) => (
+            <button
+              key={d}
+              onClick={() => onSetDensity(d)}
+              className={`flex-1 px-2 py-1 text-[11px] rounded capitalize transition-colors ${
+                density === d ? "bg-bg-elevated text-text shadow-sm" : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              {d}
+            </button>
+          ))}
+        </div>
+        <p className="text-[10px] text-text-muted mt-1.5">Remembered per theme.</p>
       </Section>
 
       <FontSection />

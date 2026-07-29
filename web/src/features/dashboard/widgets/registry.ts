@@ -28,6 +28,7 @@ import axdnsd from "./axdnsd";
 import axlbd from "./axlbd";
 import gauge from "./gauge";
 import speedtest from "./speedtest";
+import camera from "./camera";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -59,6 +60,7 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   axlbd,
   gauge,
   speedtest,
+  camera,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

@@ -392,24 +392,26 @@ export function DashboardTabBar({
                 open={openGroup === "dashboard"}
                 onToggle={() => setOpenGroup((g) => (g === "dashboard" ? null : "dashboard"))}
               >
-                <MenuItem label="Export this dashboard" onClick={() => { setMenuOpen(false); onExport(); }} />
-                <MenuItem label={copiedShare ? "Copied to clipboard ✓" : "Copy dashboard (share)"} onClick={() => onCopyDashboard()} />
-                <MenuItem label="Import a dashboard…" onClick={() => { setMenuOpen(false); importInputRef.current?.click(); }} />
-                <MenuItem label="New dashboard from template…" onClick={() => { setMenuOpen(false); onNewFromTemplate(); }} />
-                <MenuItem label="Edit config.yaml…" onClick={() => { setMenuOpen(false); onEditConfig(); }} />
-                <MenuItem label="Back up everything" onClick={() => { setMenuOpen(false); onBackup(); }} />
-                <MenuItem label="Restore from backup…" onClick={() => { setMenuOpen(false); restoreInputRef.current?.click(); }} />
+                <MenuItem label="New dashboard from template…" icon={ITEM_ICONS.template} onClick={() => { setMenuOpen(false); onNewFromTemplate(); }} />
+                <MenuItem label="Import a dashboard…" icon={ITEM_ICONS.import} onClick={() => { setMenuOpen(false); importInputRef.current?.click(); }} />
+                <MenuItem label="Export this dashboard" icon={ITEM_ICONS.export} onClick={() => { setMenuOpen(false); onExport(); }} />
+                <MenuItem label={copiedShare ? "Copied to clipboard ✓" : "Copy dashboard (share)"} icon={ITEM_ICONS.share} onClick={() => onCopyDashboard()} />
+                <MenuItem label="Edit config.yaml…" icon={ITEM_ICONS.config} onClick={() => { setMenuOpen(false); onEditConfig(); }} />
+                <MenuItem label="Back up everything" icon={ITEM_ICONS.backup} onClick={() => { setMenuOpen(false); onBackup(); }} />
+                <MenuItem label="Restore from backup…" icon={ITEM_ICONS.restore} onClick={() => { setMenuOpen(false); restoreInputRef.current?.click(); }} />
               </MenuGroup>
 
-              <MenuGroup
-                label="Display"
-                icon={GROUP_ICONS.display}
-                open={openGroup === "display"}
-                onToggle={() => setOpenGroup((g) => (g === "display" ? null : "display"))}
-              >
-                <MenuItem label={alertsEnabled ? "Desktop alerts: on" : "Desktop alerts: off"} onClick={() => { setMenuOpen(false); onToggleAlerts(); }} />
-                <MenuItem label="Enter kiosk mode" onClick={() => { setMenuOpen(false); onEnterKiosk(); }} />
-              </MenuGroup>
+              <div className="my-1 border-t border-border-subtle/60" />
+              <MenuItem
+                label={alertsEnabled ? "Desktop alerts: on" : "Desktop alerts: off"}
+                icon={ITEM_ICONS.bell}
+                onClick={() => { setMenuOpen(false); onToggleAlerts(); }}
+              />
+              <MenuItem
+                label="Enter kiosk mode"
+                icon={ITEM_ICONS.kiosk}
+                onClick={() => { setMenuOpen(false); onEnterKiosk(); }}
+              />
               <div className="px-3 py-2 border-t border-border-subtle flex items-center justify-between">
                 <span className="text-[10px] text-text-muted">axboard</span>
                 <span className="text-[10px] font-mono text-text-muted/70" title={versionQ.data?.buildDate || ""}>
@@ -607,6 +609,24 @@ function MenuGroup({
     </div>
   );
 }
+
+// Per-action icons for menu items (all 14×14 line icons).
+const I = (d: React.ReactNode) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+    {d}
+  </svg>
+);
+const ITEM_ICONS: Record<string, React.ReactNode> = {
+  template: I(<><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><path d="M17.5 14v7M14 17.5h7" /></>),
+  import: I(<><path d="M12 3v12" /><path d="m8 11 4 4 4-4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></>),
+  export: I(<><path d="M12 15V3" /><path d="m8 7 4-4 4 4" /><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" /></>),
+  share: I(<><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5 8.6 10.5" /></>),
+  config: I(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" /><path d="m9 14 2 2-2 2M15 18h-2" /></>),
+  backup: I(<><ellipse cx="12" cy="5" rx="9" ry="3" /><path d="M3 5v14a9 3 0 0 0 18 0V5" /><path d="M3 12a9 3 0 0 0 18 0" /></>),
+  restore: I(<><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /></>),
+  bell: I(<><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></>),
+  kiosk: I(<><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" /></>),
+};
 
 const GROUP_ICONS: Record<string, React.ReactNode> = {
   services: (

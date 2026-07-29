@@ -29,7 +29,8 @@ export type WidgetType =
   | "axdnsd"
   | "axlbd"
   | "gauge"
-  | "speedtest";
+  | "speedtest"
+  | "camera";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -284,6 +285,26 @@ export interface SpeedTestConfig {
   auto?: boolean;
 }
 
+/** Camera widget — a Frigate NVR camera or any MJPEG / JPEG stream URL. */
+export interface CameraConfig {
+  source?: "frigate" | "url";
+  /** Frigate base URL, e.g. http://frigate.lan:5000 */
+  baseUrl?: string;
+  /** Frigate camera name. */
+  camera?: string;
+  /** Direct stream URL when source = "url" (MJPEG or a refreshing JPEG). */
+  streamUrl?: string;
+  /** mjpeg = live multipart stream; snapshot = poll a JPEG on an interval. */
+  mode?: "mjpeg" | "snapshot";
+  /** Snapshot refresh interval in seconds (snapshot mode). Default 2. */
+  refreshSec?: number;
+  title?: string;
+  showTitle?: boolean;
+  fit?: "cover" | "contain";
+  /** Optional click-through URL (e.g. the full Frigate UI). */
+  link?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -314,6 +335,7 @@ export type WidgetConfigByType = {
   axlbd: AxServiceConfig;
   gauge: GaugeConfig;
   speedtest: SpeedTestConfig;
+  camera: CameraConfig;
 };
 
 export type AnyWidgetConfig = Partial<
@@ -344,7 +366,8 @@ export type AnyWidgetConfig = Partial<
     CustomApiConfig &
     AxServiceConfig &
     GaugeConfig &
-    SpeedTestConfig
+    SpeedTestConfig &
+    CameraConfig
 >;
 
 export interface Widget {
