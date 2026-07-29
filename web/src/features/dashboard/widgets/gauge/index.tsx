@@ -174,62 +174,68 @@ function Spark({ hist, big, sub, name, w, cfg }: { hist: number[]; big: string; 
   );
 }
 
+// Render one gauge for `metric` within a w×h box. Extracted so the dual mode
+// can draw two.
+function gaugeBody(metric: string, d: HostStats, cfg: GaugeConfig, w: number, h: number, hist: number[]): React.ReactNode {
+  const m = readMetric(d, metric);
+  const name = cfg.label && cfg.metric === metric ? cfg.label : m.name;
+  let style: "ring" | "bar" | "spark" | "ringicon" | "baricon" = cfg.style ?? "ring";
+  const wide = w > h * 1.4;
+  if (cfg.compact === true) style = wide ? "baricon" : "ringicon";
+  else if (style === "ring" && h > 0 && h < 96) style = wide ? "baricon" : "ringicon";
+
+  if (style === "ringicon") {
+    const size = Math.max(24, Math.min(w - 8, h - 8, 120));
+    return <RingIcon pct={m.pct} size={size} metric={metric} cfg={cfg} />;
+  }
+  if (style === "baricon") return <BarIcon pct={m.pct} w={w} h={h} metric={metric} cfg={cfg} />;
+  if (style === "bar") return <BarStyle pct={m.pct} big={m.big} sub={m.sub} name={name} h={h} cfg={cfg} />;
+  if (style === "spark") {
+    const win = (cfg.window ?? "5m") as TimeWindow;
+    return <Spark hist={hist.slice(-windowPoints(win, POLL_MS))} big={m.big} sub={m.sub} name={name} w={w} cfg={cfg} />;
+  }
+  const size = Math.max(60, Math.min(w - 24, h - 24, 200)) || 96;
+  return <Ring pct={m.pct} size={size} big={m.big} name={name} cfg={cfg} />;
+}
+
 function GaugeComponent({ config }: WidgetProps<GaugeConfig>) {
   const box = useSize<HTMLDivElement>();
   const cfg = config ?? {};
   const metric = cfg.metric ?? "cpu";
-  const hist = useRef<number[]>([]);
+  const metric2 = cfg.metric2 && cfg.metric2 !== "none" ? cfg.metric2 : null;
+  const hist = useRef<Record<string, number[]>>({});
   const [, tick] = useState(0);
 
   const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: POLL_MS });
 
   useEffect(() => {
     if (!data) return;
-    const m = readMetric(data, metric);
-    hist.current = [...hist.current, m.pct].slice(-maxBuffer(POLL_MS));
+    const cap = maxBuffer(POLL_MS);
+    for (const mt of [metric, metric2].filter(Boolean) as string[]) {
+      hist.current[mt] = [...(hist.current[mt] ?? []), readMetric(data, mt).pct].slice(-cap);
+    }
     tick((n) => n + 1);
-  }, [data, metric]);
+  }, [data, metric, metric2]);
 
   if (isError || !data) {
     return <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">Host stats unavailable.</div>;
   }
 
-  const m = readMetric(data, metric);
-  const name = cfg.label || m.name;
-
-  // Adapt to size: a short tile can't hold a full ring + number. A short-wide
-  // tile falls back to a bar; a short square becomes a compact ring with the
-  // metric's icon in the centre (this wins over the configured style, since
-  // that's all that fits).
-  let style: "ring" | "bar" | "spark" | "ringicon" | "baricon" = cfg.style ?? "ring";
-  const wide = box.w > box.h * 1.4;
-  if (cfg.compact === true) {
-    // Explicit compact: text-free icon ring/bar at any size.
-    style = wide ? "baricon" : "ringicon";
-  } else if (style === "ring" && box.h > 0 && box.h < 96) {
-    // A ring can't render in a short tile — fall back (bar/spark are left as
-    // chosen; they render fine when short).
-    style = wide ? "baricon" : "ringicon";
+  if (metric2) {
+    // Split the tile: side-by-side when wide, stacked when tall.
+    const row = box.w >= box.h;
+    const halfW = row ? box.w / 2 : box.w;
+    const halfH = row ? box.h : box.h / 2;
+    return (
+      <div ref={box.ref} className={`h-full w-full flex ${row ? "flex-row" : "flex-col"}`}>
+        <div className="flex-1 min-w-0 min-h-0 flex items-center justify-center">{gaugeBody(metric, data, cfg, halfW, halfH, hist.current[metric] ?? [])}</div>
+        <div className={row ? "w-px bg-border-subtle/60" : "h-px bg-border-subtle/60"} />
+        <div className="flex-1 min-w-0 min-h-0 flex items-center justify-center">{gaugeBody(metric2, data, cfg, halfW, halfH, hist.current[metric2] ?? [])}</div>
+      </div>
+    );
   }
 
-  let body: React.ReactNode;
-  if (style === "ringicon") {
-    const size = Math.max(24, Math.min(box.w - 8, box.h - 8, 120));
-    body = <RingIcon pct={m.pct} size={size} metric={metric} cfg={cfg} />;
-  } else if (style === "baricon") {
-    body = <BarIcon pct={m.pct} w={box.w} h={box.h} metric={metric} cfg={cfg} />;
-  } else if (style === "bar") {
-    body = <BarStyle pct={m.pct} big={m.big} sub={m.sub} name={name} h={box.h} cfg={cfg} />;
-  } else if (style === "spark") {
-    const win = (cfg.window ?? "5m") as TimeWindow;
-    const view = hist.current.slice(-windowPoints(win, POLL_MS));
-    body = <Spark hist={view} big={m.big} sub={m.sub} name={name} w={box.w} cfg={cfg} />;
-  } else {
-    const size = Math.max(60, Math.min(box.w - 24, box.h - 24, 200)) || 96;
-    body = <Ring pct={m.pct} size={size} big={m.big} name={name} cfg={cfg} />;
-  }
-
-  return <div ref={box.ref} className="h-full flex flex-col items-center justify-center">{body}</div>;
+  return <div ref={box.ref} className="h-full flex flex-col items-center justify-center">{gaugeBody(metric, data, cfg, box.w, box.h, hist.current[metric] ?? [])}</div>;
 }
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
@@ -250,6 +256,15 @@ function GaugeConfigPanel({ config, save }: WidgetConfigProps<GaugeConfig>) {
         <div className="grid grid-cols-4 gap-1">
           {(["cpu", "ram", "disk", "swap"] as const).map((mt) => (
             <Chip key={mt} active={metric === mt} onClick={() => save({ metric: mt })}>{mt}</Chip>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Second metric (split tile)</label>
+        <div className="grid grid-cols-5 gap-1">
+          {(["none", "cpu", "ram", "disk", "swap"] as const).map((mt) => (
+            <Chip key={mt} active={(config?.metric2 ?? "none") === mt} onClick={() => save({ metric2: mt })}>{mt}</Chip>
           ))}
         </div>
       </div>

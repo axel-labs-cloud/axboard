@@ -153,6 +153,8 @@ export interface StatusSummaryConfig {
 export interface NotesConfig {
   text?: string;
   title?: string;
+  /** Render the body as Markdown (click to edit). Default off (plain text). */
+  markdown?: boolean;
 }
 
 /** Countdown widget — time remaining until (or since) a target datetime. */
@@ -275,6 +277,8 @@ export interface AxServiceConfig {
 /** Resource gauge — one host metric drawn as a ring / bar / sparkline. */
 export interface GaugeConfig {
   metric?: "cpu" | "ram" | "disk" | "swap";
+  /** Optional second metric — renders two gauges split in the tile. */
+  metric2?: "none" | "cpu" | "ram" | "disk" | "swap";
   style?: "ring" | "bar" | "spark";
   label?: string; // overrides the default metric name
   /** How the fill colour is chosen (see colorScale.tsx). */

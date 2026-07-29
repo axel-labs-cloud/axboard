@@ -73,6 +73,10 @@ export const api = {
     fetch(`/api/containers${stats ? "?stats=1" : ""}`).then(
       jsonOk<{ containers: ContainerInfo[]; error?: string }>,
     ),
+  restartContainer: (nameOrId: string) =>
+    fetch(`/api/containers/${encodeURIComponent(nameOrId)}/restart`, { method: "POST" }).then(
+      jsonOk<{ ok: boolean; error?: string }>,
+    ),
   getHost: () => fetch("/api/host").then(jsonOk<HostStats>),
   getHostProcs: (n = 8) =>
     fetch(`/api/host/procs?n=${n}`).then(jsonOk<{ procs: ProcInfo[] }>),

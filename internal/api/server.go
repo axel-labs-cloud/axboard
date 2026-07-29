@@ -156,6 +156,7 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Get("/apps/history", s.handleHistory)
 		r.Get("/discover", s.handleDiscover)
 		r.Get("/containers", s.handleContainers)
+		r.Post("/containers/{id}/restart", s.handleContainerRestart)
 		r.Get("/host", s.handleHost)
 		r.Get("/host/procs", s.handleHostProcs)
 		r.Post("/wol", s.handleWoL)
@@ -327,6 +328,20 @@ func (s *Server) handleContainers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"containers": list})
+}
+
+// handleContainerRestart restarts one container by name/id over the socket.
+func (s *Server) handleContainerRestart(w http.ResponseWriter, r *http.Request) {
+	socket := "/var/run/docker.sock"
+	if c := s.getConfig(); c != nil && c.Discovery.DockerSocket != "" {
+		socket = c.Discovery.DockerSocket
+	}
+	id := chi.URLParam(r, "id")
+	if err := discover.RestartContainer(r.Context(), socket, id); err != nil {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 // handleHost returns a shallow host snapshot (load/memory/uptime).

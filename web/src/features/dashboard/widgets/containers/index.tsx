@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
 import type {
@@ -43,17 +43,49 @@ function StatCol({ cpu, mem }: { cpu?: number; mem?: number }) {
   );
 }
 
+// Circular-arrow restart button, appears on row hover. Spins while restarting.
+function RestartButton({ busy, onClick }: { busy: boolean; onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy}
+      title="Restart container"
+      className={`w-5 h-5 shrink-0 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-accent/10 transition-opacity ${busy ? "opacity-100" : "opacity-0 group-hover/c:opacity-100"}`}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-3 h-3 ${busy ? "animate-spin" : ""}`}>
+        <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+        <path d="M3 3v5h5" />
+      </svg>
+    </button>
+  );
+}
+
 function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
   const filter = config?.filter?.trim().toLowerCase() ?? "";
   const runningOnly = config?.runningOnly ?? false;
   const stats = config?.stats ?? false;
   const box = useSize<HTMLDivElement>();
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
 
   const { data, isError, error } = useQuery({
     queryKey: ["containers", stats],
     queryFn: () => api.getContainers(stats),
     refetchInterval: 15_000,
   });
+
+  const restart = async (name: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setBusy((b) => ({ ...b, [name]: true }));
+    try {
+      await api.restartContainer(name);
+    } catch {
+      /* surfaced by the refetch */
+    }
+    await qc.invalidateQueries({ queryKey: ["containers"] });
+    setBusy((b) => ({ ...b, [name]: false }));
+  };
 
   const list = useMemo(() => {
     let cs = data?.containers ?? [];
@@ -100,42 +132,52 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
     );
   }
 
+  // Fit to height: show as many containers as fit and distribute to fill.
+  const HEADER_H = 40;
+  const ROW_H = cols > 1 ? 44 : stats || showSub ? 34 : 28;
+  const perCol = Math.max(1, Math.floor((box.h - HEADER_H) / ROW_H));
+  const shown = list.slice(0, perCol * cols);
+  const hidden = list.length - shown.length;
+
   return (
-    <div ref={box.ref} className="h-full flex flex-col">
-      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5 shrink-0">
+    <div ref={box.ref} className="h-full flex flex-col overflow-hidden">
+      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5 shrink-0" style={{ height: HEADER_H }}>
         <span className="text-text-muted shrink-0">{ContainersIcon}</span>
         {Count}
+        {hidden > 0 && <span className="ml-auto text-[10px] font-mono text-text-muted">+{hidden}</span>}
       </div>
       {cols > 1 ? (
         <div
-          className="flex-1 min-h-0 overflow-auto p-2"
-          style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: "6px", alignContent: "start" }}
+          className="flex-1 min-h-0 overflow-hidden p-2"
+          style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: "6px", alignContent: "space-between" }}
         >
-          {list.length === 0 && <div className="text-[11px] text-text-muted px-1 py-2">No containers.</div>}
-          {list.map((c) => (
-            <div key={c.name} className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-bg-card/40 border border-border-subtle/50 min-w-0">
+          {shown.length === 0 && <div className="text-[11px] text-text-muted px-1 py-2">No containers.</div>}
+          {shown.map((c) => (
+            <div key={c.name} className="group/c flex items-center gap-2 px-2.5 py-2 rounded-md bg-bg-card/40 border border-border-subtle/50 min-w-0">
               <span className={`w-2 h-2 rounded-full shrink-0 ${stateDot(c.state)}`} title={c.state} />
               <div className="min-w-0 flex-1">
                 <div className="text-[12px] text-text-secondary truncate">{c.name}</div>
                 <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>
               </div>
               {stats && c.state === "running" && <StatCol cpu={c.cpu} mem={c.mem} />}
+              <RestartButton busy={!!busy[c.name]} onClick={(e) => restart(c.name, e)} />
             </div>
           ))}
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-auto px-2 pb-2 divide-y divide-border-subtle">
-          {list.length === 0 && (
+        <div className="flex-1 min-h-0 overflow-hidden px-2 flex flex-col justify-between divide-y divide-border-subtle">
+          {shown.length === 0 && (
             <div className="text-[11px] text-text-muted px-1 py-2">No containers.</div>
           )}
-          {list.map((c) => (
-            <div key={c.name} className="flex items-center gap-2 px-1.5 py-1.5">
+          {shown.map((c) => (
+            <div key={c.name} className="group/c flex-1 min-h-0 flex items-center gap-2 px-1.5">
               <span className={`w-2 h-2 rounded-full shrink-0 ${stateDot(c.state)}`} title={c.state} />
               <div className="min-w-0 flex-1">
                 <div className="text-[12px] text-text-secondary truncate">{c.name}</div>
                 {showSub && <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>}
               </div>
               {stats && c.state === "running" && <StatCol cpu={c.cpu} mem={c.mem} />}
+              <RestartButton busy={!!busy[c.name]} onClick={(e) => restart(c.name, e)} />
             </div>
           ))}
         </div>

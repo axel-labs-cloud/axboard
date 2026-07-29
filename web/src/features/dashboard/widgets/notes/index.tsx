@@ -1,11 +1,64 @@
 import { useEffect, useRef, useState } from "react";
-import type { NotesConfig, WidgetDefinition, WidgetProps } from "../types";
+import type {
+  NotesConfig,
+  WidgetConfigProps,
+  WidgetDefinition,
+  WidgetProps,
+} from "../types";
 
 // ---------------------------------------------------------------------------
 // Notes widget — a free-text scratchpad persisted in config.yaml. Edited
 // directly in the widget (no edit mode needed, like the checklist); writes are
-// debounced so we don't PUT config on every keystroke.
+// debounced so we don't PUT config on every keystroke. Optionally renders the
+// body as Markdown (click the rendered view to edit).
 // ---------------------------------------------------------------------------
+
+// Inline: `code`, **bold**, *italic*, [text](url).
+const INLINE = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)|(\[[^\]]+\]\([^)]+\))/g;
+function inline(text: string): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let i = 0;
+  let m: RegExpExecArray | null;
+  INLINE.lastIndex = 0;
+  while ((m = INLINE.exec(text))) {
+    if (m.index > last) out.push(text.slice(last, m.index));
+    const tok = m[0];
+    if (tok.startsWith("`")) out.push(<code key={i} className="px-1 rounded bg-bg-elevated font-mono text-[12px]">{tok.slice(1, -1)}</code>);
+    else if (tok.startsWith("**")) out.push(<strong key={i} className="text-text font-semibold">{tok.slice(2, -2)}</strong>);
+    else if (tok.startsWith("*")) out.push(<em key={i}>{tok.slice(1, -1)}</em>);
+    else {
+      const mm = /\[([^\]]+)\]\(([^)]+)\)/.exec(tok)!;
+      out.push(<a key={i} href={mm[2]} target="_blank" rel="noreferrer noopener" className="text-accent hover:underline break-all">{mm[1]}</a>);
+    }
+    last = m.index + tok.length;
+    i++;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
+// Block-level markdown: headings, checkboxes, bullets, paragraphs.
+function renderMarkdown(text: string): React.ReactNode {
+  return text.split("\n").map((line, i) => {
+    if (/^###\s/.test(line)) return <h3 key={i} className="text-[13px] font-semibold text-text mt-2 mb-0.5">{inline(line.replace(/^###\s/, ""))}</h3>;
+    if (/^##\s/.test(line)) return <h2 key={i} className="text-[15px] font-semibold text-text mt-2 mb-0.5">{inline(line.replace(/^##\s/, ""))}</h2>;
+    if (/^#\s/.test(line)) return <h1 key={i} className="text-[17px] font-bold text-text mt-2 mb-1">{inline(line.replace(/^#\s/, ""))}</h1>;
+    const cb = /^- \[([ xX])\]\s(.*)$/.exec(line);
+    if (cb) {
+      const done = cb[1] !== " ";
+      return (
+        <div key={i} className="flex items-start gap-2 my-0.5">
+          <input type="checkbox" checked={done} readOnly className="accent-accent mt-0.5 pointer-events-none" />
+          <span className={done ? "line-through text-text-muted" : ""}>{inline(cb[2])}</span>
+        </div>
+      );
+    }
+    if (/^[-*]\s/.test(line)) return <div key={i} className="flex gap-2 my-0.5"><span className="text-text-muted">•</span><span>{inline(line.replace(/^[-*]\s/, ""))}</span></div>;
+    if (line.trim() === "") return <div key={i} className="h-2" />;
+    return <div key={i}>{inline(line)}</div>;
+  });
+}
 
 function NotesComponent({ config, save }: WidgetProps<NotesConfig>) {
   const [val, setVal] = useState(config?.text ?? "");
@@ -39,6 +92,10 @@ function NotesComponent({ config, save }: WidgetProps<NotesConfig>) {
     }, 500);
   };
 
+  const markdown = config?.markdown ?? false;
+  const [editingBody, setEditingBody] = useState(false);
+  const showRendered = markdown && !editingBody;
+
   return (
     <div className="h-full flex flex-col">
       <input
@@ -48,13 +105,47 @@ function NotesComponent({ config, save }: WidgetProps<NotesConfig>) {
         spellCheck={false}
         className="shrink-0 bg-transparent px-3 pt-2.5 pb-1.5 text-[12px] font-semibold text-text focus:outline-none placeholder:text-text-muted/40 border-b border-border-subtle/60"
       />
-      <textarea
-        value={val}
-        onChange={(e) => onText(e.target.value)}
-        placeholder="Write anything — reminders, links, a todo…"
-        spellCheck={false}
-        className="flex-1 min-h-0 w-full resize-none bg-transparent px-3 py-2.5 text-[13px] text-text-secondary leading-relaxed focus:outline-none placeholder:text-text-muted/50"
-      />
+      {showRendered ? (
+        <div
+          onClick={() => setEditingBody(true)}
+          className="flex-1 min-h-0 overflow-auto px-3 py-2.5 text-[13px] text-text-secondary leading-relaxed cursor-text"
+          title="Click to edit"
+        >
+          {val.trim() ? renderMarkdown(val) : <span className="text-text-muted/40">Click to write Markdown…</span>}
+        </div>
+      ) : (
+        <textarea
+          value={val}
+          onChange={(e) => onText(e.target.value)}
+          onBlur={() => markdown && setEditingBody(false)}
+          autoFocus={markdown && editingBody}
+          placeholder="Write anything — reminders, links, a todo…"
+          spellCheck={false}
+          className="flex-1 min-h-0 w-full resize-none bg-transparent px-3 py-2.5 text-[13px] text-text-secondary leading-relaxed focus:outline-none placeholder:text-text-muted/50"
+        />
+      )}
+    </div>
+  );
+}
+
+function NotesConfigPanel({ config, save }: WidgetConfigProps<NotesConfig>) {
+  return (
+    <div className="space-y-3">
+      <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
+        <input
+          type="checkbox"
+          checked={config?.markdown ?? false}
+          onChange={(e) => save({ markdown: e.target.checked })}
+          className="accent-accent"
+        />
+        Render as Markdown
+      </label>
+      <p className="text-[11px] text-text-muted leading-snug">
+        Supports <span className="font-mono"># headings</span>, <span className="font-mono">**bold**</span>,
+        <span className="font-mono"> *italic*</span>, <span className="font-mono">`code`</span>, links,
+        <span className="font-mono"> - bullets</span> and <span className="font-mono">- [ ] checkboxes</span>.
+        Click the note to edit.
+      </p>
     </div>
   );
 }
@@ -90,6 +181,7 @@ const definition: WidgetDefinition<NotesConfig> = {
   defaultH: 3,
   defaultConfig: { text: "" },
   Component: NotesComponent,
+  ConfigPanel: NotesConfigPanel,
 };
 
 export default definition;

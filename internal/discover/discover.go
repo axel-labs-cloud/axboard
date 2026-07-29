@@ -165,6 +165,36 @@ func getJSON(ctx context.Context, socketPath, url string, dst any) error {
 	return json.NewDecoder(resp.Body).Decode(dst)
 }
 
+// RestartContainer restarts a container by name or id over the Docker/Podman
+// socket (POST /containers/{id}/restart). Returns nil on success.
+func RestartContainer(ctx context.Context, socketPath, id string) error {
+	client := &http.Client{
+		Transport: &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				var d net.Dialer
+				return d.DialContext(ctx, "unix", socketPath)
+			},
+		},
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	url := "http://d/v1.41/containers/" + id + "/restart"
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("restarting container via %s: %w", socketPath, err)
+	}
+	defer resp.Body.Close()
+	// 204 = restarted, 304 = already in desired state.
+	if resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusNotModified {
+		return fmt.Errorf("docker socket returned %d", resp.StatusCode)
+	}
+	return nil
+}
+
 // Host(`foo.example.com`) or Host("foo.example.com") in a Traefik rule.
 var traefikHostRe = regexp.MustCompile("Host\\(([`\"])([^`\"]+)[`\"]\\)")
 

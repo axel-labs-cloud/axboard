@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import type { AppDef, AppStatusValue, GroupDef, HistoryMap, HistoryPoint } from "../../../../api/types";
@@ -66,12 +67,13 @@ const SEGMENTS = [
 ] as const;
 
 // Kuma-style service row: name above a history bar strip, with uptime % at the
-// right. Rendered at a fixed height so the list can fit exactly to the widget.
-function ServiceRow({ name, points, n }: { name: string; points: HistoryPoint[]; n: number }) {
+// right. Click opens a detail popover. Rendered at a fixed height so the list
+// can fit exactly to the widget.
+function ServiceRow({ name, points, n, onOpen }: { name: string; points: HistoryPoint[]; n: number; onOpen?: () => void }) {
   const win = points.slice(-40);
   const pct = win.length ? Math.round((win.filter((p) => p.status === "healthy").length / win.length) * 100) : null;
   return (
-    <div className="flex items-center gap-2.5">
+    <button onClick={onOpen} className="flex items-center gap-2.5 w-full text-left rounded hover:bg-bg-hover/60 transition-colors -mx-1 px-1">
       <div className="min-w-0 flex-1">
         <div className="text-[11px] text-text-secondary truncate leading-tight mb-1">{name}</div>
         <HistoryBars points={points} n={n} />
@@ -79,13 +81,77 @@ function ServiceRow({ name, points, n }: { name: string; points: HistoryPoint[];
       <span className="text-[10px] font-mono text-text-muted tabular-nums shrink-0 w-9 text-right">
         {pct != null ? `${pct}%` : "—"}
       </span>
-    </div>
+    </button>
+  );
+}
+
+// Response-time line over the history window.
+function RtChart({ points }: { points: HistoryPoint[] }) {
+  const vals = points.map((p) => p.response_ms).filter((v) => v >= 0);
+  if (vals.length < 2) return <div className="text-[11px] text-text-muted">Not enough data yet.</div>;
+  const w = 320;
+  const h = 60;
+  const max = Math.max(...vals, 1);
+  const step = w / (vals.length - 1);
+  const line = vals.map((v, i) => `${(i * step).toFixed(1)},${(h - (v / max) * h).toFixed(1)}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full h-16 text-accent">
+      <polyline points={line} fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+    </svg>
+  );
+}
+
+// Detail popover for one service — uptime %, response-time chart, last incident.
+function ServiceDetail({ name, points, onClose }: { name: string; points: HistoryPoint[]; onClose: () => void }) {
+  const total = points.length;
+  const up = points.filter((p) => p.status === "healthy").length;
+  const uptimePct = total ? Math.round((up / total) * 100) : null;
+  const rts = points.map((p) => p.response_ms).filter((v) => v >= 0);
+  const avg = rts.length ? Math.round(rts.reduce((a, b) => a + b, 0) / rts.length) : null;
+  const last = points[points.length - 1];
+  const lastDown = [...points].reverse().find((p) => p.status !== "healthy");
+
+  return createPortal(
+    <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="w-[min(420px,92vw)] rounded-xl bg-bg-elevated border border-border shadow-2xl ring-1 ring-white/5 p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <span className="text-[14px] font-semibold text-text truncate">{name}</span>
+          <button onClick={onClose} className="text-text-muted hover:text-text text-[13px]">✕</button>
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { k: "Status", v: last?.status ?? "unknown", cls: last?.status === "healthy" ? "text-up" : last ? "text-down" : "text-text-muted" },
+            { k: "Uptime", v: uptimePct != null ? `${uptimePct}%` : "—", cls: "text-text" },
+            { k: "Avg RT", v: avg != null ? `${avg} ms` : "—", cls: "text-text" },
+          ].map((s) => (
+            <div key={s.k} className="rounded-lg bg-bg-card/50 border border-border-subtle/50 px-2.5 py-2">
+              <div className="text-[9px] uppercase tracking-wide text-text-muted">{s.k}</div>
+              <div className={`text-[15px] font-mono tabular-nums font-semibold ${s.cls}`}>{s.v}</div>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-wide text-text-muted mb-1">Response time · last {points.length} checks</div>
+          <RtChart points={points} />
+        </div>
+        <div className="text-[11px] text-text-muted">
+          Last incident:{" "}
+          {lastDown ? (
+            <span className="text-text-secondary">{lastDown.status}{lastDown.at ? ` · ${new Date(lastDown.at).toLocaleString()}` : ""}</span>
+          ) : (
+            <span className="text-up">none in window</span>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 
 function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>) {
   const box = useSize<HTMLDivElement>();
   const qc = useQueryClient();
+  const [detail, setDetail] = useState<{ name: string; points: HistoryPoint[] } | null>(null);
   const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
   const groups = cfg?.groups ?? [];
   const healthApps = useMemo(() => {
@@ -275,7 +341,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
                 <span className="ml-auto font-mono tabular-nums">{r.header.up}/{r.header.total}</span>
               </div>
             ) : (
-              <ServiceRow key={r.app!.id} name={r.app!.name} points={history[r.app!.id] ?? []} n={barCount} />
+              <ServiceRow key={r.app!.id} name={r.app!.name} points={history[r.app!.id] ?? []} n={barCount} onOpen={() => setDetail({ name: r.app!.name, points: history[r.app!.id] ?? [] })} />
             ),
           )}
         </div>
@@ -310,6 +376,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
           </div>
         )
       )}
+      {detail && <ServiceDetail name={detail.name} points={detail.points} onClose={() => setDetail(null)} />}
     </div>
   );
 }

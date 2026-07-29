@@ -108,9 +108,9 @@ function CameraComponent({ config, editing }: WidgetProps<CameraConfig>) {
       )}
 
       {cfg.showTitle !== false && title && !failed && (
-        <div className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-2 py-1 bg-gradient-to-b from-black/60 to-transparent">
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" />
-          <span className="text-[12px] font-semibold truncate drop-shadow" style={{ color: cfg.titleColor || "#ffffff" }}>{title}</span>
+        <div className="absolute top-0 left-0 right-0 flex items-center gap-1.5 px-2.5 py-1.5 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
+          {mode === "mjpeg" && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0" title="live" />}
+          <span className="text-[12px] font-semibold truncate drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]" style={{ color: cfg.titleColor || "#ffffff" }}>{title}</span>
         </div>
       )}
     </div>
