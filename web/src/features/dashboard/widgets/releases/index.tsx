@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { useSize } from "../useSize";
@@ -105,19 +106,87 @@ function ReleasesComponent({ config, editing }: WidgetProps<ReleasesConfig>) {
 }
 
 function ReleasesConfigPanel({ config, save }: WidgetConfigProps<ReleasesConfig>) {
+  const repos = config?.repos ?? [];
+  const [q, setQ] = useState("");
+  const [hits, setHits] = useState<{ full_name: string; stargazers_count: number; description?: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+
+  const search = async () => {
+    const term = q.trim();
+    if (!term) return;
+    setBusy(true);
+    try {
+      const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(term)}&per_page=6&sort=stars`;
+      const r = await fetch(`/api/proxy?url=${encodeURIComponent(url)}`);
+      const d = await r.json();
+      setHits(d.items ?? []);
+    } catch {
+      setHits([]);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const add = (full: string) => {
+    const spec = `gh:${full}`;
+    if (!repos.includes(spec)) save({ repos: [...repos, spec] });
+    setQ("");
+    setHits([]);
+  };
+  const stars = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n));
+
   return (
-    <div className="space-y-1.5">
-      <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
-        Repos (one per line)
-      </label>
-      <textarea
-        value={(config?.repos ?? []).join("\n")}
-        onChange={(e) => save({ repos: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })}
-        rows={5}
-        placeholder={"gh:gethomepage/homepage\ngl:gitlab-org/gitlab\ngh:jellyfin/jellyfin"}
-        className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[11px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono resize-y"
-      />
-      <p className="text-[11px] text-text-muted">Prefix gl: for GitLab; default is GitHub.</p>
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+          Find a GitHub repo
+        </label>
+        <div className="flex gap-1.5">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), search())}
+            placeholder="jellyfin, immich, gitea…"
+            className="flex-1 min-w-0 px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent"
+          />
+          <button onClick={search} disabled={busy || !q.trim()} className="px-3 py-1.5 text-[11px] rounded border border-border text-text-secondary hover:text-text disabled:opacity-40">
+            {busy ? "…" : "Search"}
+          </button>
+        </div>
+        {(busy || hits.length > 0) && q.trim() && (
+          <div className="rounded border border-border-subtle bg-bg-card/40 max-h-44 overflow-auto divide-y divide-border-subtle">
+            {busy && hits.length === 0 && <div className="px-2 py-2 text-[11px] text-text-muted">Searching…</div>}
+            {hits.map((h) => {
+              const already = repos.includes(`gh:${h.full_name}`);
+              return (
+                <button
+                  key={h.full_name}
+                  onClick={() => add(h.full_name)}
+                  disabled={already}
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-bg-hover disabled:opacity-40"
+                >
+                  <span className="text-[12px] text-text truncate flex-1">{h.full_name}</span>
+                  <span className="text-[10px] font-mono text-text-muted shrink-0">★ {stars(h.stargazers_count)}</span>
+                  {already && <span className="text-[10px] text-up shrink-0">added</span>}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+          Repos (one per line)
+        </label>
+        <textarea
+          value={repos.join("\n")}
+          onChange={(e) => save({ repos: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) })}
+          rows={5}
+          placeholder={"gh:gethomepage/homepage\ngl:gitlab-org/gitlab\ngh:jellyfin/jellyfin"}
+          className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[11px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono resize-y"
+        />
+        <p className="text-[11px] text-text-muted">Search adds GitHub repos; edit here or prefix gl: for GitLab.</p>
+      </div>
     </div>
   );
 }

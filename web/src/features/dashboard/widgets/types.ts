@@ -134,6 +134,7 @@ export interface ConcentusConfig {
 export interface StatusSummaryConfig {
   showLegend?: boolean;
   byGroup?: boolean;
+  bars?: boolean; // per-service Uptime-Kuma-style history bars
 }
 
 /** Notes / scratchpad widget — free text persisted in config.yaml. */

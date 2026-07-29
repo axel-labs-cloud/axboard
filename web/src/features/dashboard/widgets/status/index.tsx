@@ -1,13 +1,37 @@
 import { useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
-import type { AppDef, GroupDef, HistoryMap } from "../../../../api/types";
+import type { AppDef, AppStatusValue, GroupDef, HistoryMap, HistoryPoint } from "../../../../api/types";
+import { useSize } from "../useSize";
 import type {
   StatusSummaryConfig,
   WidgetConfigProps,
   WidgetDefinition,
   WidgetProps,
 } from "../types";
+
+// Uptime-Kuma-style history strip: one bar per recent check, coloured by state.
+function barTone(s: AppStatusValue | undefined): string {
+  return s === "healthy" ? "bg-up" : s === "degraded" ? "bg-degraded" : s === "down" ? "bg-down" : "bg-unknown/30";
+}
+function HistoryBars({ points, n }: { points: HistoryPoint[]; n: number }) {
+  const tail = points.slice(-n);
+  const pad = Math.max(0, n - tail.length);
+  return (
+    <div className="flex items-stretch gap-[2px] h-3.5">
+      {Array.from({ length: pad }).map((_, i) => (
+        <div key={`p${i}`} className="flex-1 rounded-[1px] bg-unknown/15" />
+      ))}
+      {tail.map((p, i) => (
+        <div
+          key={i}
+          className={`flex-1 rounded-[1px] ${barTone(p.status)}`}
+          title={`${p.status}${p.at ? ` · ${new Date(p.at).toLocaleTimeString()}` : ""}`}
+        />
+      ))}
+    </div>
+  );
+}
 
 // Aggregate uptime sparkline: index-align the tail of each app's history and,
 // per sample, take the fraction of apps that were healthy. Apps check on
@@ -42,6 +66,7 @@ const SEGMENTS = [
 ] as const;
 
 function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>) {
+  const box = useSize<HTMLDivElement>();
   const qc = useQueryClient();
   const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
   const groups = cfg?.groups ?? [];
@@ -128,10 +153,18 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
 
   const total = healthApps.length;
   const showLegend = config?.showLegend !== false && h > 1;
+  // Per-service history bars (Kuma-style) — default on, when there's room.
+  const showBars = config?.bars !== false && !config?.byGroup && h > 1;
+  const barCount = box.w > 0 ? Math.max(10, Math.min(64, Math.floor((box.w - 150) / 4))) : 24;
+  const appPct = (id: string): number | null => {
+    const win = (history[id] ?? []).slice(-40);
+    if (!win.length) return null;
+    return Math.round((win.filter((p) => p.status === "healthy").length / win.length) * 100);
+  };
 
   if (total === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
+      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
         No services with health checks
       </div>
     );
@@ -141,7 +174,7 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
     counts.down > 0 ? "text-down" : counts.degraded > 0 ? "text-degraded" : "text-up";
 
   return (
-    <div className="flex flex-col h-full px-3 py-2.5 gap-2">
+    <div ref={box.ref} className="flex flex-col h-full px-3 py-2.5 gap-2">
       <div className="flex items-baseline gap-1.5 min-w-0">
         <span className={`text-3xl font-mono tabular-nums leading-none ${headlineColor}`}>
           {counts.healthy}
@@ -170,13 +203,30 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
         })}
       </div>
 
-      {h > 1 && series.length > 1 && (
+      {!showBars && h > 1 && series.length > 1 && (
         <div className={headlineColor}>
           <Sparkline series={series} />
         </div>
       )}
 
-      {config?.byGroup && h > 1 ? (
+      {showBars ? (
+        <div className="flex-1 min-h-0 overflow-auto flex flex-col gap-2 mt-0.5 pr-0.5">
+          {healthApps.map((a) => {
+            const pct = appPct(a.id);
+            return (
+              <div key={a.id} className="flex items-center gap-2.5">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] text-text-secondary truncate leading-tight mb-1">{a.name}</div>
+                  <HistoryBars points={history[a.id] ?? []} n={barCount} />
+                </div>
+                <span className="text-[10px] font-mono text-text-muted tabular-nums shrink-0 w-9 text-right">
+                  {pct != null ? `${pct}%` : "—"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      ) : config?.byGroup && h > 1 ? (
         <div className="flex-1 min-h-0 flex flex-col justify-center gap-1 overflow-auto">
           {groupRows.map((r) => (
             <div key={r.name} className="flex items-center gap-2 text-[11px]">
@@ -214,6 +264,15 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
 function StatusSummaryConfigPanel({ config, save }: WidgetConfigProps<StatusSummaryConfig>) {
   return (
     <div className="space-y-3">
+      <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
+        <input
+          type="checkbox"
+          checked={config?.bars !== false}
+          onChange={(e) => save({ bars: e.target.checked })}
+          className="accent-accent"
+        />
+        Uptime history bars
+      </label>
       <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
         <input
           type="checkbox"
@@ -264,10 +323,10 @@ const definition: WidgetDefinition<StatusSummaryConfig> = {
   minW: 2,
   minH: 1,
   maxW: 8,
-  maxH: 6,
-  defaultW: 3,
-  defaultH: 2,
-  defaultConfig: { showLegend: true },
+  maxH: 8,
+  defaultW: 4,
+  defaultH: 3,
+  defaultConfig: { showLegend: true, bars: true },
   Component: StatusSummaryComponent,
   ConfigPanel: StatusSummaryConfigPanel,
 };

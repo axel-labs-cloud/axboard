@@ -58,6 +58,7 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
   const compact = box.h > 0 && box.h < 104;
   const showWord = box.w >= 150;
   const showSub = box.w >= 200; // status / image subline
+  const cols = box.w >= 560 ? 3 : box.w >= 360 ? 2 : 1; // grid when wide, list when narrow
 
   const Count = (
     <span className="flex items-baseline gap-1.5">
@@ -88,20 +89,38 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
         <span className="text-text-muted shrink-0">{ContainersIcon}</span>
         {Count}
       </div>
-      <div className="flex-1 min-h-0 overflow-auto px-2 pb-2 divide-y divide-border-subtle">
-        {list.length === 0 && (
-          <div className="text-[11px] text-text-muted px-1 py-2">No containers.</div>
-        )}
-        {list.map((c) => (
-          <div key={c.name} className="flex items-center gap-2 px-1.5 py-1.5">
-            <span className={`w-2 h-2 rounded-full shrink-0 ${stateDot(c.state)}`} title={c.state} />
-            <div className="min-w-0 flex-1">
-              <div className="text-[12px] text-text-secondary truncate">{c.name}</div>
-              {showSub && <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>}
+      {cols > 1 ? (
+        <div
+          className="flex-1 min-h-0 overflow-auto p-2"
+          style={{ display: "grid", gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: "6px", alignContent: "start" }}
+        >
+          {list.length === 0 && <div className="text-[11px] text-text-muted px-1 py-2">No containers.</div>}
+          {list.map((c) => (
+            <div key={c.name} className="flex items-center gap-2 px-2.5 py-2 rounded-md bg-bg-card/40 border border-border-subtle/50 min-w-0">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${stateDot(c.state)}`} title={c.state} />
+              <div className="min-w-0 flex-1">
+                <div className="text-[12px] text-text-secondary truncate">{c.name}</div>
+                <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 overflow-auto px-2 pb-2 divide-y divide-border-subtle">
+          {list.length === 0 && (
+            <div className="text-[11px] text-text-muted px-1 py-2">No containers.</div>
+          )}
+          {list.map((c) => (
+            <div key={c.name} className="flex items-center gap-2 px-1.5 py-1.5">
+              <span className={`w-2 h-2 rounded-full shrink-0 ${stateDot(c.state)}`} title={c.state} />
+              <div className="min-w-0 flex-1">
+                <div className="text-[12px] text-text-secondary truncate">{c.name}</div>
+                {showSub && <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
