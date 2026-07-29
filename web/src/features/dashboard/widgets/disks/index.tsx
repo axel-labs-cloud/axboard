@@ -47,11 +47,16 @@ function DisksComponent({ config }: WidgetProps<DisksConfig>) {
   }
 
   const cols = box.w >= 440 ? 2 : 1;
+  // Fit to height: show as many mounts as fit and distribute them to fill —
+  // no scroll, no big blank. Each extra row of height shows more mounts.
+  const ROW_H = 34;
+  const perCol = Math.max(1, Math.floor((box.h - 12) / ROW_H));
+  const shown = fs.slice(0, perCol * cols);
 
   return (
-    <div ref={box.ref} className="h-full overflow-auto px-3 py-2.5 flex flex-col justify-center">
-      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, columnGap: "14px", rowGap: "10px" }}>
-        {fs.map((d) => {
+    <div ref={box.ref} className="h-full overflow-hidden px-3 py-2.5">
+      <div className="h-full" style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, columnGap: "14px", rowGap: "8px", alignContent: "space-between" }}>
+        {shown.map((d) => {
           const pct = d.total > 0 ? (d.used / d.total) * 100 : 0;
           const color = scaleColor(pct, config as ColorConfig, OPTS);
           const tag = netTag(d.type);

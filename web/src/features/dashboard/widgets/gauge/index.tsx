@@ -95,7 +95,7 @@ function RingIcon({ pct, size, metric, cfg }: { pct: number; size: number; metri
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={cur} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off}
           style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.4s ease" }} />
       </svg>
-      <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} fill="none" stroke={cur} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute">
+      <svg viewBox="0 0 24 24" width={iconSize} height={iconSize} fill="none" stroke="var(--color-text, #fff)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute">
         {METRIC_ICONS[metric] ?? METRIC_ICONS.cpu}
       </svg>
     </div>
@@ -111,7 +111,7 @@ function BarIcon({ pct, w, h, metric, cfg }: { pct: number; w: number; h: number
   const barH = Math.max(6, Math.min(h - 12, 12));
   return (
     <div className="w-full h-full flex items-center gap-2.5 px-3" style={{ width: w }} title={`${metric.toUpperCase()} ${Math.round(pct)}%`}>
-      <svg viewBox="0 0 24 24" width={icon} height={icon} fill="none" stroke={cur} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      <svg viewBox="0 0 24 24" width={icon} height={icon} fill="none" stroke="var(--color-text, #fff)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
         {METRIC_ICONS[metric] ?? METRIC_ICONS.cpu}
       </svg>
       <div className={`flex-1 rounded-full overflow-hidden ${cfg.track !== false ? "bg-bg-elevated" : ""}`} style={{ height: barH }}>

@@ -152,6 +152,7 @@ export interface StatusSummaryConfig {
 /** Notes / scratchpad widget — free text persisted in config.yaml. */
 export interface NotesConfig {
   text?: string;
+  title?: string;
 }
 
 /** Countdown widget — time remaining until (or since) a target datetime. */

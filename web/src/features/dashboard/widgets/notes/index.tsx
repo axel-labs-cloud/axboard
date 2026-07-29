@@ -9,31 +9,53 @@ import type { NotesConfig, WidgetDefinition, WidgetProps } from "../types";
 
 function NotesComponent({ config, save }: WidgetProps<NotesConfig>) {
   const [val, setVal] = useState(config?.text ?? "");
-  const timer = useRef<number | null>(null);
+  const [title, setTitle] = useState(config?.title ?? "");
+  const tText = useRef<number | null>(null);
+  const tTitle = useRef<number | null>(null);
 
   // Reflect external edits (hand-edited config.yaml, restore) when we're not
   // mid-type — a pending debounce means the local value is the source of truth.
   useEffect(() => {
-    if (timer.current == null) setVal(config?.text ?? "");
+    if (tText.current == null) setVal(config?.text ?? "");
   }, [config?.text]);
+  useEffect(() => {
+    if (tTitle.current == null) setTitle(config?.title ?? "");
+  }, [config?.title]);
 
-  const onChange = (t: string) => {
+  const onText = (t: string) => {
     setVal(t);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => {
-      timer.current = null;
+    if (tText.current) clearTimeout(tText.current);
+    tText.current = window.setTimeout(() => {
+      tText.current = null;
       save({ text: t });
+    }, 500);
+  };
+  const onTitle = (t: string) => {
+    setTitle(t);
+    if (tTitle.current) clearTimeout(tTitle.current);
+    tTitle.current = window.setTimeout(() => {
+      tTitle.current = null;
+      save({ title: t });
     }, 500);
   };
 
   return (
-    <textarea
-      value={val}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder="Write anything — reminders, links, a todo…"
-      spellCheck={false}
-      className="h-full w-full resize-none bg-transparent p-3 text-[13px] text-text-secondary leading-relaxed focus:outline-none placeholder:text-text-muted/50"
-    />
+    <div className="h-full flex flex-col">
+      <input
+        value={title}
+        onChange={(e) => onTitle(e.target.value)}
+        placeholder="Title…"
+        spellCheck={false}
+        className="shrink-0 bg-transparent px-3 pt-2.5 pb-1.5 text-[12px] font-semibold text-text focus:outline-none placeholder:text-text-muted/40 border-b border-border-subtle/60"
+      />
+      <textarea
+        value={val}
+        onChange={(e) => onText(e.target.value)}
+        placeholder="Write anything — reminders, links, a todo…"
+        spellCheck={false}
+        className="flex-1 min-h-0 w-full resize-none bg-transparent px-3 py-2.5 text-[13px] text-text-secondary leading-relaxed focus:outline-none placeholder:text-text-muted/50"
+      />
+    </div>
   );
 }
 
