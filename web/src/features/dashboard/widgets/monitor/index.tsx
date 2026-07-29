@@ -29,7 +29,7 @@ function dotClass(r: Ping | undefined): string {
   return r === undefined ? "bg-unknown/60" : r.ok ? "bg-up" : "bg-down";
 }
 
-function MonitorComponent({ config }: WidgetProps<MonitorConfig>) {
+function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
   const targets = config?.targets ?? [];
   const box = useSize<HTMLDivElement>();
   const { data } = useQuery({
@@ -81,9 +81,15 @@ function MonitorComponent({ config }: WidgetProps<MonitorConfig>) {
           {down > 0 && <span className="ml-auto text-[11px] font-mono text-down">{down} down</span>}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {rows.map(({ t, r }) => (
-            <span key={t.url} title={`${t.name || host(t.url)}${r?.ms != null ? ` · ${r.ms}ms` : ""}`} className={`w-2 h-2 rounded-full ${dotClass(r)}`} />
-          ))}
+          {rows.map(({ t, r }) => {
+            const title = `${t.name || host(t.url)}${r?.ms != null ? ` · ${r.ms}ms` : ""}`;
+            const cls = `w-2 h-2 rounded-full ${dotClass(r)}`;
+            return editing ? (
+              <span key={t.url} title={title} className={cls} />
+            ) : (
+              <a key={t.url} href={t.url} target="_blank" rel="noreferrer" title={title} className={`${cls} hover:ring-2 hover:ring-white/30`} />
+            );
+          })}
         </div>
       </div>
     );
@@ -97,20 +103,28 @@ function MonitorComponent({ config }: WidgetProps<MonitorConfig>) {
         {down > 0 && <span className="ml-auto text-[11px] font-mono text-down shrink-0">{down} down</span>}
       </div>
       <div className="flex-1 min-h-0 overflow-auto px-2 pb-2 divide-y divide-border-subtle">
-        {rows.map(({ t, r }) => (
-          <div key={t.url} className="flex items-center gap-2 px-1.5 py-1.5">
-            <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass(r)}`} />
-            <div className="min-w-0 flex-1">
-              <div className="text-[12px] text-text-secondary truncate">{t.name || host(t.url)}</div>
-              {showHost && t.name && (
-                <div className="text-[10px] text-text-muted truncate font-mono">{host(t.url)}</div>
+        {rows.map(({ t, r }) => {
+          const inner = (
+            <>
+              <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass(r)}`} />
+              <div className="min-w-0 flex-1">
+                <div className="text-[12px] text-text-secondary truncate">{t.name || host(t.url)}</div>
+                {showHost && t.name && (
+                  <div className="text-[10px] text-text-muted truncate font-mono">{host(t.url)}</div>
+                )}
+              </div>
+              {showLatency && r?.ms != null && (
+                <span className="text-[11px] font-mono tabular-nums text-text-muted shrink-0">{r.ms} ms</span>
               )}
-            </div>
-            {showLatency && r?.ms != null && (
-              <span className="text-[11px] font-mono tabular-nums text-text-muted shrink-0">{r.ms} ms</span>
-            )}
-          </div>
-        ))}
+            </>
+          );
+          const cls = "flex items-center gap-2 px-1.5 py-1.5";
+          return editing ? (
+            <div key={t.url} className={cls}>{inner}</div>
+          ) : (
+            <a key={t.url} href={t.url} target="_blank" rel="noreferrer" className={`${cls} hover:bg-bg-hover transition-colors`}>{inner}</a>
+          );
+        })}
       </div>
     </div>
   );

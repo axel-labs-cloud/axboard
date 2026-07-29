@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
+import { useSize } from "../useSize";
 import type {
   ContainersConfig,
   WidgetConfigProps,
@@ -10,7 +11,8 @@ import type {
 
 // ---------------------------------------------------------------------------
 // Container-status widget — lists Docker/Podman containers over the mounted
-// socket (same one auto-discovery uses). Liveness only, per the design.
+// socket. Size-responsive: a compact dot-summary when short, an adaptive list
+// otherwise. Liveness only, per the design.
 // ---------------------------------------------------------------------------
 
 function stateDot(state: string): string {
@@ -28,6 +30,7 @@ function stateDot(state: string): string {
 function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
   const filter = config?.filter?.trim().toLowerCase() ?? "";
   const runningOnly = config?.runningOnly ?? false;
+  const box = useSize<HTMLDivElement>();
 
   const { data, isError, error } = useQuery({
     queryKey: ["containers"],
@@ -44,7 +47,7 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
 
   if (isError || data?.error) {
     return (
-      <div className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
+      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
         {data?.error ?? (error as Error)?.message ?? "Cannot reach the container socket."}
       </div>
     );
@@ -52,13 +55,38 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
 
   const running = (data?.containers ?? []).filter((c) => c.state === "running").length;
   const total = (data?.containers ?? []).length;
+  const compact = box.h > 0 && box.h < 104;
+  const showWord = box.w >= 150;
+  const showSub = box.w >= 200; // status / image subline
+
+  const Count = (
+    <span className="flex items-baseline gap-1.5">
+      <span className="text-2xl font-mono tabular-nums text-up leading-none">{running}</span>
+      <span className="text-[12px] text-text-muted">
+        / {total}
+        {showWord ? (compact ? " up" : " containers up") : ""}
+      </span>
+    </span>
+  );
+
+  if (compact) {
+    return (
+      <div ref={box.ref} className="h-full flex flex-col justify-center gap-2.5 px-3">
+        {Count}
+        <div className="flex flex-wrap gap-1.5">
+          {list.map((c) => (
+            <span key={c.name} title={`${c.name} · ${c.state}`} className={`w-2 h-2 rounded-full ${stateDot(c.state)}`} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-full flex flex-col">
+    <div ref={box.ref} className="h-full flex flex-col">
       <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5 shrink-0">
         <span className="text-text-muted shrink-0">{ContainersIcon}</span>
-        <span className="text-2xl font-mono tabular-nums text-up leading-none">{running}</span>
-        <span className="text-[12px] text-text-muted">/ {total} containers up</span>
+        {Count}
       </div>
       <div className="flex-1 min-h-0 overflow-auto px-2 pb-2 divide-y divide-border-subtle">
         {list.length === 0 && (
@@ -69,7 +97,7 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
             <span className={`w-2 h-2 rounded-full shrink-0 ${stateDot(c.state)}`} title={c.state} />
             <div className="min-w-0 flex-1">
               <div className="text-[12px] text-text-secondary truncate">{c.name}</div>
-              <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>
+              {showSub && <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>}
             </div>
           </div>
         ))}
