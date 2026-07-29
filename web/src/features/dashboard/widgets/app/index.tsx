@@ -165,7 +165,7 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
         </a>
         {/* status + response time in the top-right corner */}
         {(showStatus || showMs) && (
-          <div className="absolute top-1 right-2 z-10 flex items-center gap-1.5 pointer-events-none">
+          <div className="absolute top-2.5 right-3.5 z-10 flex items-center gap-1.5 pointer-events-none">
             {showMs && (
               <span className="text-[10px] text-text-muted/80 font-mono tabular-nums">
                 {status!.response_ms} ms
@@ -176,7 +176,7 @@ function AppComponent({ config, w, h }: WidgetProps<AppConfig>) {
         )}
         {/* wake button — bottom-right, only while the service is not healthy */}
         {canWake(app, status) && (
-          <div className="absolute bottom-1 right-1.5 z-10">
+          <div className="absolute bottom-2.5 right-3.5 z-10">
             <WakeButton mac={app.wol!.mac} broadcast={app.wol!.broadcast} className="pointer-events-auto shadow" />
           </div>
         )}
