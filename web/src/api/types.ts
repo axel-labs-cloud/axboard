@@ -112,6 +112,17 @@ export interface AlertsDef {
   muted?: string[];
 }
 
+export interface StatusPageDef {
+  slug?: string;
+  enabled?: boolean;
+  title?: string;
+  header?: string;
+  footer?: string;
+  hide_branding?: boolean;
+  groups?: string[];
+  theme?: string; // "dark" | "light"
+}
+
 export interface Config {
   server?: ServerConfig;
   apps?: AppDef[];
@@ -119,6 +130,7 @@ export interface Config {
   topBar?: TopBarDef;
   dashboards?: DashboardDef[];
   alerts?: AlertsDef;
+  status_pages?: StatusPageDef[];
 }
 
 export interface AppStatus {

@@ -152,10 +152,13 @@ example in [`config.example.yaml`](./config.example.yaml).
 
 ## Public status page
 
-A lightweight, auth-free, server-rendered status page lives at **`/status`** —
-share it to show every health-checked service grouped, with a status pill,
-recent uptime %, and cert-expiry warnings. It auto-refreshes and needs no JS.
-Disable it with `status_page: { enabled: false }`, or set a `title`.
+Lightweight, auth-free, server-rendered status pages — the default at
+**`/status`**, named pages at **`/status/<slug>`**. Each shows the chosen
+services grouped, with a status pill, recent uptime %, and cert-expiry
+warnings; auto-refreshes; needs no JS. Configure them from the UI —
+**Manage services → Status pages** — with a live preview: set title, header /
+footer text, theme (dark/light), a group filter, and hide the axboard branding.
+Open the current one from **⋯ menu → Open status page**.
 
 ## Deployment & security
 

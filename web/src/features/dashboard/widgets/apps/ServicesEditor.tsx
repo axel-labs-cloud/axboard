@@ -7,11 +7,13 @@ import { SimpleIcon } from "../../SimpleIcon";
 import { IconPicker } from "./IconPicker";
 import { hashColor } from "./appVisual";
 import { AlertsForm } from "../../AlertsPanel";
+import { StatusPagesForm } from "../../StatusPagesPanel";
+import type { StatusPageDef } from "../../../../api/types";
 
 interface Props {
   open: boolean;
   onClose: () => void;
-  initialTab?: "services" | "alerts";
+  initialTab?: "services" | "alerts" | "status";
 }
 
 type WorkingApp = AppDef & { _key: number };
@@ -79,7 +81,7 @@ function slugify(name: string): string {
 export function ServicesEditor({ open, onClose, initialTab = "services" }: Props) {
   const qc = useQueryClient();
   const cached = qc.getQueryData<Config>(["config"]);
-  const [tab, setTab] = useState<"services" | "alerts">(initialTab);
+  const [tab, setTab] = useState<"services" | "alerts" | "status">(initialTab);
   useEffect(() => {
     if (open) setTab(initialTab);
   }, [open, initialTab]);
@@ -88,6 +90,12 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
     const cur = qc.getQueryData<Config>(["config"]);
     if (!cur) return;
     await api.putConfig({ ...cur, alerts: a });
+    qc.invalidateQueries({ queryKey: ["config"] });
+  };
+  const saveStatusPages = async (pages: StatusPageDef[]) => {
+    const cur = qc.getQueryData<Config>(["config"]);
+    if (!cur) return;
+    await api.putConfig({ ...cur, status_pages: pages });
     qc.invalidateQueries({ queryKey: ["config"] });
   };
 
@@ -307,7 +315,7 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
               </svg>
             </div>
             <div className="flex items-center gap-1 rounded-lg border border-border bg-bg-card/60 p-1">
-              {(["services", "alerts"] as const).map((t) => (
+              {(["services", "alerts", "status"] as const).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
@@ -317,7 +325,7 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
                       : "text-text-secondary hover:text-text hover:bg-bg-hover"
                   }`}
                 >
-                  {t}
+                  {t === "status" ? "Status pages" : t}
                 </button>
               ))}
             </div>
@@ -362,6 +370,10 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
             onSave={saveAlerts}
             apps={apps.filter((a) => a.health && a.health.type !== "none").map((a) => ({ id: a.id, name: a.name }))}
           />
+        )}
+
+        {tab === "status" && (
+          <StatusPagesForm pages={cached?.status_pages} groups={groups} onSave={saveStatusPages} />
         )}
 
         {tab === "services" && (

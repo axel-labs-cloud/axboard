@@ -10,21 +10,29 @@ import (
 )
 
 type Config struct {
-	Server     ServerConfig      `yaml:"server" json:"server"`
-	Alerts     AlertsConfig      `yaml:"alerts,omitempty" json:"alerts,omitempty"`
-	Discovery  DiscoveryConfig   `yaml:"discovery,omitempty" json:"discovery,omitempty"`
-	Apps       []App             `yaml:"apps,omitempty" json:"apps,omitempty"`
-	Groups     []Group           `yaml:"groups,omitempty" json:"groups,omitempty"`
-	TopBar     *TopBar           `yaml:"topBar,omitempty" json:"topBar,omitempty"`
-	Dashboards []Dashboard       `yaml:"dashboards,omitempty" json:"dashboards,omitempty"`
-	StatusPage *StatusPageConfig `yaml:"status_page,omitempty" json:"status_page,omitempty"`
+	Server      ServerConfig       `yaml:"server" json:"server"`
+	Alerts      AlertsConfig       `yaml:"alerts,omitempty" json:"alerts,omitempty"`
+	Discovery   DiscoveryConfig    `yaml:"discovery,omitempty" json:"discovery,omitempty"`
+	Apps        []App              `yaml:"apps,omitempty" json:"apps,omitempty"`
+	Groups      []Group            `yaml:"groups,omitempty" json:"groups,omitempty"`
+	TopBar      *TopBar            `yaml:"topBar,omitempty" json:"topBar,omitempty"`
+	Dashboards  []Dashboard        `yaml:"dashboards,omitempty" json:"dashboards,omitempty"`
+	StatusPage  *StatusPageConfig  `yaml:"status_page,omitempty" json:"status_page,omitempty"`   // deprecated: single page
+	StatusPages []StatusPageConfig `yaml:"status_pages,omitempty" json:"status_pages,omitempty"` // multiple public pages
 }
 
-// StatusPageConfig controls the public /status page. Served by default (axboard
-// is auth-free by design); set enabled: false to turn it off.
+// StatusPageConfig controls a public status page. axboard is auth-free by
+// design, so pages are served by default; set enabled: false to turn one off.
 type StatusPageConfig struct {
-	Enabled *bool  `yaml:"enabled,omitempty" json:"enabled,omitempty"`
-	Title   string `yaml:"title,omitempty" json:"title,omitempty"`
+	// Slug routes the page: empty/"default" → /status, otherwise → /status/<slug>.
+	Slug         string   `yaml:"slug,omitempty" json:"slug,omitempty"`
+	Enabled      *bool    `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	Title        string   `yaml:"title,omitempty" json:"title,omitempty"`
+	Header       string   `yaml:"header,omitempty" json:"header,omitempty"` // sub-line under the title
+	Footer       string   `yaml:"footer,omitempty" json:"footer,omitempty"` // replaces the default footer
+	HideBranding bool     `yaml:"hide_branding,omitempty" json:"hide_branding,omitempty"`
+	Groups       []string `yaml:"groups,omitempty" json:"groups,omitempty"` // group IDs to include (empty = all)
+	Theme        string   `yaml:"theme,omitempty" json:"theme,omitempty"`   // dark (default) | light
 }
 
 // TopBar is global (shared across all dashboards): the bar style and the header
