@@ -1,13 +1,41 @@
+import { useQuery } from "@tanstack/react-query";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
+import { LoginPage } from "./features/auth/LoginPage";
+import { api } from "./api/client";
 import { useConfig } from "./hooks/useConfig";
 import { useSSE } from "./hooks/useSSE";
 import { useTheme } from "./hooks/useTheme";
 
 export function App() {
+  // Auth gate: /api/auth is public and reports whether login is required.
+  const { data: auth, isLoading: authLoading } = useQuery({
+    queryKey: ["auth"],
+    queryFn: api.getAuth,
+    staleTime: 10_000,
+  });
+  const needsLogin = auth?.enabled === true && auth?.authenticated !== true;
+
   const { isLoading, isError } = useConfig();
 
   const { error: configError, clearError } = useSSE();
   const [theme, setTheme] = useTheme();
+
+  if (authLoading) {
+    return (
+      <div className="h-screen flex flex-col">
+        <Centered>
+          <Spinner />
+        </Centered>
+      </div>
+    );
+  }
+  if (needsLogin) {
+    return (
+      <div className="h-screen flex flex-col">
+        <LoginPage />
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col">

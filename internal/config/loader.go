@@ -66,13 +66,17 @@ func applyDefaults(cfg *Config) {
 	if cfg.Server.Bind == "" {
 		cfg.Server.Bind = ":8080"
 	}
+	fallback := cfg.Server.DefaultInterval
+	if fallback <= 0 {
+		fallback = Duration(60 * time.Second)
+	}
 	for i := range cfg.Apps {
 		h := cfg.Apps[i].Health
 		if h == nil {
 			continue
 		}
 		if h.Interval == 0 {
-			h.Interval = Duration(60 * time.Second)
+			h.Interval = fallback
 		}
 		if h.Timeout == 0 {
 			h.Timeout = Duration(5 * time.Second)
@@ -143,6 +147,22 @@ func validate(cfg *Config) error {
 				// none = no check; empty type tolerated as none.
 			default:
 				return fmt.Errorf("apps[%d] (%s): unknown health.type %q (want http|tcp|ping|dns|push|none)", i, app.ID, app.Health.Type)
+			}
+		}
+	}
+
+	if cfg.Server.Auth != nil {
+		seen := make(map[string]bool, len(cfg.Server.Auth.Users))
+		for i, u := range cfg.Server.Auth.Users {
+			if u.Username == "" {
+				return fmt.Errorf("server.auth.users[%d]: username is required", i)
+			}
+			if seen[u.Username] {
+				return fmt.Errorf("server.auth.users[%d]: duplicate username %q", i, u.Username)
+			}
+			seen[u.Username] = true
+			if u.PasswordHash == "" {
+				return fmt.Errorf("server.auth.users[%d] (%s): password_hash is required (generate with `axboard passwd`)", i, u.Username)
 			}
 		}
 	}

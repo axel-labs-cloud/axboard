@@ -109,6 +109,7 @@ export function DashboardTabBar({
   const [appearanceOpen, setAppearanceOpen] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const versionQ = useQuery({ queryKey: ["version"], queryFn: api.getVersion, staleTime: Infinity });
+  const authQ = useQuery({ queryKey: ["auth"], queryFn: api.getAuth, staleTime: 10_000 });
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -424,6 +425,17 @@ export function DashboardTabBar({
                 icon={ITEM_ICONS.kiosk}
                 onClick={() => { setMenuOpen(false); onEnterKiosk(); }}
               />
+              {authQ.data?.enabled && authQ.data?.authenticated && (
+                <MenuItem
+                  label={`Log out${authQ.data.user ? ` (${authQ.data.user})` : ""}`}
+                  icon={ITEM_ICONS.logout}
+                  onClick={async () => {
+                    setMenuOpen(false);
+                    await api.logout().catch(() => {});
+                    window.location.reload();
+                  }}
+                />
+              )}
               <div className="px-3 py-2 border-t border-border-subtle flex items-center justify-between">
                 <span className="text-[10px] text-text-muted">axboard</span>
                 <span className="text-[10px] font-mono text-text-muted/70" title={versionQ.data?.buildDate || ""}>
@@ -640,6 +652,7 @@ const ITEM_ICONS: Record<string, React.ReactNode> = {
   kiosk: I(<><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" /></>),
   status: I(<><path d="M22 12h-4l-3 9L9 3l-3 9H2" /></>),
   external: I(<><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6M10 14 21 3" /></>),
+  logout: I(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="m16 17 5-5-5-5M21 12H9" /></>),
 };
 
 const GROUP_ICONS: Record<string, React.ReactNode> = {

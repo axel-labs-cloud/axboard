@@ -24,6 +24,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/alert"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/auth"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/config"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/discover"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/health"
@@ -71,6 +72,12 @@ type Server struct {
 	State     *state.Store
 	Health    *health.Pool
 	Broadcast *Broadcaster
+
+	// authMgr is non-nil once EnableAuth is called. Auth is only *enforced*
+	// when the live config also has ≥1 user (see authActive); dummyHash burns
+	// a constant-time verify on unknown usernames to blunt enumeration.
+	authMgr   *auth.Manager
+	dummyHash string
 }
 
 func NewServer(configPath, iconsDir string, st *state.Store, hp *health.Pool, b *Broadcaster) *Server {
@@ -80,6 +87,17 @@ func NewServer(configPath, iconsDir string, st *state.Store, hp *health.Pool, b 
 		State:      st,
 		Health:     hp,
 		Broadcast:  b,
+	}
+}
+
+// EnableAuth wires the session manager. Login stays disabled until the config
+// declares at least one user, so this is safe to call unconditionally at boot.
+func (s *Server) EnableAuth(secret []byte) {
+	s.authMgr = auth.NewManager(secret)
+	// A throwaway hash to verify against when a username doesn't exist, so a
+	// bad-username login costs the same time as a bad-password one.
+	if h, err := auth.HashPassword("axboard-nonexistent-user"); err == nil {
+		s.dummyHash = h
 	}
 }
 
@@ -147,7 +165,11 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 	r.Get("/metrics", s.handleMetrics)
 
 	r.Route("/api", func(r chi.Router) {
+		r.Use(s.apiAuthMW) // gates everything below when auth is active
 		r.Get("/version", handleVersion)
+		r.Get("/auth", s.handleAuthStatus)
+		r.Post("/auth/login", s.handleLogin)
+		r.Post("/auth/logout", s.handleLogout)
 		r.Get("/config", s.handleGetConfig)
 		r.Put("/config", s.handlePutConfig)
 		r.Get("/config/raw", s.handleGetRawConfig)
@@ -271,6 +293,13 @@ func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 	// ids, dangling group ref, unknown health.type, missing name/url) would be
 	// persisted, then the watcher would reject it on reload and serve last-good
 	// config with a config_error banner — i.e. the on-disk file left broken.
+	// Credentials are never editable through the structured UI write-path: the
+	// GET side strips password hashes (json:"-"), so trusting the client here
+	// would wipe them. Preserve whatever auth is on disk; auth is managed by
+	// hand-editing config.yaml (or the raw YAML editor) + `axboard passwd`.
+	if cur := s.getConfig(); cur != nil {
+		next.Server.Auth = cur.Server.Auth
+	}
 	if err := config.Validate(&next); err != nil {
 		writeErr(w, http.StatusBadRequest, err.Error())
 		return

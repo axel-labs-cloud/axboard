@@ -1,20 +1,26 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
+	"golang.org/x/term"
+
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/alert"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/api"
+	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/auth"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/config"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/health"
 	"gitlab.int.axel-labs.cloud/axel-labs.cloud/projects/axboard/internal/state"
@@ -22,6 +28,16 @@ import (
 )
 
 func main() {
+	// Subcommands run before flag parsing. `axboard passwd` prints an argon2id
+	// hash to paste under server.auth.users[].password_hash.
+	if len(os.Args) > 1 && os.Args[1] == "passwd" {
+		if err := runPasswd(); err != nil {
+			slog.Error("passwd failed", "err", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	configPath := flag.String("config", "config.yaml", "path to config.yaml")
 	statePath := flag.String("state", "state.yaml", "path to state.yaml")
 	addr := flag.String("addr", "", "listen address (overrides server.bind from config)")
@@ -73,6 +89,17 @@ func main() {
 	}
 
 	server := api.NewServer(*configPath, iconsDir, store, pool, broadcaster)
+
+	// Optional built-in auth. The HMAC session secret lives in its own file next
+	// to state.yaml (persisted volume) so the UI's state round-trip can't clobber
+	// it and sessions survive restarts. Login stays disabled until config.yaml
+	// declares users, so enabling here unconditionally is safe.
+	secret, err := auth.LoadOrCreateSecret(filepath.Join(filepath.Dir(*statePath), "session.key"))
+	if err != nil {
+		slog.Error("could not load/create session secret", "err", err)
+		os.Exit(1)
+	}
+	server.EnableAuth(secret)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -176,6 +203,53 @@ func main() {
 	}
 	cancel()
 	slog.Info("axboard stopped")
+}
+
+// runPasswd generates an argon2id hash for a password read from the terminal
+// (no echo, with confirmation) or from stdin when piped, and prints a ready-to-
+// paste config.yaml snippet. Usage: `axboard passwd [username]`.
+func runPasswd() error {
+	username := "admin"
+	if len(os.Args) > 2 && os.Args[2] != "" {
+		username = os.Args[2]
+	}
+
+	var pw string
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		fmt.Fprint(os.Stderr, "Password: ")
+		b1, err := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Fprintln(os.Stderr)
+		if err != nil {
+			return err
+		}
+		fmt.Fprint(os.Stderr, "Confirm:  ")
+		b2, err := term.ReadPassword(int(os.Stdin.Fd()))
+		fmt.Fprintln(os.Stderr)
+		if err != nil {
+			return err
+		}
+		if string(b1) != string(b2) {
+			return fmt.Errorf("passwords do not match")
+		}
+		pw = string(b1)
+	} else {
+		line, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		if err != nil && line == "" {
+			return err
+		}
+		pw = strings.TrimRight(line, "\r\n")
+	}
+	if len(pw) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
+	}
+
+	hash, err := auth.HashPassword(pw)
+	if err != nil {
+		return err
+	}
+	// Snippet to stdout so it can be redirected/copied; prompts went to stderr.
+	fmt.Printf("server:\n  auth:\n    users:\n      - username: %s\n        password_hash: \"%s\"\n", username, hash)
+	return nil
 }
 
 // serverConfig pokes at the server to grab the live config for bind-address

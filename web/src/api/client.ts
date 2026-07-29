@@ -65,6 +65,19 @@ export const api = {
   getVersion: () =>
     fetch("/api/version").then(jsonOk<{ version?: string; buildDate?: string }>),
 
+  getAuth: () =>
+    fetch("/api/auth").then(
+      jsonOk<{ enabled: boolean; authenticated?: boolean; user?: string }>,
+    ),
+  login: (username: string, password: string) =>
+    fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    }).then(jsonOk<{ user: string }>),
+  logout: () =>
+    fetch("/api/auth/logout", { method: "POST" }).then(jsonOk<{ ok: boolean }>),
+
   getStatus: () => fetch("/api/apps/status").then(jsonOk<StatusMap>),
   getHistory: () => fetch("/api/apps/history").then(jsonOk<HistoryMap>),
   getUptime: () =>

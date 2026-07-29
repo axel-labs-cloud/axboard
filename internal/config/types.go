@@ -78,6 +78,32 @@ type DiscoveryConfig struct {
 
 type ServerConfig struct {
 	Bind string `yaml:"bind,omitempty" json:"bind,omitempty"`
+	// DefaultInterval is the polling period applied to any health check that
+	// omits its own interval. Falls back to 60s when unset.
+	DefaultInterval Duration `yaml:"default_interval,omitempty" json:"default_interval,omitempty"`
+	// Auth is optional. axboard is auth-free by default (LAN-bound, meant to sit
+	// behind a reverse proxy); built-in login is enforced only when at least one
+	// user is configured here. See AuthConfig.
+	Auth *AuthConfig `yaml:"auth,omitempty" json:"auth,omitempty"`
+}
+
+// AuthConfig turns on axboard's built-in login. It is opt-in: with no users,
+// axboard keeps its original open posture. Public status pages (/status),
+// heartbeat ingest (/api/push), /healthz and /metrics stay unauthenticated so
+// external monitors and probes keep working.
+type AuthConfig struct {
+	// Users are the accounts allowed to log in. Generate a hash with
+	// `axboard passwd` and paste it as password_hash.
+	Users []AuthUser `yaml:"users,omitempty" json:"users,omitempty"`
+	// SessionTTL is how long a login stays valid. Defaults to 7 days.
+	SessionTTL Duration `yaml:"session_ttl,omitempty" json:"session_ttl,omitempty"`
+}
+
+// AuthUser is one login. PasswordHash is a PHC-format argon2id string; it is
+// never serialised to the client (json:"-").
+type AuthUser struct {
+	Username     string `yaml:"username" json:"username"`
+	PasswordHash string `yaml:"password_hash" json:"-"`
 }
 
 // AlertsConfig configures optional outbound notifications sent when an app
