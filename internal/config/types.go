@@ -10,13 +10,21 @@ import (
 )
 
 type Config struct {
-	Server     ServerConfig    `yaml:"server" json:"server"`
-	Alerts     AlertsConfig    `yaml:"alerts,omitempty" json:"alerts,omitempty"`
-	Discovery  DiscoveryConfig `yaml:"discovery,omitempty" json:"discovery,omitempty"`
-	Apps       []App           `yaml:"apps,omitempty" json:"apps,omitempty"`
-	Groups     []Group         `yaml:"groups,omitempty" json:"groups,omitempty"`
-	TopBar     *TopBar         `yaml:"topBar,omitempty" json:"topBar,omitempty"`
-	Dashboards []Dashboard     `yaml:"dashboards,omitempty" json:"dashboards,omitempty"`
+	Server     ServerConfig      `yaml:"server" json:"server"`
+	Alerts     AlertsConfig      `yaml:"alerts,omitempty" json:"alerts,omitempty"`
+	Discovery  DiscoveryConfig   `yaml:"discovery,omitempty" json:"discovery,omitempty"`
+	Apps       []App             `yaml:"apps,omitempty" json:"apps,omitempty"`
+	Groups     []Group           `yaml:"groups,omitempty" json:"groups,omitempty"`
+	TopBar     *TopBar           `yaml:"topBar,omitempty" json:"topBar,omitempty"`
+	Dashboards []Dashboard       `yaml:"dashboards,omitempty" json:"dashboards,omitempty"`
+	StatusPage *StatusPageConfig `yaml:"status_page,omitempty" json:"status_page,omitempty"`
+}
+
+// StatusPageConfig controls the public /status page. Served by default (axboard
+// is auth-free by design); set enabled: false to turn it off.
+type StatusPageConfig struct {
+	Enabled *bool  `yaml:"enabled,omitempty" json:"enabled,omitempty"`
+	Title   string `yaml:"title,omitempty" json:"title,omitempty"`
 }
 
 // TopBar is global (shared across all dashboards): the bar style and the header
@@ -49,6 +57,11 @@ type AlertsConfig struct {
 	// CertExpiryDays alerts when an HTTPS cert has this many days left or fewer.
 	// 0 disables cert-expiry alerts (default 14 when any channel is configured).
 	CertExpiryDays int `yaml:"cert_expiry_days,omitempty" json:"cert_expiry_days,omitempty"`
+	// ResendMinutes re-sends the "down" alert every N minutes while a service
+	// stays down (0 = alert once). Guards against a missed first notification.
+	ResendMinutes int `yaml:"resend_minutes,omitempty" json:"resend_minutes,omitempty"`
+	// Muted is the set of app IDs excluded from all alerts.
+	Muted []string `yaml:"muted,omitempty" json:"muted,omitempty"`
 }
 
 // NtfyConfig — push via ntfy.sh (or a self-hosted ntfy). Zero infra.
@@ -111,6 +124,11 @@ type Health struct {
 	Headers      map[string]string `yaml:"headers,omitempty" json:"headers,omitempty"`
 	BodyContains string            `yaml:"body_contains,omitempty" json:"body_contains,omitempty"`
 	Insecure     *bool             `yaml:"insecure,omitempty" json:"insecure,omitempty"`
+	// Retries is the number of consecutive failed checks tolerated before the
+	// service is reported down (0 = down on the first failure). During the
+	// retry window the service shows as degraded ("retrying"), not down, so a
+	// blip doesn't trigger a false alert.
+	Retries int `yaml:"retries,omitempty" json:"retries,omitempty"`
 }
 
 type Group struct {

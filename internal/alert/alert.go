@@ -24,11 +24,28 @@ type Notifier struct {
 	mu       sync.RWMutex
 	cfg      config.AlertsConfig
 	client   *http.Client
-	certSent map[string]string // app → YYYY-MM-DD of last cert alert (dedup)
+	certSent map[string]string    // app → YYYY-MM-DD of last cert alert (dedup)
+	downAt   map[string]time.Time // app → last "down" alert time (for resend)
 }
 
 func New() *Notifier {
-	return &Notifier{client: &http.Client{Timeout: 8 * time.Second}, certSent: map[string]string{}}
+	return &Notifier{
+		client:   &http.Client{Timeout: 8 * time.Second},
+		certSent: map[string]string{},
+		downAt:   map[string]time.Time{},
+	}
+}
+
+// muted reports whether an app is excluded from alerts.
+func (n *Notifier) muted(app string) bool {
+	n.mu.RLock()
+	defer n.mu.RUnlock()
+	for _, m := range n.cfg.Muted {
+		if m == app {
+			return true
+		}
+	}
+	return false
 }
 
 // SetConfig swaps in the latest alert config (called on every config reload).
@@ -65,19 +82,57 @@ func classify(app, prev, cur string) (event, bool) {
 	return e, true
 }
 
-// Notify dispatches a transition to every configured channel.
-func (n *Notifier) Notify(app, prev, cur string) {
+// Notify dispatches a transition to every configured channel. `now` seeds the
+// resend clock (real time in production; injected in tests).
+func (n *Notifier) Notify(app, prev, cur string, now time.Time) {
+	if n.muted(app) {
+		return
+	}
 	e, ok := classify(app, prev, cur)
 	if !ok {
 		return
 	}
+	n.mu.Lock()
+	if e.down {
+		n.downAt[app] = now
+	} else {
+		delete(n.downAt, app)
+	}
+	n.mu.Unlock()
 	n.dispatch(e)
+}
+
+// MaybeResend re-fires the "down" alert for an app that is still down, once the
+// configured resend interval has elapsed since the last alert. Call on every
+// check result.
+func (n *Notifier) MaybeResend(app, cur string, now time.Time) {
+	if cur != "down" || n.muted(app) {
+		return
+	}
+	n.mu.RLock()
+	resend := n.cfg.ResendMinutes
+	last, tracked := n.downAt[app]
+	n.mu.RUnlock()
+	if resend <= 0 || !tracked || now.Sub(last) < time.Duration(resend)*time.Minute {
+		return
+	}
+	n.mu.Lock()
+	n.downAt[app] = now
+	n.mu.Unlock()
+	n.dispatch(event{
+		app: app, down: true, prev: "down", cur: "down",
+		title: app + " still DOWN",
+		body:  fmt.Sprintf("%s is still down.", app),
+	})
 }
 
 // NotifyCert alerts when an HTTPS certificate is within the configured expiry
 // threshold. Deduped to once per app per calendar day so it doesn't spam on
 // every check. A negative daysLeft means the cert is already expired.
 func (n *Notifier) NotifyCert(app string, daysLeft int, today string) {
+	if n.muted(app) {
+		return
+	}
 	n.mu.RLock()
 	raw := n.cfg.CertExpiryDays
 	last := n.certSent[app]

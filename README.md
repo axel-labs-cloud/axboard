@@ -144,7 +144,18 @@ test** button to confirm each channel works (or hand-edit the `alerts` block in
 - **Email** — through your SMTP relay (host + creds).
 - **Webhook** — a plain JSON POST for Discord/Slack/custom.
 
-See the commented `alerts:` example in [`config.example.yaml`](./config.example.yaml).
+**Retries** (per service) tolerate N failed checks before "down" so a blip
+doesn't false-alarm; a **resend interval** re-notifies while a service stays
+down; and you can **mute** noisy services. **Certificate expiry** is checked on
+every HTTPS service and alerts before it lapses. See the commented `alerts:`
+example in [`config.example.yaml`](./config.example.yaml).
+
+## Public status page
+
+A lightweight, auth-free, server-rendered status page lives at **`/status`** —
+share it to show every health-checked service grouped, with a status pill,
+recent uptime %, and cert-expiry warnings. It auto-refreshes and needs no JS.
+Disable it with `status_page: { enabled: false }`, or set a `title`.
 
 ## Deployment & security
 

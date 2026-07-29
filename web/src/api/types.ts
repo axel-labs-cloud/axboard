@@ -14,6 +14,7 @@ export interface HealthCheck {
   headers?: Record<string, string>;
   body_contains?: string;
   insecure?: boolean;
+  retries?: number;
 }
 
 export interface AppDef {
@@ -107,6 +108,8 @@ export interface AlertsDef {
   telegram?: TelegramDef;
   email?: EmailDef;
   cert_expiry_days?: number;
+  resend_minutes?: number;
+  muted?: string[];
 }
 
 export interface Config {

@@ -53,10 +53,12 @@ export function AlertsForm({
   alerts,
   onSave,
   onClose,
+  apps,
 }: {
   alerts: AlertsDef | undefined;
   onSave: (a: AlertsDef) => void;
   onClose?: () => void;
+  apps?: { id: string; name: string }[];
 }) {
   const [draft, setDraft] = useState<AlertsDef>(() => structuredClone(alerts ?? {}));
   const [testMsg, setTestMsg] = useState("");
@@ -89,8 +91,18 @@ export function AlertsForm({
         to: email.to.trim(),
       };
     if (draft.cert_expiry_days != null) c.cert_expiry_days = draft.cert_expiry_days;
+    if (draft.resend_minutes) c.resend_minutes = draft.resend_minutes;
+    if (draft.muted?.length) c.muted = draft.muted;
     return c;
   };
+
+  const muted = new Set(draft.muted ?? []);
+  const toggleMute = (id: string) =>
+    setDraft((d) => {
+      const s = new Set(d.muted ?? []);
+      s.has(id) ? s.delete(id) : s.add(id);
+      return { ...d, muted: [...s] };
+    });
 
   const save = () => {
     onSave(clean());
@@ -153,6 +165,29 @@ export function AlertsForm({
             placeholder="14 (default)"
           />
         </Section>
+
+        <Section title="Behavior" subtitle="Re-send the down alert periodically while a service stays down (0 = once).">
+          <Field
+            label="Resend interval (minutes)"
+            value={draft.resend_minutes ? String(draft.resend_minutes) : ""}
+            onChange={(v) => setDraft((d) => ({ ...d, resend_minutes: v === "" ? undefined : Math.max(0, parseInt(v) || 0) }))}
+            placeholder="0 (alert once)"
+          />
+        </Section>
+
+        {apps && apps.length > 0 && (
+          <Section title="Muted services" subtitle="Ticked services never send alerts.">
+            <div className="max-h-40 overflow-auto rounded border border-border-subtle divide-y divide-border-subtle">
+              {apps.map((a) => (
+                <label key={a.id} className="flex items-center gap-2 px-2 py-1.5 text-[12px] text-text-secondary cursor-pointer hover:bg-bg-hover">
+                  <input type="checkbox" checked={muted.has(a.id)} onChange={() => toggleMute(a.id)} className="accent-accent" />
+                  <span className="flex-1 truncate">{a.name}</span>
+                  {muted.has(a.id) && <span className="text-[10px] text-text-muted">muted</span>}
+                </label>
+              ))}
+            </div>
+          </Section>
+        )}
       </div>
 
       <div className="flex items-center gap-2 px-4 py-3 border-t border-border-subtle shrink-0">

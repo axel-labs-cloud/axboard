@@ -52,6 +52,27 @@ func TestReconcileSpawnAndResult(t *testing.T) {
 	}
 }
 
+func TestRetriesGateDown(t *testing.T) {
+	p := NewPoolWithChecker(func(ctx context.Context, h *config.Health) Result {
+		return Result{Status: StatusDown, LastChecked: time.Now()}
+	})
+	defer p.Stop()
+
+	app := httpApp("a", "http://a/ping")
+	app.Health.Retries = 2
+	p.Reconcile([]config.App{app})
+
+	// Initial check: fails=1 <= 2 → degraded, not down.
+	eventually(t, func() bool { return p.Get("a").Status == StatusDegraded }, "first failure should be degraded (retrying)")
+	if p.Get("a").Status == StatusDown {
+		t.Fatal("should not be down on first failure with retries=2")
+	}
+	// Two more forced checks push fails to 3 > 2 → down.
+	p.Force("a")
+	p.Force("a")
+	eventually(t, func() bool { return p.Get("a").Status == StatusDown }, "should be down after retries exhausted")
+}
+
 func TestReconcileUnchangedDoesNotRestart(t *testing.T) {
 	var calls int64
 	p := NewPoolWithChecker(func(ctx context.Context, h *config.Health) Result {

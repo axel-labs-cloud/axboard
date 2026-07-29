@@ -43,17 +43,17 @@ func main() {
 	// refreshed on every reload; sends are best-effort off the health pool.
 	notifier := alert.New()
 	pool.OnChange(func(id string, prev, cur health.Status) {
-		notifier.Notify(id, string(prev), string(cur))
+		notifier.Notify(id, string(prev), string(cur), time.Now())
 	})
-	// Cert-expiry alerting: on every check, if an HTTPS cert is near expiry,
-	// alert (deduped once per app per day inside the notifier).
+	// On every check: re-send "down" alerts on the resend interval, and alert on
+	// near-expiry certs (both deduped inside the notifier).
 	pool.OnResult(func(id string, res health.Result) {
-		if res.CertExpiry.IsZero() {
-			return
-		}
 		now := time.Now()
-		days := int(res.CertExpiry.Sub(now).Hours() / 24)
-		notifier.NotifyCert(id, days, now.Format("2006-01-02"))
+		notifier.MaybeResend(id, string(res.Status), now)
+		if !res.CertExpiry.IsZero() {
+			days := int(res.CertExpiry.Sub(now).Hours() / 24)
+			notifier.NotifyCert(id, days, now.Format("2006-01-02"))
+		}
 	})
 
 	// Uploaded icons live next to state.yaml (machine-owned, persisted volume).

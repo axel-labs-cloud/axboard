@@ -354,7 +354,13 @@ export function ServicesEditor({ open, onClose, initialTab = "services" }: Props
           </div>
         </div>
 
-        {tab === "alerts" && <AlertsForm alerts={cached?.alerts} onSave={saveAlerts} />}
+        {tab === "alerts" && (
+          <AlertsForm
+            alerts={cached?.alerts}
+            onSave={saveAlerts}
+            apps={apps.filter((a) => a.health && a.health.type !== "none").map((a) => ({ id: a.id, name: a.name }))}
+          />
+        )}
 
         {tab === "services" && (
           <>
@@ -850,6 +856,21 @@ function ServiceForm({
                   placeholder="60s"
                   className="w-24 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50"
                 />
+              </div>
+            )}
+
+            {healthType !== "none" && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-[11px] text-text-muted w-16 shrink-0">Retries</span>
+                <input
+                  type="number"
+                  min={0}
+                  value={app.health?.retries ?? ""}
+                  onChange={(e) => onPatch({ health: { ...app.health!, retries: Number(e.target.value) || undefined } })}
+                  placeholder="0"
+                  className="w-20 px-2.5 py-1.5 text-[12px] bg-bg-card border border-border rounded text-text focus:outline-none focus:border-accent/50"
+                />
+                <span className="text-[10px] text-text-muted">failures tolerated before “down” (avoids flapping)</span>
               </div>
             )}
           </div>

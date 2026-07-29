@@ -99,15 +99,70 @@ func TestNotifyDispatchesNtfy(t *testing.T) {
 
 	n := New()
 	n.SetConfig(config.AlertsConfig{Ntfy: &config.NtfyConfig{Server: srv.URL, Topic: "t"}})
-	n.Notify("svc", "healthy", "down")
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	n.Notify("svc", "healthy", "down", now)
 
 	// The send is in a goroutine; wait briefly.
 	waitFor(t, func() bool { mu.Lock(); defer mu.Unlock(); return hits == 1 })
 
 	// A non-alert transition should NOT fire.
-	n.Notify("svc", "healthy", "degraded")
+	n.Notify("svc", "healthy", "degraded", now)
 	if hits != 1 {
 		t.Errorf("degraded transition should not alert, hits=%d", hits)
+	}
+}
+
+func TestMuteSuppressesAlerts(t *testing.T) {
+	var mu sync.Mutex
+	var hits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		mu.Lock()
+		hits++
+		mu.Unlock()
+		w.WriteHeader(200)
+	}))
+	defer srv.Close()
+	n := New()
+	n.SetConfig(config.AlertsConfig{Ntfy: &config.NtfyConfig{Server: srv.URL, Topic: "t"}, Muted: []string{"svc"}})
+	n.Notify("svc", "healthy", "down", time.Now())
+	n.NotifyCert("svc", 1, "2026-01-01")
+	time.Sleep(30 * time.Millisecond)
+	if hits != 0 {
+		t.Errorf("muted app should not alert, hits=%d", hits)
+	}
+}
+
+func TestResendWhileDown(t *testing.T) {
+	var mu sync.Mutex
+	var hits int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		mu.Lock()
+		hits++
+		mu.Unlock()
+		w.WriteHeader(200)
+	}))
+	defer srv.Close()
+	n := New()
+	n.SetConfig(config.AlertsConfig{Ntfy: &config.NtfyConfig{Server: srv.URL, Topic: "t"}, ResendMinutes: 5})
+	t0 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	n.Notify("svc", "healthy", "down", t0)
+	waitFor(t, func() bool { mu.Lock(); defer mu.Unlock(); return hits == 1 })
+	// Too soon → no resend.
+	n.MaybeResend("svc", "down", t0.Add(3*time.Minute))
+	time.Sleep(20 * time.Millisecond)
+	if hits != 1 {
+		t.Errorf("resend before interval, hits=%d", hits)
+	}
+	// After the interval → resend.
+	n.MaybeResend("svc", "down", t0.Add(6*time.Minute))
+	waitFor(t, func() bool { mu.Lock(); defer mu.Unlock(); return hits == 2 })
+	// Recovered → clears; no more resends.
+	n.Notify("svc", "down", "healthy", t0.Add(7*time.Minute))
+	waitFor(t, func() bool { mu.Lock(); defer mu.Unlock(); return hits == 3 })
+	n.MaybeResend("svc", "down", t0.Add(20*time.Minute)) // not tracked anymore
+	time.Sleep(20 * time.Millisecond)
+	if hits != 3 {
+		t.Errorf("resend after recovery should not fire, hits=%d", hits)
 	}
 }
 

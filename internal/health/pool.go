@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -222,9 +223,23 @@ func (p *Pool) run(ctx context.Context, app config.App, w *worker) {
 	if interval <= 0 {
 		interval = 60 * time.Second
 	}
+	retries := app.Health.Retries
+	fails := 0 // consecutive down results
 
 	check := func() {
 		res := p.check(ctx, app.Health)
+		// Retry gating: a down result stays "degraded (retrying)" until it has
+		// failed more than `retries` times in a row, so a blip doesn't flap the
+		// status or fire a false alert.
+		if res.Status == StatusDown {
+			fails++
+			if fails <= retries {
+				res.Status = StatusDegraded
+				res.Error = fmt.Sprintf("retry %d/%d: %s", fails, retries, res.Error)
+			}
+		} else {
+			fails = 0
+		}
 		prev, _ := p.results.Load(app.ID)
 		p.results.Store(app.ID, res)
 		p.recordHistory(app.ID, res)

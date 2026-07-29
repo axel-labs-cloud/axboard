@@ -172,6 +172,9 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Get("/events", s.handleSSE)
 	})
 
+	// Public, auth-free status page (server-rendered HTML).
+	r.Get("/status", s.handleStatusPage)
+
 	if spaFS != nil {
 		r.NotFound(spaHandler(spaFS))
 	}
