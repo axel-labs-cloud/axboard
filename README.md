@@ -19,7 +19,8 @@ Drag-and-drop widgets, health-checked app cards, a command palette, live charts,
 
 - **One binary.** Go server + embedded SPA. Drop it on a box, point it at a YAML file, done.
 - **YAML you actually own.** Your config is a human file the server only reads. Layouts and machine state live separately, so dragging widgets never touches your comments.
-- **Live, not static.** Health pings, container states, host stats, weather, crypto/stock charts, RSS, release-watch, uptime monitoring — all refreshing on their own.
+- **Live, not static.** Health checks (HTTP/TCP/ping/DNS + push heartbeats) with 24h/7d/30d uptime, container states, host stats, weather, crypto/stock charts, RSS, release-watch — all refreshing on their own.
+- **Alerts & status pages.** Down/recover notifications (ntfy/Telegram/email/webhook) and public, themeable status pages with criticality-aware severity — optionally gated behind a built-in login.
 - **Genuinely themeable.** 13 built-in themes (including a neon **Cyber**), a custom-theme creator, per-dashboard backgrounds (color/gradient/image), glassmorphism widget styling, fonts, and a custom-CSS escape hatch.
 - **Keyboard-first.** ⌘K command palette (apps, bookmarks, commands, web search with bangs) and a `?` shortcut cheat sheet.
 - **Installable PWA.** Add it to your phone/desktop; the shell loads instantly and works offline.
@@ -89,9 +90,12 @@ dashboards:
 
 Each check polls on its own `health.interval`. Set a fleet-wide default with
 `server.default_interval` (applied to any check that omits its own); it falls
-back to 60s when unset.
+back to 60s when unset. Check types: **http**, **tcp**, **ping**, **dns**, and
+**push** — a passive heartbeat monitor where the job pings
+`/api/push/<id>` and axboard marks it down if a beat is missed. Mark a service
+`critical: true` so its outage is treated as a major incident on status pages.
 
-See [`config.example.yaml`](./config.example.yaml) for the complete schema, including health-check options (`http` / `tcp` / `ping` / `dns` / `push` / `none`), the global `topBar`, and per-dashboard backgrounds.
+See [`config.example.yaml`](./config.example.yaml) for the complete schema, including all health-check options, the global `topBar`, and per-dashboard backgrounds.
 
 ## Widgets
 
@@ -139,9 +143,10 @@ Press **`?`** in-app for the full cheat sheet.
 ## Alerts
 
 axboard notifies you when a health-checked app **goes down or recovers**.
-Configure it entirely from the UI — **⋯ menu → Alerts** — with a **Save & send
-test** button to confirm each channel works (or hand-edit the `alerts` block in
-`config.yaml`). Every configured channel fires (all best-effort):
+Configure it entirely from the UI — **⋯ menu → Configure → Alerts** — with a
+per-channel **Save & test** button to confirm each one works (or hand-edit the
+`alerts` block in `config.yaml`). Every configured channel fires (all
+best-effort):
 
 - **ntfy** — zero infra: POSTs to a topic on `ntfy.sh` or your self-hosted ntfy.
 - **Telegram** — a bot token (from `@BotFather`) + your chat id.
@@ -150,25 +155,39 @@ test** button to confirm each channel works (or hand-edit the `alerts` block in
 
 **Retries** (per service) tolerate N failed checks before "down" so a blip
 doesn't false-alarm; a **resend interval** re-notifies while a service stays
-down; and you can **mute** noisy services. **Certificate expiry** is checked on
-every HTTPS service and alerts before it lapses. See the commented `alerts:`
-example in [`config.example.yaml`](./config.example.yaml).
+down; you can **mute** noisy services or **pause** all alerts for a maintenance
+window. **Certificate expiry** is checked on every HTTPS service and alerts
+before it lapses. See the commented `alerts:` example in
+[`config.example.yaml`](./config.example.yaml).
 
-## Public status page
+## Status pages
 
-Lightweight, auth-free, server-rendered status pages — the default at
-**`/status`**, named pages at **`/status/<slug>`**. Each shows the chosen
-services grouped, with a status pill, recent uptime %, and cert-expiry
-warnings; auto-refreshes; needs no JS. Configure them from the UI —
-**Manage services → Status pages** — with a live preview: set title, header /
-footer text, theme (dark/light), a group filter, and hide the axboard branding.
-Open the current one from **⋯ menu → Open status page**.
+Server-rendered status pages that need no JS — the default at **`/status`** and
+any number of named pages at **`/status/<slug>`**. Each groups the chosen
+services with a status dot, a Uptime-Kuma-style history strip, **24h/7d/30d
+uptime**, response time, and cert-expiry warnings, plus an embeddable SVG badge
+at `/status/badge/<id>`.
 
-When [authentication](#authentication) is enabled, status pages are gated behind
-a login by default. Tick **Public (no login)** on a page (`public: true` in
-config) to serve it without a session — so you can share a public status page
-while the rest of the dashboard stays private. With auth off, all pages are
-public as before.
+Build them from the UI — **⋯ menu → Configure → Status pages** — with a live
+preview. Per page you can set:
+
+- **Identity** — title (with its own colour), slug, header/footer text, and hide
+  the "Powered by axboard" branding.
+- **Summary banner** — a plain-language headline coloured by severity, in one of
+  five styles (tint / minimal / strip / outline / solid).
+- **Severity by criticality** — a **critical** service down turns the banner
+  **red**; non-critical outages go **amber** and escalate to red once a
+  configurable number of them are down at once (the "red at N" threshold).
+- **Appearance** — dark/light theme, width (narrow/wide/full), and a backdrop
+  (colour / gradient / image with blur & dim).
+- **Content** — include whole groups and/or pick individual services.
+- **Notices** — manual info / warning / critical / maintenance banners for
+  incidents and scheduled work.
+
+When [authentication](#authentication) is enabled, status pages are **gated
+behind a login by default**. Tick **Public (no login)** on a page (`public:
+true`) to serve it without a session — so you can share a public status page
+while the dashboard stays private. With auth off, all pages are public.
 
 ## Authentication
 
