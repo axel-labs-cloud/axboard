@@ -1,0 +1,58 @@
+# axboard — example deployment compose.
+#
+# Nothing to build: this pulls the published image. Copy this file, create a
+# ./config/config.yaml next to it (see config.example.yaml), then:
+#
+#     docker compose up -d        # or: podman compose up -d
+#
+# The ONLY required parts are the image, the two volumes, and a port. Every
+# host-access grant below is optional and labelled with the widget it unlocks —
+# remove the ones you don't want.
+
+services:
+  axboard:
+    image: axboard/axboard:latest      # pin a version in prod, e.g. :v0.2.0
+    container_name: axboard
+    restart: unless-stopped
+
+    # --- networking ---------------------------------------------------------
+    # Host networking lets the Host stats / Resource gauge / Network graph
+    # widgets read REAL host network I/O, and lets Wake-on-LAN reach the LAN
+    # broadcast. With it the app binds the host port directly (no ports:).
+    network_mode: host
+    # Prefer bridged? Drop network_mode above and map the port instead — CPU /
+    # RAM / disk still report the host, but network I/O shows only the
+    # container's own traffic:
+    # ports:
+    #   - "8080:8080"
+
+    # --- optional host access (remove any you don't want) -------------------
+    pid: host                          # Top processes widget sees host processes
+    cap_add:
+      - NET_RAW                        # ICMP "ping" health-check type
+    security_opt:
+      - label=disable                  # SELinux: reach the container socket (discovery)
+
+    volumes:
+      # Required. Bind the config DIRECTORY (not the file) so hot reload sees
+      # create/rename events. State (layouts, uptime history, icons, the auth
+      # session key) lives in the named volume.
+      - ./config:/etc/axboard:Z
+      - axboard-state:/var/lib/axboard:Z
+      # Optional: read-only container socket → auto-discover services from
+      # running containers. For Docker use /var/run/docker.sock instead.
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/podman/podman.sock:/var/run/docker.sock:ro
+      # Optional: read-only host root → Filesystems widget statfs's real mounts.
+      - /:/host:ro,rslave
+
+    environment:
+      - AXBOARD_HOST_ROOT=/host         # pair with the /host bind above
+
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1:8080/healthz || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  axboard-state:

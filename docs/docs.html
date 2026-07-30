@@ -604,8 +604,68 @@ echo -n <span class="s">'your-password'</span> | ./axboard passwd axel</code></p
     <section class="doc" id="deploy">
       <p class="eyebrow">Operating</p>
       <h2>Deployment</h2>
-      <p>CI publishes a <strong>multi-arch (amd64 / arm64)</strong> image to the project's container registry; <code>v*</code> tags cut a release. Pin <code>:latest</code>, a branch tag, or a specific <code>:v0.2.0</code> in your deployment.</p>
-      <div class="note"><span class="ic">!</span><div><b>No-auth posture.</b> <code>server.bind</code> should be a LAN address. Anyone who can reach the port can read and edit the config unless you enable <a href="#auth">auth</a> or put a forward-auth proxy in front.</div></div>
+      <p>axboard ships as a single <strong>multi-arch (amd64 / arm64)</strong> image. There's nothing to build — pull the image, drop in a compose file, create your <code>config.yaml</code>, and bring it up. Tags: <code>latest</code> and pinned versions like <code>v0.2.0</code>.</p>
+
+      <h3>1 · docker-compose.yml</h3>
+      <p>Everything below is annotated. The <strong>only required parts</strong> are the image, the two volumes, and a port — every host-access grant is optional and labelled with what it unlocks.</p>
+<pre><code><span class="k">services:</span>
+  <span class="k">axboard:</span>
+    <span class="k">image:</span> axboard/axboard:latest      <span class="cmt"># pin a version in prod, e.g. :v0.2.0</span>
+    <span class="k">container_name:</span> axboard
+    <span class="k">restart:</span> unless-stopped
+
+    <span class="cmt"># --- networking -------------------------------------------------------</span>
+    <span class="cmt"># Host networking lets the Host stats / Resource gauge / Network graph</span>
+    <span class="cmt"># widgets read REAL host network I/O, and lets Wake-on-LAN reach the LAN</span>
+    <span class="cmt"># broadcast. With it, the app binds the host port directly (no ports:).</span>
+    <span class="k">network_mode:</span> host
+    <span class="cmt"># Prefer bridged instead? Drop network_mode above and map the port —</span>
+    <span class="cmt"># CPU/RAM/disk still report the host, but network I/O shows only the</span>
+    <span class="cmt"># container's own traffic:</span>
+    <span class="cmt"># ports:</span>
+    <span class="cmt">#   - "8080:8080"</span>
+
+    <span class="cmt"># --- optional host access (remove any you don't want) -----------------</span>
+    <span class="k">pid:</span> host                        <span class="cmt"># Top processes widget sees host processes</span>
+    <span class="k">cap_add:</span>
+      - NET_RAW                       <span class="cmt"># ICMP "ping" health-check type</span>
+    <span class="k">security_opt:</span>
+      - label=disable                 <span class="cmt"># SELinux: reach the container socket (discovery)</span>
+
+    <span class="k">volumes:</span>
+      <span class="cmt"># Required: your config dir (bind the DIRECTORY, not the file, so hot</span>
+      <span class="cmt"># reload sees create/rename events) + a named volume for machine state.</span>
+      - ./config:/etc/axboard:Z
+      - axboard-state:/var/lib/axboard:Z
+      <span class="cmt"># Optional: read-only container socket → auto-discover services from</span>
+      <span class="cmt"># running containers. (Docker: /var/run/docker.sock)</span>
+      - ${XDG_RUNTIME_DIR:-/run/user/1000}/podman/podman.sock:/var/run/docker.sock:ro
+      <span class="cmt"># Optional: read-only host root → Filesystems widget statfs's real mounts.</span>
+      - /:/host:ro,rslave
+
+    <span class="k">environment:</span>
+      - AXBOARD_HOST_ROOT=/host        <span class="cmt"># pair with the /host bind above</span>
+
+    <span class="k">healthcheck:</span>
+      <span class="k">test:</span> [<span class="s">"CMD-SHELL"</span>, <span class="s">"wget -q -O- http://127.0.0.1:8080/healthz || exit 1"</span>]
+      <span class="k">interval:</span> 30s
+      <span class="k">timeout:</span> 3s
+      <span class="k">retries:</span> 3
+
+<span class="k">volumes:</span>
+  <span class="k">axboard-state:</span></code></pre>
+      <div class="note"><span class="ic">i</span><div><b>Minimal setup?</b> Keep only <code>image</code>, the two <code>volumes</code>, and a port mapping. Add each grant above only when you want the widget it unlocks — none are needed to run.</div></div>
+
+      <h3>2 · Your config</h3>
+<pre><code>mkdir -p config
+curl -o config/config.yaml https://…/config.example.yaml   <span class="cmt"># or write your own</span>
+docker compose up -d</code></pre>
+      <p>Open <code>http://&lt;host&gt;:8080</code> and edit <code>config/config.yaml</code> — the server hot-reloads on save. State (layouts, uptime history, uploaded icons, the auth session key) lives in the <code>axboard-state</code> volume.</p>
+
+      <h3>Updating</h3>
+<pre><code>docker compose pull &amp;&amp; docker compose up -d</code></pre>
+
+      <div class="note"><span class="ic">!</span><div><b>Exposure.</b> axboard is open by default — bind it to a LAN address. Anyone who can reach the port can read and edit the config unless you enable <a href="#auth">the built-in login</a> or put a forward-auth proxy (Authentik / Authelia / oauth2-proxy) in front.</div></div>
     </section>
 
     <section class="doc" id="develop">

@@ -25,17 +25,32 @@ Drag-and-drop widgets, health-checked app cards, alerts, public status pages, an
 
 ## Quick start
 
+Nothing to build — pull the published image, add a compose file, create your config, and bring it up. A minimal `docker-compose.yml`:
+
+```yaml
+services:
+  axboard:
+    image: axboard/axboard:latest      # multi-arch (amd64/arm64); pin :v0.2.0 in prod
+    container_name: axboard
+    restart: unless-stopped
+    network_mode: host                 # real host metrics + Wake-on-LAN; or use ports: ["8080:8080"]
+    volumes:
+      - ./config:/etc/axboard:Z
+      - axboard-state:/var/lib/axboard:Z
+volumes:
+  axboard-state:
+```
+
 ```sh
-git clone <repo> axboard && cd axboard
-mkdir -p config && cp config.example.yaml config/config.yaml
-podman compose up -d      # or: docker compose up -d
+mkdir -p config && cp config.example.yaml config/config.yaml   # or write your own
+docker compose up -d      # or: podman compose up -d
 ```
 
 Open **http://localhost:8080** and edit `config/config.yaml` — the server hot-reloads on save. The bundled [`config.example.yaml`](./config.example.yaml) is a full, working starter.
 
-> The compose file runs with **host networking** (real host network I/O + Wake-on-LAN) and mounts a read-only container socket for **auto-discovery**. Both are optional and commented as removable.
+> Want the deeper system widgets (host processes, filesystems, auto-discovery)? Use the fully-annotated [`docker-compose.example.yml`](./docker-compose.example.yml) — every host-access grant is optional and labelled with what it unlocks.
 
-**Single binary:** `make build` (Go 1.26 + Node 22), then `./bin/axboard --config ./config.yaml --state ./state.yaml`.
+**From source:** `make build` (Go 1.26 + Node 22), then `./bin/axboard --config ./config.yaml --state ./state.yaml`.
 
 ## Configuration in 30 seconds
 
@@ -59,7 +74,7 @@ A few pointers:
 
 - **Auth** — open by default (LAN-bound, meant to sit behind a proxy). Opt into a built-in argon2id login with `axboard passwd` + a `server.auth` block; see the docs.
 - **Status pages** — served at `/status` and `/status/<slug>`, configured from **⋯ → Configure → Status pages**.
-- **Deployment** — CI publishes a multi-arch (amd64/arm64) image; `v*` tags cut a release.
+- **Deployment** — pull the multi-arch image, drop in [`docker-compose.example.yml`](./docker-compose.example.yml), create `config/`, and `docker compose up -d`. Update with `docker compose pull && docker compose up -d`.
 
 ## Development
 
