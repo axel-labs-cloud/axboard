@@ -6,6 +6,8 @@
 
 Drag-and-drop widgets, health-checked app cards, alerts, public status pages, and deep theming — all from a single Go binary with an embedded React app and a hand-editable YAML config. No database, no accounts, no build step to configure.
 
+**[Website](https://axel-labs-cloud.github.io/axboard/)** · **[Documentation](https://axel-labs-cloud.github.io/axboard/docs.html)** · MIT licensed · multi-arch (amd64/arm64)
+
 </div>
 
 <div align="center">
@@ -25,7 +27,7 @@ Drag-and-drop widgets, health-checked app cards, alerts, public status pages, an
 
 ## Quick start
 
-Nothing to build — pull the published image, add a compose file, create your config, and bring it up. A minimal `docker-compose.yml`:
+Nothing to build — pull the published image, add a compose file, create your config, and bring it up. The bare minimum ([`docker-compose.min.yml`](./docker-compose.min.yml)):
 
 ```yaml
 services:
@@ -33,7 +35,8 @@ services:
     image: axboard/axboard:latest      # multi-arch (amd64/arm64); pin :v0.2.0 in prod
     container_name: axboard
     restart: unless-stopped
-    network_mode: host                 # real host metrics + Wake-on-LAN; or use ports: ["8080:8080"]
+    ports:
+      - "8080:8080"
     volumes:
       - ./config:/etc/axboard:Z
       - axboard-state:/var/lib/axboard:Z
@@ -48,7 +51,7 @@ docker compose up -d      # or: podman compose up -d
 
 Open **http://localhost:8080** and edit `config/config.yaml` — the server hot-reloads on save. The bundled [`config.example.yaml`](./config.example.yaml) is a full, working starter.
 
-> Want the deeper system widgets (host processes, filesystems, auto-discovery)? Use the fully-annotated [`docker-compose.example.yml`](./docker-compose.example.yml) — every host-access grant is optional and labelled with what it unlocks.
+> Want the deeper system widgets (real host network I/O, host processes, filesystems, Wake-on-LAN, auto-discovery)? Use the fully-annotated [`docker-compose.example.yml`](./docker-compose.example.yml) — every host-access grant is optional and labelled with what it unlocks.
 
 **From source:** `make build` (Go 1.26 + Node 22), then `./bin/axboard --config ./config.yaml --state ./state.yaml`.
 
@@ -89,7 +92,7 @@ make dev-web    # Vite dev server on :5173, proxies /api/* → :8080 (HMR)
 
 ## What axboard is *not*
 
-Not a metrics collector (health checks are liveness only — point at Grafana), not a plugin platform, not multi-tenant. Keeping it small is the point. See [CLAUDE.md](./CLAUDE.md) for the full design rationale.
+Not a metrics collector (health checks are liveness only — point at Grafana), not a plugin platform, not multi-tenant. Keeping it small is the point.
 
 ## License
 

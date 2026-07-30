@@ -223,7 +223,8 @@
     <section class="doc" id="overview">
       <p class="eyebrow">Overview</p>
       <h2>What it is</h2>
-      <p>axboard is a drag-and-drop dashboard of widgets — most importantly clickable app cards with health pings — that sits in front of everything you self-host. It's a single binary with the SPA embedded; you configure it by hand-editing YAML, and the server hot-reloads on save. No database, no accounts required, LAN-bound by default.</p>
+      <p>axboard is a drag-and-drop dashboard of widgets — most importantly clickable app cards with health pings — that sits in front of everything you self-host. It's a single binary with the SPA embedded, no database and no accounts required, LAN-bound by default.</p>
+      <p><strong>Edit it however you like — both ways stay in sync.</strong> Build the whole board <em>in the browser</em>: drag &amp; resize widgets, and add or edit services, dashboards, alerts, status pages and themes with point-and-click panels. Or <em>hand-edit the YAML</em> in your editor. Every change hot-reloads instantly, and the UI's structured edits are written straight back to your <code>config.yaml</code>.</p>
       <p class="muted">It is deliberately <strong>not</strong> a metrics collector (health checks are liveness only — point at Grafana for real observability), not a plugin platform, and not multi-tenant. Keeping it small is the point.</p>
     </section>
 
@@ -248,8 +249,8 @@ cp config.example.yaml config.yaml
       <p>Two files, one clear split — this is the most important design decision in the project.</p>
       <div class="tw"><table>
         <tr><th>File</th><th>Owner</th><th>Holds</th></tr>
-        <tr><td><code>config.yaml</code></td><td>You (hand-edited)</td><td>Apps, groups, dashboards, widgets, the global top bar. The server only reads it and hot-reloads on change.</td></tr>
-        <tr><td><code>state.yaml</code></td><td>axboard (machine-managed)</td><td>Grid layouts written on every drag. Never edit by hand.</td></tr>
+        <tr><td><code>config.yaml</code></td><td>You — the UI <em>or</em> your editor</td><td>Apps, groups, dashboards, widgets, the global top bar. Written by the UI's edit panels <em>and</em> hand-editable; hot-reloads on change.</td></tr>
+        <tr><td><code>state.yaml</code></td><td>axboard (machine-managed)</td><td>Grid layouts, written automatically on every drag / resize. Never edit by hand.</td></tr>
       </table></div>
       <p class="muted">On a YAML parse error the UI shows a banner pointing at the line and keeps serving the last-good config — it never crashes on a bad save. Themes and widget-style settings are browser-local.</p>
       <h3>A minimal config</h3>
@@ -449,8 +450,8 @@ cp config.example.yaml config.yaml
     config: { url: "http://pi.hole/admin/api.php", refreshMin: 5,
               fields: [ { label: Blocked today, path: ads_blocked_today } ] } }</code></pre></div>
       </details>
-      <details class="w"><summary><span class="nm">axdnsd · axlbd</span><span class="ty">axdnsd / axlbd</span><span class="oneline">Axel-Labs DNS / load-balancer dashboards</span></summary>
-        <div class="body"><p>Purpose-built panels for the Axel-Labs <code>axdnsd</code> (DNS) and <code>axlbd</code> (load balancer) services.</p>
+      <details class="w"><summary><span class="nm">axdnsd · axlbd</span><span class="ty">axdnsd / axlbd</span><span class="oneline">Panels for the axdnsd / axlbd services</span></summary>
+        <div class="body"><p>Purpose-built panels for the <code>axdnsd</code> (DNS) and <code>axlbd</code> (load balancer) services.</p>
         <div class="ui"><b>UI</b><span>Base URL · username · password (stored in <code>state.yaml</code>).</span></div>
 <pre><code>- { id: dns-1, type: axdnsd, title: DNS, config: { baseUrl: https://dns.lan } }</code></pre></div>
       </details>
@@ -555,7 +556,7 @@ cp config.example.yaml config.yaml
       <ul>
         <li><strong>Per-dashboard</strong> — accent colour and a background: solid colour, gradient (presets or custom CSS), or an image with blur, dim, fit and opacity.</li>
         <li><strong>Global top bar</strong> — style (default / solid / contrast / transparent) + flush edge-to-edge mode, branding, a search bar, header widgets, and icon-only bookmark launchers.</li>
-        <li><strong>Themes</strong> — 13 built-ins (including a neon <em>Cyber</em>), a custom-theme creator with per-token pickers and JSON import/export, a font picker, widget-style controls (opacity / blur / radius / border), and a custom-CSS box.</li>
+        <li><strong>Themes</strong> — a set of built-in dark &amp; light themes, a custom-theme creator with per-token pickers and JSON import/export, a font picker, widget-style controls (opacity / blur / radius / border), and a custom-CSS box.</li>
       </ul>
     </section>
 
@@ -606,8 +607,24 @@ echo -n <span class="s">'your-password'</span> | ./axboard passwd axel</code></p
       <h2>Deployment</h2>
       <p>axboard ships as a single <strong>multi-arch (amd64 / arm64)</strong> image. There's nothing to build — pull the image, drop in a compose file, create your <code>config.yaml</code>, and bring it up. Tags: <code>latest</code> and pinned versions like <code>v0.2.0</code>.</p>
 
-      <h3>1 · docker-compose.yml</h3>
-      <p>Everything below is annotated. The <strong>only required parts</strong> are the image, the two volumes, and a port — every host-access grant is optional and labelled with what it unlocks.</p>
+      <h3>1 · Bare minimum</h3>
+      <p>Everything you actually need to run: the image, a port, and two volumes. Bridged networking — the CPU / memory / disk widgets still work; only real host network I/O and Wake-on-LAN need the host-access grants shown next.</p>
+<pre><code><span class="k">services:</span>
+  <span class="k">axboard:</span>
+    <span class="k">image:</span> axboard/axboard:latest
+    <span class="k">container_name:</span> axboard
+    <span class="k">restart:</span> unless-stopped
+    <span class="k">ports:</span>
+      - <span class="s">"8080:8080"</span>
+    <span class="k">volumes:</span>
+      - ./config:/etc/axboard:Z       <span class="cmt"># your config.yaml (bind the directory)</span>
+      - axboard-state:/var/lib/axboard:Z
+
+<span class="k">volumes:</span>
+  <span class="k">axboard-state:</span></code></pre>
+
+      <h3>2 · Full (all host access)</h3>
+      <p>The same service with every optional grant, each labelled with the widget it unlocks. Remove any you don't want.</p>
 <pre><code><span class="k">services:</span>
   <span class="k">axboard:</span>
     <span class="k">image:</span> axboard/axboard:latest      <span class="cmt"># pin a version in prod, e.g. :v0.2.0</span>
@@ -656,7 +673,7 @@ echo -n <span class="s">'your-password'</span> | ./axboard passwd axel</code></p
   <span class="k">axboard-state:</span></code></pre>
       <div class="note"><span class="ic">i</span><div><b>Minimal setup?</b> Keep only <code>image</code>, the two <code>volumes</code>, and a port mapping. Add each grant above only when you want the widget it unlocks — none are needed to run.</div></div>
 
-      <h3>2 · Your config</h3>
+      <h3>3 · Your config</h3>
 <pre><code>mkdir -p config
 curl -o config/config.yaml https://…/config.example.yaml   <span class="cmt"># or write your own</span>
 docker compose up -d</code></pre>

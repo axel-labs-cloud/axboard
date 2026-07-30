@@ -10,3 +10,6 @@ node_modules/
 .env.local
 *.log
 .DS_Store
+
+# local AI operating notes — keep out of the public repo
+CLAUDE.md

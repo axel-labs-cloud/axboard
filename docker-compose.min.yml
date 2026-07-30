@@ -1,0 +1,22 @@
+# axboard — bare-minimum deployment.
+#
+# Everything you actually need: the image, a port, and two volumes. Create a
+# ./config/config.yaml next to this file, then: docker compose up -d
+#
+# Bridged networking — CPU / memory / disk widgets still report the host. Only
+# real host network I/O and Wake-on-LAN need host networking; see
+# docker-compose.example.yml for the fully-annotated version with every option.
+
+services:
+  axboard:
+    image: axboard/axboard:latest      # pin a version in prod, e.g. :v0.2.0
+    container_name: axboard
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config:/etc/axboard:Z        # your config.yaml (bind the directory)
+      - axboard-state:/var/lib/axboard:Z
+
+volumes:
+  axboard-state:
