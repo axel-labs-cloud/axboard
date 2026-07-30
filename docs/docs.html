@@ -611,7 +611,7 @@ echo -n <span class="s">'your-password'</span> | ./axboard passwd axel</code></p
       <p>Everything you actually need to run: the image, a port, and two volumes. Bridged networking — the CPU / memory / disk widgets still work; only real host network I/O and Wake-on-LAN need the host-access grants shown next.</p>
 <pre><code><span class="k">services:</span>
   <span class="k">axboard:</span>
-    <span class="k">image:</span> axboard/axboard:latest
+    <span class="k">image:</span> ghcr.io/axel-labs-cloud/axboard:latest
     <span class="k">container_name:</span> axboard
     <span class="k">restart:</span> unless-stopped
     <span class="k">ports:</span>
@@ -627,7 +627,7 @@ echo -n <span class="s">'your-password'</span> | ./axboard passwd axel</code></p
       <p>The same service with every optional grant, each labelled with the widget it unlocks. Remove any you don't want.</p>
 <pre><code><span class="k">services:</span>
   <span class="k">axboard:</span>
-    <span class="k">image:</span> axboard/axboard:latest      <span class="cmt"># pin a version in prod, e.g. :v0.2.0</span>
+    <span class="k">image:</span> ghcr.io/axel-labs-cloud/axboard:latest      <span class="cmt"># pin a version in prod, e.g. :v0.2.0</span>
     <span class="k">container_name:</span> axboard
     <span class="k">restart:</span> unless-stopped
 

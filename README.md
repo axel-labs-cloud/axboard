@@ -32,7 +32,7 @@ Nothing to build — pull the published image, add a compose file, create your c
 ```yaml
 services:
   axboard:
-    image: axboard/axboard:latest      # multi-arch (amd64/arm64); pin :v0.2.0 in prod
+    image: ghcr.io/axel-labs-cloud/axboard:latest      # multi-arch (amd64/arm64); pin :v0.2.0 in prod
     container_name: axboard
     restart: unless-stopped
     ports:

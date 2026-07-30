@@ -9,7 +9,7 @@
 
 services:
   axboard:
-    image: axboard/axboard:latest      # pin a version in prod, e.g. :v0.2.0
+    image: ghcr.io/axel-labs-cloud/axboard:latest      # pin a version in prod, e.g. :v0.2.0
     container_name: axboard
     restart: unless-stopped
     ports:
