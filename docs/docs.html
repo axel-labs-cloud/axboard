@@ -1,0 +1,424 @@
+<title>axboard — Documentation</title>
+<style>
+  :root{
+    --ground:#0b0d13; --panel:#141824; --panel-2:#0f131c; --line:#232838;
+    --tx:#e6e8ee; --mut:#8b93a7; --tx-dim:#5f677d;
+    --accent:#818cf8; --accent-ink:#c7ccff;
+    --up:#22c55e; --deg:#f59e0b; --down:#f43f5e;
+    --code-bg:#0f131c; --sel:rgba(129,140,248,.28);
+    --font-sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono","Fira Code",Menlo,Consolas,monospace;
+    --maxw:1180px;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --ground:#f6f7f9; --panel:#ffffff; --panel-2:#f0f2f5; --line:#e2e6ec;
+      --tx:#1a1d24; --mut:#5c6478; --tx-dim:#8b93a7;
+      --accent:#5b63d6; --accent-ink:#4048b8;
+      --code-bg:#f3f4f7; --sel:rgba(91,99,214,.18);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0b0d13; --panel:#141824; --panel-2:#0f131c; --line:#232838;
+    --tx:#e6e8ee; --mut:#8b93a7; --tx-dim:#5f677d; --accent:#818cf8; --accent-ink:#c7ccff;
+    --code-bg:#0f131c; --sel:rgba(129,140,248,.28);
+  }
+  :root[data-theme="light"]{
+    --ground:#f6f7f9; --panel:#ffffff; --panel-2:#f0f2f5; --line:#e2e6ec;
+    --tx:#1a1d24; --mut:#5c6478; --tx-dim:#8b93a7; --accent:#5b63d6; --accent-ink:#4048b8;
+    --code-bg:#f3f4f7; --sel:rgba(91,99,214,.18);
+  }
+
+  *{box-sizing:border-box}
+  ::selection{background:var(--sel)}
+  html{scroll-behavior:smooth}
+  @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+  body{
+    margin:0;background:var(--ground);color:var(--tx);
+    font-family:var(--font-sans);font-size:15px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  }
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--font-mono);font-size:.88em}
+
+  /* ---- top bar ---- */
+  header.top{
+    position:sticky;top:0;z-index:40;
+    display:flex;align-items:center;gap:14px;
+    padding:12px 22px;border-bottom:1px solid var(--line);
+    background:color-mix(in srgb,var(--ground) 88%,transparent);
+    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  }
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.01em}
+  .brand .mark{width:12px;height:12px;border-radius:3px;background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 24%,transparent)}
+  .brand b{font-size:15px}
+  .brand .tag{font-family:var(--font-mono);font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:5px;padding:1px 6px;letter-spacing:.02em}
+  .top .spacer{flex:1}
+  .top a.nav-lnk{font-family:var(--font-mono);font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.06em}
+  .top a.nav-lnk:hover{color:var(--tx);text-decoration:none}
+  .toggle{
+    display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+    font-family:var(--font-mono);font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--mut);background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:6px 9px;
+  }
+  .toggle:hover{color:var(--tx);border-color:var(--accent)}
+  .toggle:focus-visible,a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+
+  /* ---- shell ---- */
+  .shell{max-width:var(--maxw);margin:0 auto;display:grid;grid-template-columns:232px 1fr;gap:44px;padding:0 22px}
+  nav.side{
+    position:sticky;top:60px;align-self:start;height:calc(100vh - 60px);overflow-y:auto;
+    padding:30px 0 60px;
+  }
+  nav.side .grp{margin-bottom:20px}
+  nav.side .grp > span{
+    display:block;font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.13em;
+    color:var(--tx-dim);margin:0 0 8px 2px;
+  }
+  nav.side a{
+    display:block;color:var(--mut);font-size:13.5px;padding:4px 10px;border-radius:6px;
+    border-left:2px solid transparent;margin-left:-2px;
+  }
+  nav.side a:hover{color:var(--tx);text-decoration:none;background:var(--panel)}
+  nav.side a.active{color:var(--accent-ink);border-left-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,transparent)}
+
+  main{min-width:0;padding:38px 0 120px;max-width:760px}
+
+  /* ---- content typography ---- */
+  h1.title{font-size:clamp(30px,5vw,42px);line-height:1.05;letter-spacing:-.025em;margin:0 0 10px;text-wrap:balance;font-weight:800}
+  .lede{font-size:18px;color:var(--mut);margin:0 0 30px;max-width:60ch}
+  section.doc{scroll-margin-top:74px;padding:34px 0;border-top:1px solid var(--line)}
+  section.doc:first-of-type{border-top:0;padding-top:8px}
+  .eyebrow{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent);margin:0 0 10px}
+  h2{font-size:25px;letter-spacing:-.02em;margin:0 0 6px;font-weight:750;text-wrap:balance}
+  h3{font-size:16px;margin:26px 0 6px;font-weight:700;letter-spacing:-.01em}
+  p{margin:12px 0}
+  main p, main li{color:var(--tx)}
+  main .muted{color:var(--mut)}
+  ul,ol{padding-left:20px;margin:12px 0}
+  li{margin:6px 0}
+  li::marker{color:var(--tx-dim)}
+  strong{font-weight:650}
+  hr{border:0;border-top:1px solid var(--line);margin:26px 0}
+
+  /* ---- code ---- */
+  pre{
+    background:var(--code-bg);border:1px solid var(--line);border-radius:10px;
+    padding:15px 16px;overflow-x:auto;margin:16px 0;font-size:13px;line-height:1.6;
+  }
+  pre code{font-family:var(--font-mono);color:var(--tx)}
+  :not(pre) > code{
+    background:var(--panel);border:1px solid var(--line);border-radius:5px;
+    padding:1px 5px;color:var(--accent-ink);white-space:nowrap;
+  }
+  .cmt{color:var(--tx-dim)}
+  .k{color:var(--accent)}
+  .s{color:var(--up)}
+
+  /* ---- callout ---- */
+  .note{
+    display:flex;gap:11px;background:var(--panel);border:1px solid var(--line);
+    border-left:3px solid var(--accent);border-radius:9px;padding:13px 15px;margin:18px 0;font-size:14px;color:var(--mut);
+  }
+  .note b{color:var(--tx)}
+  .note .ic{color:var(--accent);flex:none;font-family:var(--font-mono);font-weight:700}
+
+  /* ---- tables ---- */
+  .tw{overflow-x:auto;margin:16px 0;border:1px solid var(--line);border-radius:10px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:440px}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);background:var(--panel-2);font-weight:600}
+  tr:last-child td{border-bottom:0}
+  td code{color:var(--accent-ink)}
+
+  /* pill chips for check types / severities */
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0}
+  .chip{font-family:var(--font-mono);font-size:12px;padding:3px 9px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--tx)}
+  .chip.up{border-color:color-mix(in srgb,var(--up) 45%,var(--line));color:var(--up)}
+  .chip.deg{border-color:color-mix(in srgb,var(--deg) 45%,var(--line));color:var(--deg)}
+  .chip.down{border-color:color-mix(in srgb,var(--down) 45%,var(--line));color:var(--down)}
+
+  kbd{font-family:var(--font-mono);font-size:11.5px;background:var(--panel);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--tx)}
+
+  footer{max-width:var(--maxw);margin:0 auto;padding:26px 22px 50px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+  footer .mono{font-family:var(--font-mono)}
+
+  @media (max-width:860px){
+    .shell{grid-template-columns:1fr;gap:0}
+    nav.side{display:none}
+    main{padding-top:26px}
+    .top a.nav-lnk{display:none}
+  }
+</style>
+
+<header class="top">
+  <a class="brand" href="#top" style="color:var(--tx)">
+    <span class="mark"></span><b>axboard</b>
+  </a>
+  <span class="tag">docs</span>
+  <span class="spacer"></span>
+  <a class="nav-lnk" href="#quick-start">Quick start</a>
+  <a class="nav-lnk" href="#status-pages">Status pages</a>
+  <a class="nav-lnk" href="#auth">Auth</a>
+  <button class="toggle" id="themeBtn" aria-label="Toggle colour theme"><span id="themeIco">◐</span><span id="themeTxt">Theme</span></button>
+</header>
+
+<div class="shell" id="top">
+  <nav class="side" aria-label="Documentation sections">
+    <div class="grp">
+      <span>Getting started</span>
+      <a href="#overview">Overview</a>
+      <a href="#quick-start">Quick start</a>
+      <a href="#configuration">Configuration</a>
+    </div>
+    <div class="grp">
+      <span>Monitoring</span>
+      <a href="#health">Health checks</a>
+      <a href="#alerts">Alerts</a>
+      <a href="#status-pages">Status pages</a>
+    </div>
+    <div class="grp">
+      <span>Building the board</span>
+      <a href="#widgets">Widgets</a>
+      <a href="#appearance">Appearance</a>
+      <a href="#dashboards">Dashboards &amp; links</a>
+      <a href="#keyboard">Keyboard</a>
+    </div>
+    <div class="grp">
+      <span>Operating</span>
+      <a href="#auth">Authentication</a>
+      <a href="#deploy">Deployment</a>
+      <a href="#develop">Development</a>
+    </div>
+  </nav>
+
+  <main>
+    <p class="eyebrow">Documentation · v0.2.0</p>
+    <h1 class="title">axboard</h1>
+    <p class="lede">A fast, self-hosted dashboard for your homelab — the front door to every service you run. One Go binary, an embedded React app, and a YAML file you own.</p>
+
+    <section class="doc" id="overview">
+      <p class="eyebrow">Overview</p>
+      <h2>What it is</h2>
+      <p>axboard is a drag-and-drop dashboard of widgets — most importantly clickable app cards with health pings — that sits in front of everything you self-host. It's a single binary with the SPA embedded; you configure it by hand-editing YAML, and the server hot-reloads on save. No database, no accounts required, LAN-bound by default.</p>
+      <p class="muted">It is deliberately <strong>not</strong> a metrics collector (health checks are liveness only — point at Grafana for real observability), not a plugin platform, and not multi-tenant. Keeping it small is the point.</p>
+    </section>
+
+    <section class="doc" id="quick-start">
+      <p class="eyebrow">Getting started</p>
+      <h2>Quick start</h2>
+      <h3>Podman / Docker Compose</h3>
+<pre><code>git clone &lt;repo&gt; axboard &amp;&amp; cd axboard
+mkdir -p config &amp;&amp; cp config.example.yaml config/config.yaml
+podman compose up -d      <span class="cmt"># or: docker compose up -d</span></code></pre>
+      <p>Open <code>http://localhost:8080</code>. Edit <code>config/config.yaml</code> in your editor — the server hot-reloads on save. The bundled <code>config.example.yaml</code> is a full, working starter with services, groups, a top bar, and two themed dashboards.</p>
+      <div class="note"><span class="ic">i</span><div>The compose file runs with <b>host networking</b> so the Host&nbsp;stats, Resource&nbsp;gauge and Network&nbsp;graph widgets can read real host network I/O, and so Wake-on-LAN can reach the LAN broadcast. It also mounts a read-only container socket for <b>auto-discovery</b>. All of it is optional and commented as removable.</div></div>
+      <h3>Single binary</h3>
+<pre><code>make build      <span class="cmt"># needs Go 1.26 + Node 22</span>
+cp config.example.yaml config.yaml
+./bin/axboard --config ./config.yaml --state ./state.yaml --addr :8080</code></pre>
+    </section>
+
+    <section class="doc" id="configuration">
+      <p class="eyebrow">Getting started</p>
+      <h2>Configuration</h2>
+      <p>Two files, one clear split — this is the most important design decision in the project.</p>
+      <div class="tw"><table>
+        <tr><th>File</th><th>Owner</th><th>Holds</th></tr>
+        <tr><td><code>config.yaml</code></td><td>You (hand-edited)</td><td>Apps, groups, dashboards, widgets, the global top bar. The server only reads it and hot-reloads on change.</td></tr>
+        <tr><td><code>state.yaml</code></td><td>axboard (machine-managed)</td><td>Grid layouts written on every drag. Never edit by hand.</td></tr>
+      </table></div>
+      <p class="muted">On a YAML parse error the UI shows a banner pointing at the line and keeps serving the last-good config — it never crashes on a bad save. Themes and widget-style settings are browser-local.</p>
+      <h3>A minimal config</h3>
+<pre><code><span class="k">apps:</span>
+  - <span class="k">id:</span> jellyfin
+    <span class="k">name:</span> Jellyfin
+    <span class="k">url:</span> https://jellyfin.lan
+    <span class="k">icon:</span> jellyfin              <span class="cmt"># simple-icons / selfh.st slug, URL, or initials</span>
+    <span class="k">group:</span> media
+    <span class="k">health:</span> { <span class="k">type:</span> http, <span class="k">url:</span> https://jellyfin.lan/health, <span class="k">interval:</span> 60s }
+
+<span class="k">groups:</span>
+  - { <span class="k">id:</span> media, <span class="k">name:</span> Media, <span class="k">color:</span> <span class="s">"#8b5cf6"</span> }
+
+<span class="k">dashboards:</span>
+  - <span class="k">id:</span> home
+    <span class="k">name:</span> Home
+    <span class="k">default:</span> true
+    <span class="k">accent:</span> <span class="s">"#22d3ee"</span>
+    <span class="k">widgets:</span>
+      - { <span class="k">id:</span> apps-1, <span class="k">type:</span> apps, <span class="k">title:</span> Media, <span class="k">config:</span> { <span class="k">groups:</span> [media] } }</code></pre>
+      <p class="muted">See <code>config.example.yaml</code> in the repo for the complete schema, including the global <code>topBar</code> and per-dashboard backgrounds.</p>
+    </section>
+
+    <section class="doc" id="health">
+      <p class="eyebrow">Monitoring</p>
+      <h2>Health checks &amp; monitors</h2>
+      <p>Each service can carry a <code>health</code> block. axboard runs one checker per app and shows a coloured status dot on its card. Five check types:</p>
+      <div class="chips">
+        <span class="chip">http</span><span class="chip">tcp</span><span class="chip">ping</span><span class="chip">dns</span><span class="chip">push</span>
+      </div>
+      <ul>
+        <li><strong>http</strong> — GET a URL and compare against <code>expect_status</code>.</li>
+        <li><strong>tcp</strong> — dial <code>host:port</code>.</li>
+        <li><strong>ping</strong> — ICMP (needs <code>NET_RAW</code>).</li>
+        <li><strong>dns</strong> — resolve a host; optional <code>body_contains</code> match on the answers.</li>
+        <li><strong>push</strong> — a passive <em>heartbeat</em> monitor: your job pings <code>/api/push/&lt;id&gt;</code> on a schedule and axboard marks the service down if a beat is missed.</li>
+      </ul>
+      <p>Each check polls on its own <code>health.interval</code>. Set a fleet-wide default with <code>server.default_interval</code> — applied to any check that omits its own; it falls back to <code>60s</code> when unset. <strong>Retries</strong> tolerate N failed checks before "down" so a blip doesn't false-alarm.</p>
+      <p>axboard keeps rolling uptime on disk and shows <strong>24h / 7d / 30d</strong> windows in the service detail popover and on status pages. Mark a service <code>critical: true</code> so its outage counts as a major incident (see <a href="#status-pages">Status pages</a>).</p>
+    </section>
+
+    <section class="doc" id="alerts">
+      <p class="eyebrow">Monitoring</p>
+      <h2>Alerts</h2>
+      <p>axboard notifies you when a health-checked app <strong>goes down or recovers</strong>. Configure it entirely from the UI — <b>⋯ menu → Configure → Alerts</b> — with a per-channel <b>Save &amp; test</b> button, or hand-edit the <code>alerts</code> block. Every configured channel fires (all best-effort):</p>
+      <div class="tw"><table>
+        <tr><th>Channel</th><th>Needs</th></tr>
+        <tr><td>ntfy</td><td>A topic on <code>ntfy.sh</code> or your self-hosted ntfy — zero infra.</td></tr>
+        <tr><td>Telegram</td><td>A bot token (from <code>@BotFather</code>) + your chat id.</td></tr>
+        <tr><td>Email</td><td>Your SMTP relay (host + credentials).</td></tr>
+        <tr><td>Webhook</td><td>A plain JSON POST for Discord / Slack / custom.</td></tr>
+      </table></div>
+      <p>A <strong>resend interval</strong> re-notifies while a service stays down; you can <strong>mute</strong> noisy services or <strong>pause</strong> all alerts for a maintenance window. <strong>Certificate expiry</strong> is checked on every HTTPS service and alerts before it lapses.</p>
+    </section>
+
+    <section class="doc" id="status-pages">
+      <p class="eyebrow">Monitoring</p>
+      <h2>Status pages</h2>
+      <p>Server-rendered status pages that need no JS — the default at <code>/status</code> and any number of named pages at <code>/status/&lt;slug&gt;</code>. Each groups the chosen services with a status dot, a history strip, 24h/7d/30d uptime, response time and cert-expiry warnings, plus an embeddable SVG badge at <code>/status/badge/&lt;id&gt;</code>.</p>
+      <p>Build them from <b>⋯ menu → Configure → Status pages</b> with a live preview. Per page:</p>
+      <ul>
+        <li><strong>Identity</strong> — title (with its own colour), slug, header/footer text, hide the "Powered by axboard" line.</li>
+        <li><strong>Summary banner</strong> — a plain-language headline in one of five styles: <code>tint · minimal · strip · outline · solid</code>.</li>
+        <li><strong>Appearance</strong> — dark/light theme, width, and a backdrop (colour / gradient / image with blur &amp; dim).</li>
+        <li><strong>Content</strong> — include whole groups and/or pick individual services.</li>
+        <li><strong>Notices</strong> — manual banners for incidents and scheduled work.</li>
+      </ul>
+      <h3>Severity by criticality</h3>
+      <p>The banner colour means something. A <span class="chip down" style="padding:1px 7px">critical</span> service down turns it red; non-critical outages go amber and escalate to red once a configurable number are down at once (the "red at N" threshold).</p>
+      <div class="chips">
+        <span class="chip up">all operational</span>
+        <span class="chip deg">degraded / partial</span>
+        <span class="chip down">critical disruption</span>
+      </div>
+      <div class="note"><span class="ic">i</span><div>When <a href="#auth">authentication</a> is on, status pages are <b>gated behind a login by default</b>. Tick <b>Public (no login)</b> on a page (<code>public: true</code>) to share it while the dashboard stays private. With auth off, all pages are public.</div></div>
+    </section>
+
+    <section class="doc" id="widgets">
+      <p class="eyebrow">Building the board</p>
+      <h2>Widgets</h2>
+      <p>Add widgets from <b>⋯ menu → Add widget</b> — filterable by category and searchable. Most are <strong>size-responsive</strong>: they re-layout as you resize them (Weather goes compact → detailed → forecast; Markets grows from a price list into per-symbol charts).</p>
+      <div class="tw"><table>
+        <tr><th>Category</th><th>Widgets</th></tr>
+        <tr><td>System</td><td>Clock (with extra timezones)</td></tr>
+        <tr><td>Infrastructure</td><td>Apps grid · Single app tile · Status summary · Host stats · Resource gauge · Per-core CPU · Temperatures · Top processes · Filesystems · Network graph · Battery / UPS · Speed test · Camera (Frigate / MJPEG) · Grafana panel · Wake-on-LAN · Containers · Uptime monitor · Public IP / VPN · Custom API</td></tr>
+        <tr><td>Productivity</td><td>Bookmarks · Search · Checklist · Notes · Countdown · Pomodoro · Image · Section label</td></tr>
+        <tr><td>External</td><td>Weather · Sun · Markets (crypto + stocks) · Releases (GitHub/GitLab) · Calendar (iCal) · RSS/Atom · Embed · Concentus</td></tr>
+      </table></div>
+      <div class="note"><span class="ic">⚡</span><div><b>Wake-on-LAN per service.</b> Give a service a <code>wol</code> block (MAC + optional broadcast). The single-app widget then shows a wake button while that service is down, and hides it once the box is up.</div></div>
+    </section>
+
+    <section class="doc" id="appearance">
+      <p class="eyebrow">Building the board</p>
+      <h2>Appearance &amp; themes</h2>
+      <p>Everything lives in <b>⋯ → Themes &amp; appearance…</b>, a live-preview drawer.</p>
+      <ul>
+        <li><strong>Per-dashboard</strong> — accent colour and a background: solid colour, gradient (presets or custom CSS), or an image with blur, dim, fit and opacity.</li>
+        <li><strong>Global top bar</strong> — style (default / solid / contrast / transparent) + flush edge-to-edge mode, branding, a search bar, header widgets, and icon-only bookmark launchers.</li>
+        <li><strong>Themes</strong> — 13 built-ins (including a neon <em>Cyber</em>), a custom-theme creator with per-token pickers and JSON import/export, a font picker, widget-style controls (opacity / blur / radius / border), and a custom-CSS box.</li>
+      </ul>
+    </section>
+
+    <section class="doc" id="dashboards">
+      <p class="eyebrow">Building the board</p>
+      <h2>Multiple dashboards &amp; deep links</h2>
+      <p>Tabs across the top switch between dashboards. Each is addressable by URL: the default lives at <code>/</code> and every other at <code>/&lt;slug&gt;</code> derived from its name — a dashboard named <em>Dev</em> opens at <code>/dev</code>. Typing or bookmarking the path opens that dashboard; switching tabs updates the URL and browser back/forward work.</p>
+    </section>
+
+    <section class="doc" id="keyboard">
+      <p class="eyebrow">Building the board</p>
+      <h2>Keyboard shortcuts</h2>
+      <p>Press <kbd>?</kbd> in-app for the full cheat sheet.</p>
+      <div class="tw"><table>
+        <tr><th>Key</th><th>Action</th></tr>
+        <tr><td><kbd>⌘/Ctrl</kbd> <kbd>K</kbd></td><td>Command palette — apps, bookmarks, commands, web search (bangs: <code>g …</code>, <code>!yt …</code>, <code>gh …</code>)</td></tr>
+        <tr><td><kbd>⌘/Ctrl</kbd> <kbd>E</kbd></td><td>Toggle edit mode</td></tr>
+        <tr><td><kbd>⌘/Ctrl</kbd> <kbd>Z</kbd> / <kbd>⇧Z</kbd></td><td>Undo / redo</td></tr>
+        <tr><td><kbd>⌘/Ctrl</kbd> <kbd>1…9</kbd></td><td>Jump to dashboard N</td></tr>
+        <tr><td><kbd>Del</kbd> / <kbd>⌫</kbd></td><td>Remove selected widget (edit mode)</td></tr>
+        <tr><td>Arrow keys</td><td>Nudge selected widget (edit mode)</td></tr>
+      </table></div>
+    </section>
+
+    <section class="doc" id="auth">
+      <p class="eyebrow">Operating</p>
+      <h2>Authentication</h2>
+      <p>axboard is <strong>open by default</strong> — LAN-bound, no login, meant to sit behind a reverse proxy. There is an <strong>optional, opt-in</strong> built-in login for when a proxy isn't in the picture. It stays off until you add a user.</p>
+      <h3>1 · Generate a password hash</h3>
+<pre><code><span class="cmt"># argon2id — interactive (no echo) or piped</span>
+podman exec -it axboard /usr/local/bin/axboard passwd axel
+echo -n <span class="s">'your-password'</span> | ./axboard passwd axel</code></pre>
+      <h3>2 · Paste the snippet into <code>config.yaml</code></h3>
+<pre><code><span class="k">server:</span>
+  <span class="k">bind:</span> 0.0.0.0:8080
+  <span class="k">auth:</span>
+    <span class="k">session_ttl:</span> 168h        <span class="cmt"># optional, default 7d</span>
+    <span class="k">users:</span>
+      - <span class="k">username:</span> axel
+        <span class="k">password_hash:</span> <span class="s">"$argon2id$v=19$m=65536,t=3,p=4$…"</span></code></pre>
+      <p>With one or more users, the SPA shows a login screen and the whole <code>/api</code> surface requires a signed-cookie session — <strong>except</strong> heartbeat ingest (<code>/api/push/*</code>), <code>/healthz</code> and <code>/metrics</code>, which stay open for external jobs. Log out from the ⋯ menu.</p>
+      <p class="muted">Hashes are never sent to the browser and can't be edited through the structured UI save path — manage users by editing <code>config.yaml</code> plus <code>axboard passwd</code>. The session-signing secret is auto-generated into <code>session.key</code> beside <code>state.yaml</code>; deleting it logs everyone out.</p>
+      <div class="note"><span class="ic">i</span><div>Built-in login is a lightweight fallback, not an IdP. For WAN exposure, prefer a reverse proxy with forward-auth (Authentik, Authelia, oauth2-proxy). Either way, bind <code>server.bind</code> to a LAN address.</div></div>
+    </section>
+
+    <section class="doc" id="deploy">
+      <p class="eyebrow">Operating</p>
+      <h2>Deployment</h2>
+      <p>CI publishes a <strong>multi-arch (amd64 / arm64)</strong> image to the project's container registry; <code>v*</code> tags cut a release. Pin <code>:latest</code>, a branch tag, or a specific <code>:v0.2.0</code> in your deployment.</p>
+      <div class="note"><span class="ic">!</span><div><b>No-auth posture.</b> <code>server.bind</code> should be a LAN address. Anyone who can reach the port can read and edit the config unless you enable <a href="#auth">auth</a> or put a forward-auth proxy in front.</div></div>
+    </section>
+
+    <section class="doc" id="develop">
+      <p class="eyebrow">Operating</p>
+      <h2>Development</h2>
+<pre><code>make dev-go     <span class="cmt"># Go API on :8080</span>
+make dev-web    <span class="cmt"># Vite dev server on :5173, proxies /api/* → :8080 (HMR)</span></code></pre>
+      <p><code>make build</code> bundles the SPA into <code>web/dist</code> (embedded via <code>//go:embed</code>) and compiles the binary. <code>go test ./...</code> runs the suite.</p>
+      <h3>Stack</h3>
+      <p class="muted">Go 1.26 · chi · yaml.v3 · fsnotify — React 19 · Vite · TypeScript · Tailwind 4 · TanStack Query · react-grid-layout. No codegen; a small hand-written fetch client talks to a small HTTP API.</p>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <span class="mono">axboard v0.2.0</span>
+  <span>·</span>
+  <span>MIT licensed</span>
+  <span>·</span>
+  <span class="muted">Self-hosted homelab dashboard</span>
+</footer>
+
+<script>
+(function(){
+  var root=document.documentElement, btn=document.getElementById('themeBtn'),
+      ico=document.getElementById('themeIco'), txt=document.getElementById('themeTxt');
+  function cur(){var a=root.getAttribute('data-theme'); if(a) return a;
+    return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+  function paint(){var d=cur()==='dark'; ico.textContent=d?'☾':'☀'; txt.textContent=d?'Dark':'Light';}
+  btn.addEventListener('click',function(){root.setAttribute('data-theme', cur()==='dark'?'light':'dark'); paint();});
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',paint); paint();
+
+  // active section highlight
+  var links=[].slice.call(document.querySelectorAll('nav.side a'));
+  var map={}; links.forEach(function(a){var id=a.getAttribute('href').slice(1); var el=document.getElementById(id); if(el) map[id]=a;});
+  var obs=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){
+      links.forEach(function(l){l.classList.remove('active');});
+      var a=map[e.target.id]; if(a) a.classList.add('active');
+    }});
+  },{rootMargin:'-72px 0px -70% 0px',threshold:0});
+  Object.keys(map).forEach(function(id){var el=document.getElementById(id); if(el) obs.observe(el);});
+})();
+</script>
