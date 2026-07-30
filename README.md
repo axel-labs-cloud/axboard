@@ -68,7 +68,7 @@ apps:
 
 ## Documentation
 
-**→ [Full documentation](docs/docs.html)** — configuration, health checks & monitors, widgets, alerts, status pages, authentication, appearance, and deployment.
+**→ [Website](https://axel-labs-cloud.github.io/axboard/) · [Full documentation](https://axel-labs-cloud.github.io/axboard/docs.html)** — configuration, health checks & monitors, an expandable reference for every widget, alerts, status pages, authentication, appearance, and deployment.
 
 A few pointers:
 
