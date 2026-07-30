@@ -141,6 +141,28 @@
 
   kbd{font-family:var(--font-mono);font-size:11.5px;background:var(--panel);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;color:var(--tx)}
 
+  /* ---- widget accordion ---- */
+  .wcat{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:28px 0 10px}
+  details.w{border:1px solid var(--line);border-radius:10px;background:var(--panel);margin:8px 0}
+  details.w[open]{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
+  details.w summary{cursor:pointer;list-style:none;padding:12px 15px;display:flex;align-items:center;gap:10px}
+  details.w summary::-webkit-details-marker{display:none}
+  details.w summary .nm{font-weight:650;font-size:14.5px;color:var(--tx)}
+  details.w summary .ty{font-family:var(--font-mono);font-size:11px;color:var(--accent-ink);background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+  details.w summary .oneline{color:var(--mut);font-size:13px;margin-left:2px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  details.w summary::after{content:"+";margin-left:auto;color:var(--tx-dim);font-family:var(--font-mono);font-size:17px;line-height:1;flex:none}
+  details.w[open] summary::after{content:"\2013";color:var(--accent)}
+  details.w[open] summary .oneline{display:none}
+  details.w .body{padding:2px 15px 15px;font-size:14px;color:var(--tx)}
+  details.w .body p{margin:10px 0;color:var(--mut)}
+  details.w .body p:first-child{margin-top:2px;color:var(--tx)}
+  details.w .body pre{margin:11px 0;font-size:12.5px}
+  details.w .body .ui{margin:10px 0}
+  details.w .body .ui b{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx-dim);display:block;margin-bottom:3px}
+  details.w .body .ui span{color:var(--mut)}
+  details.w .body code{color:var(--accent-ink)}
+  .wnote{font-size:13px;color:var(--mut);margin:6px 0 18px}
+
   footer{max-width:var(--maxw);margin:0 auto;padding:26px 22px 50px;border-top:1px solid var(--line);color:var(--mut);font-size:13px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
   footer .mono{font-family:var(--font-mono)}
 
@@ -309,15 +331,221 @@ cp config.example.yaml config.yaml
     <section class="doc" id="widgets">
       <p class="eyebrow">Building the board</p>
       <h2>Widgets</h2>
-      <p>Add widgets from <b>⋯ menu → Add widget</b> — filterable by category and searchable. Most are <strong>size-responsive</strong>: they re-layout as you resize them (Weather goes compact → detailed → forecast; Markets grows from a price list into per-symbol charts).</p>
-      <div class="tw"><table>
-        <tr><th>Category</th><th>Widgets</th></tr>
-        <tr><td>System</td><td>Clock (with extra timezones)</td></tr>
-        <tr><td>Infrastructure</td><td>Apps grid · Single app tile · Status summary · Host stats · Resource gauge · Per-core CPU · Temperatures · Top processes · Filesystems · Network graph · Battery / UPS · Speed test · Camera (Frigate / MJPEG) · Grafana panel · Wake-on-LAN · Containers · Uptime monitor · Public IP / VPN · Custom API</td></tr>
-        <tr><td>Productivity</td><td>Bookmarks · Search · Checklist · Notes · Countdown · Pomodoro · Image · Section label</td></tr>
-        <tr><td>External</td><td>Weather · Sun · Markets (crypto + stocks) · Releases (GitHub/GitLab) · Calendar (iCal) · RSS/Atom · Embed · Concentus</td></tr>
-      </table></div>
-      <div class="note"><span class="ic">⚡</span><div><b>Wake-on-LAN per service.</b> Give a service a <code>wol</code> block (MAC + optional broadcast). The single-app widget then shows a wake button while that service is down, and hides it once the box is up.</div></div>
+      <p>Add widgets from <b>⋯ menu → Add widget</b> — filterable by category and searchable. Most are <strong>size-responsive</strong>: they re-layout as you resize them (Weather goes compact → detailed → forecast; Markets grows from a price list into per-symbol charts). Every widget is placed in a dashboard's <code>widgets:</code> list; a widget's own options live under its <code>config:</code> key.</p>
+      <p class="wnote">Expand any widget below for what it does, its UI options, and a <code>config.yaml</code> example. Fields shown are optional unless noted.</p>
+
+      <p class="wcat">System</p>
+      <details class="w"><summary><span class="nm">Clock</span><span class="ty">clock</span><span class="oneline">Time &amp; date with extra timezones</span></summary>
+        <div class="body"><p>Local time and date, with any number of extra timezones listed below the main clock.</p>
+        <div class="ui"><b>UI</b><span>24-hour toggle · date format (short / long / ISO / numeric) · add timezones.</span></div>
+<pre><code>- { id: clock-1, type: clock, title: Clock,
+    config: { use24h: true, dateFormat: short, timezones: [Europe/Madrid, UTC] } }</code></pre></div>
+      </details>
+
+      <p class="wcat">Infrastructure</p>
+      <details class="w"><summary><span class="nm">Apps grid</span><span class="ty">apps</span><span class="oneline">Icon grid of picked services with health dots</span></summary>
+        <div class="body"><p>A grid of clickable app tiles for a hand-picked subset of your services, each with a live status dot. Optionally group tiles under collapsible headers.</p>
+        <div class="ui"><b>UI</b><span>Pick &amp; reorder services · show names · group by category · open in same tab. Right-click a tile to check it now.</span></div>
+<pre><code>- { id: apps-1, type: apps, title: Media,
+    config: { appIds: [jellyfin, sonarr, radarr], showNames: true, grouped: false } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Single app tile</span><span class="ty">app</span><span class="oneline">One prominent service tile, layout adapts by size</span></summary>
+        <div class="body"><p>One service as a prominent tile whose layout adapts from a 1×1 icon to a 2×3 detail card (icon, name, description, response time, last-checked). Shows a <strong>Wake-on-LAN</strong> button while the service is down if it has a <code>wol</code> block.</p>
+        <div class="ui"><b>UI</b><span>Choose the service · toggle status / response time / last-checked / description · description override · open in same tab.</span></div>
+<pre><code>- { id: app-nas, type: app, title: NAS,
+    config: { appId: nas, showResponseTime: true, showLastChecked: true } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Status summary</span><span class="ty">status</span><span class="oneline">Up / degraded / down / unknown roll-up</span></summary>
+        <div class="body"><p>Rolls every health-checked service into up / degraded / down / unknown counts, optionally split by group, with Uptime-Kuma-style history bars.</p>
+        <div class="ui"><b>UI</b><span>Legend toggle · by-group breakdown · history bars · filter to specific groups.</span></div>
+<pre><code>- { id: sum-1, type: status, title: Overview,
+    config: { byGroup: true, bars: true, groups: [infra, media] } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Host stats</span><span class="ty">host</span><span class="oneline">CPU / RAM / disk / uptime for the host</span></summary>
+        <div class="body"><p>At-a-glance CPU, memory, disk and uptime for the machine axboard runs on. Needs host visibility (see the compose notes).</p>
+        <div class="ui"><b>UI</b><span>Show load averages.</span></div>
+<pre><code>- { id: host-1, type: host, title: Host, config: { showLoad: true } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Resource gauge</span><span class="ty">gauge</span><span class="oneline">One or two host metrics as ring / bar / spark</span></summary>
+        <div class="body"><p>A single host metric (or two split in the tile) drawn as a ring, bar or sparkline, with threshold / gradient / solid / accent colouring.</p>
+        <div class="ui"><b>UI</b><span>Metric &amp; optional 2nd metric (cpu / ram / disk / swap) · style · colour scale + warn/crit breakpoints · glow · track · sparkline window · compact.</span></div>
+<pre><code>- { id: cpu-1, type: gauge, title: CPU,
+    config: { metric: cpu, style: ring, colorScale: threshold, warn: 70, crit: 90 } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Per-core CPU</span><span class="ty">percpu</span><span class="oneline">One bar per logical core</span></summary>
+        <div class="body"><p>A bar per logical CPU core, coloured by load.</p>
+        <div class="ui"><b>UI</b><span>Colour scale + warn / crit breakpoints.</span></div>
+<pre><code>- { id: cores, type: percpu, title: Cores, config: { colorScale: gradient } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Temperatures</span><span class="ty">temps</span><span class="oneline">Hardware sensors from hwmon</span></summary>
+        <div class="body"><p>Temperature sensors read from <code>/sys/class/hwmon</code>, with custom labels.</p>
+        <div class="ui"><b>UI</b><span>Pick sensors · rename them · colour scale + warn/crit (°C).</span></div>
+<pre><code>- { id: temps-1, type: temps, title: Temps,
+    config: { warn: 70, crit: 85, names: { "Package id 0": CPU } } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Top processes</span><span class="ty">topproc</span><span class="oneline">Highest CPU / memory processes</span></summary>
+        <div class="body"><p>The busiest processes by CPU or memory. Seeing host processes needs <code>pid: host</code> on the container.</p>
+        <div class="ui"><b>UI</b><span>Count · sort by CPU or memory.</span></div>
+<pre><code>- { id: top-1, type: topproc, title: Top, config: { count: 8, sort: cpu } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Filesystems</span><span class="ty">disks</span><span class="oneline">Usage bars per mounted filesystem</span></summary>
+        <div class="body"><p>A usage bar for every real mounted filesystem. Reaching the host's mounts needs the read-only <code>/:/host</code> bind.</p>
+        <div class="ui"><b>UI</b><span>Pick mounts · colour scale + warn / crit.</span></div>
+<pre><code>- { id: fs-1, type: disks, title: Disks, config: { mounts: [/, /mnt/tank] } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Network graph</span><span class="ty">netgraph</span><span class="oneline">Live rx / tx throughput sparkline</span></summary>
+        <div class="body"><p>Live download / upload throughput as a sparkline. Needs host networking to read real host traffic.</p>
+        <div class="ui"><b>UI</b><span>Fixed or auto scale (Mbit/s) · mirror or stack style · in/out colours · window.</span></div>
+<pre><code>- { id: net-1, type: netgraph, title: Network, config: { style: mirror, window: 5m } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Battery / UPS</span><span class="ty">battery</span><span class="oneline">Power supplies from the host</span></summary>
+        <div class="body"><p>Charge / status for batteries and UPS units under <code>/sys/class/power_supply</code>. No configuration.</p>
+<pre><code>- { id: bat-1, type: battery, title: UPS }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Speed test</span><span class="ty">speedtest</span><span class="oneline">Download / upload / latency via Cloudflare</span></summary>
+        <div class="body"><p>A client-side internet speed test (download, upload, latency) run against Cloudflare.</p>
+        <div class="ui"><b>UI</b><span>Auto-run on load, or leave it as a manual button.</span></div>
+<pre><code>- { id: spd-1, type: speedtest, title: Speed, config: { auto: false } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Camera</span><span class="ty">camera</span><span class="oneline">Frigate NVR or any MJPEG / JPEG stream</span></summary>
+        <div class="body"><p>A live camera — a Frigate NVR camera, or any MJPEG / refreshing-JPEG stream URL.</p>
+        <div class="ui"><b>UI</b><span>Source (Frigate / URL) · base URL &amp; camera, or stream URL · live vs snapshot mode + interval · title &amp; colour · fit · click-through link.</span></div>
+<pre><code>- { id: cam-1, type: camera, title: Door,
+    config: { source: frigate, baseUrl: http://frigate.lan:5000, camera: door } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Grafana panel</span><span class="ty">grafana</span><span class="oneline">Embed a Grafana kiosk panel</span></summary>
+        <div class="body"><p>An iframe pointed at a Grafana panel's kiosk / d-solo URL, with periodic refresh.</p>
+        <div class="ui"><b>UI</b><span>Panel URL · refresh interval · title.</span></div>
+<pre><code>- { id: graf-1, type: grafana, title: Latency,
+    config: { url: "https://grafana.lan/d-solo/abc/net?panelId=2&kiosk", refreshSec: 30 } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Wake-on-LAN</span><span class="ty">wol</span><span class="oneline">Grid of magic-packet buttons</span></summary>
+        <div class="body"><p>One-click buttons that broadcast Wake-on-LAN magic packets. Needs host networking to reach the LAN broadcast. (For a per-service wake button, put <code>wol</code> on the service itself and use the Single app tile.)</p>
+        <div class="ui"><b>UI</b><span>Add devices (name · MAC · optional broadcast) · title.</span></div>
+<pre><code>- { id: wol-1, type: wol, title: Wake,
+    config: { targets: [ { name: NAS, mac: "AA:BB:CC:DD:EE:FF", broadcast: 10.10.0.255 } ] } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Containers</span><span class="ty">containers</span><span class="oneline">Docker / Podman container states</span></summary>
+        <div class="body"><p>Running containers from the mounted container socket, optionally with per-container CPU / memory.</p>
+        <div class="ui"><b>UI</b><span>Name filter · running-only · fetch stats.</span></div>
+<pre><code>- { id: ctr-1, type: containers, title: Containers,
+    config: { runningOnly: true, stats: true, filter: arr } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Uptime monitor</span><span class="ty">monitor</span><span class="oneline">Ping a list of URLs (independent of services)</span></summary>
+        <div class="body"><p>A standalone up/down + latency monitor for an ad-hoc list of URLs — separate from your configured services.</p>
+        <div class="ui"><b>UI</b><span>Add &amp; reorder targets (name · URL) · refresh interval.</span></div>
+<pre><code>- { id: mon-1, type: monitor, title: Endpoints,
+    config: { refreshSec: 30, targets: [ { name: Router, url: https://192.168.1.1 } ] } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Public IP / VPN</span><span class="ty">publicip</span><span class="oneline">WAN IP + geo, with a VPN indicator</span></summary>
+        <div class="body"><p>Your current WAN IP and geolocation; shows a VPN "on" indicator when the detected ISP matches what you expect.</p>
+        <div class="ui"><b>UI</b><span>Expected ISP / org substring.</span></div>
+<pre><code>- { id: ip-1, type: publicip, title: WAN, config: { expectIsp: Mullvad } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Custom API</span><span class="ty">customapi</span><span class="oneline">Map any JSON endpoint to labeled fields</span></summary>
+        <div class="body"><p>Fetch any JSON endpoint (through the server proxy) and surface chosen values as labeled fields via dot-paths.</p>
+        <div class="ui"><b>UI</b><span>URL · title · fields (label + JSON path) · refresh interval.</span></div>
+<pre><code>- { id: api-1, type: customapi, title: Pi-hole,
+    config: { url: "http://pi.hole/admin/api.php", refreshMin: 5,
+              fields: [ { label: Blocked today, path: ads_blocked_today } ] } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">axdnsd · axlbd</span><span class="ty">axdnsd / axlbd</span><span class="oneline">Axel-Labs DNS / load-balancer dashboards</span></summary>
+        <div class="body"><p>Purpose-built panels for the Axel-Labs <code>axdnsd</code> (DNS) and <code>axlbd</code> (load balancer) services.</p>
+        <div class="ui"><b>UI</b><span>Base URL · username · password (stored in <code>state.yaml</code>).</span></div>
+<pre><code>- { id: dns-1, type: axdnsd, title: DNS, config: { baseUrl: https://dns.lan } }</code></pre></div>
+      </details>
+
+      <p class="wcat">Productivity</p>
+      <details class="w"><summary><span class="nm">Bookmarks</span><span class="ty">shortcut</span><span class="oneline">Quick-link launcher</span></summary>
+        <div class="body"><p>A grid of quick links to anything — internal or external.</p>
+        <div class="ui"><b>UI</b><span>Add shortcuts (label · URL · icon).</span></div>
+<pre><code>- { id: bm-1, type: shortcut, title: Links,
+    config: { shortcuts: [ { label: Router, url: https://192.168.1.1, icon: ubiquiti } ] } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Search</span><span class="ty">search</span><span class="oneline">Search box for a chosen engine</span></summary>
+        <div class="body"><p>A search box that submits to Google, DuckDuckGo, Bing, or a custom template with <code>{q}</code>.</p>
+        <div class="ui"><b>UI</b><span>Engine · custom URL template · placeholder.</span></div>
+<pre><code>- { id: q-1, type: search, config: { engine: duckduckgo, placeholder: "Search…" } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Checklist</span><span class="ty">checklist</span><span class="oneline">A simple todo list</span></summary>
+        <div class="body"><p>A persistent checklist you tick off in place.</p>
+        <div class="ui"><b>UI</b><span>Add / edit / check items inline.</span></div>
+<pre><code>- { id: todo-1, type: checklist, title: Todo,
+    config: { checklist: [ { text: Renew certs, done: false } ] } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Notes</span><span class="ty">notes</span><span class="oneline">Scratchpad, optional Markdown</span></summary>
+        <div class="body"><p>A free-text scratchpad, optionally rendered as Markdown (click to edit).</p>
+        <div class="ui"><b>UI</b><span>Title · Markdown toggle · edit in place.</span></div>
+<pre><code>- { id: note-1, type: notes, title: Notes, config: { markdown: true, text: "## TODO" } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Countdown</span><span class="ty">countdown</span><span class="oneline">Time until (or since) a date</span></summary>
+        <div class="body"><p>A live countdown to — or count-up since — a target datetime.</p>
+        <div class="ui"><b>UI</b><span>Target datetime · label.</span></div>
+<pre><code>- { id: cd-1, type: countdown, config: { target: "2026-12-31T23:59:00", label: New Year } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Image</span><span class="ty">image</span><span class="oneline">A static image / banner</span></summary>
+        <div class="body"><p>A static image, optionally linking somewhere.</p>
+        <div class="ui"><b>UI</b><span>Image URL · fit (cover / contain) · link.</span></div>
+<pre><code>- { id: img-1, type: image, config: { url: https://…/logo.png, fit: contain } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Section label</span><span class="ty">section</span><span class="oneline">Heading / divider to organize the board</span></summary>
+        <div class="body"><p>A heading or divider to group widgets on the board.</p>
+        <div class="ui"><b>UI</b><span>Text · alignment (left / center).</span></div>
+<pre><code>- { id: sec-1, type: section, config: { text: Infrastructure, align: left } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Pomodoro</span><span class="ty">pomodoro</span><span class="oneline">Work / break timer</span></summary>
+        <div class="body"><p>A pomodoro timer with configurable work and break lengths.</p>
+        <div class="ui"><b>UI</b><span>Work minutes · break minutes.</span></div>
+<pre><code>- { id: pom-1, type: pomodoro, config: { work: 25, break: 5 } }</code></pre></div>
+      </details>
+
+      <p class="wcat">External</p>
+      <details class="w"><summary><span class="nm">Weather</span><span class="ty">weather</span><span class="oneline">Current conditions + forecast (Open-Meteo)</span></summary>
+        <div class="body"><p>Current conditions and forecast from Open-Meteo (no API key). Grows from compact → detailed → hourly forecast with size.</p>
+        <div class="ui"><b>UI</b><span>City (geocoded to lat/lon) · units · hourly toggle.</span></div>
+<pre><code>- { id: wx-1, type: weather, title: Weather,
+    config: { city: Barcelona, lat: 41.39, lon: 2.16, units: celsius, hourly: true } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Sun</span><span class="ty">sun</span><span class="oneline">Sunrise / sunset / daylight</span></summary>
+        <div class="body"><p>Sunrise, sunset and daylight for a location.</p>
+        <div class="ui"><b>UI</b><span>City (or lat/lon).</span></div>
+<pre><code>- { id: sun-1, type: sun, config: { city: Barcelona } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Markets</span><span class="ty">markets</span><span class="oneline">Crypto + stocks with live charts</span></summary>
+        <div class="body"><p>Prices for crypto (CoinGecko ids) and stocks/ETFs (Yahoo tickers). Grows from a price list into per-symbol line charts.</p>
+        <div class="ui"><b>UI</b><span>Crypto ids · stock tickers · vs currency · chart period (1d…5y).</span></div>
+<pre><code>- { id: mkt-1, type: markets, title: Markets,
+    config: { ids: [bitcoin, ethereum], stocks: [AAPL, VWCE.DE], vs: eur, period: 1m } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Releases</span><span class="ty">releases</span><span class="oneline">Latest GitHub / GitLab releases</span></summary>
+        <div class="body"><p>Latest releases for repositories you watch — GitHub or GitLab.</p>
+        <div class="ui"><b>UI</b><span>Repos as <code>gh:owner/repo</code> or <code>gl:group/project</code>.</span></div>
+<pre><code>- { id: rel-1, type: releases, title: Releases,
+    config: { repos: [ "gh:go-chi/chi", "gl:gitlab-org/gitlab" ] } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Calendar</span><span class="ty">calendar</span><span class="oneline">iCal (.ics) agenda or month grid</span></summary>
+        <div class="body"><p>Upcoming events from an iCal URL (via the server proxy), as an agenda list or a month grid with event dots.</p>
+        <div class="ui"><b>UI</b><span>iCal URL · count · view (agenda / month) · refresh minutes.</span></div>
+<pre><code>- { id: cal-1, type: calendar, title: Calendar,
+    config: { url: "https://…/basic.ics", view: agenda, count: 6 } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">RSS / Atom</span><span class="ty">rss</span><span class="oneline">Feed reader via the server proxy</span></summary>
+        <div class="body"><p>Recent items from an RSS or Atom feed.</p>
+        <div class="ui"><b>UI</b><span>Feed URL · item count · refresh minutes.</span></div>
+<pre><code>- { id: rss-1, type: rss, title: News, config: { url: https://…/feed.xml, count: 8 } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Embed</span><span class="ty">iframe</span><span class="oneline">Any URL in an iframe</span></summary>
+        <div class="body"><p>Drops any URL into the board as an iframe. Sites sending <code>X-Frame-Options</code> / frame-ancestors will render blank — the widget offers an open-in-new-tab link.</p>
+        <div class="ui"><b>UI</b><span>URL · periodic reload · hide title bar.</span></div>
+<pre><code>- { id: emb-1, type: iframe, title: Grafana, config: { url: https://grafana.lan, refreshSec: 0 } }</code></pre></div>
+      </details>
+      <details class="w"><summary><span class="nm">Concentus</span><span class="ty">concentus</span><span class="oneline">Now-playing from a Concentus server</span></summary>
+        <div class="body"><p>Now-playing art, title, artist and state from a Concentus server's active session.</p>
+        <div class="ui"><b>UI</b><span>Base URL · username · password (stored in <code>state.yaml</code>).</span></div>
+<pre><code>- { id: np-1, type: concentus, title: Now Playing, config: { baseUrl: https://music.lan } }</code></pre></div>
+      </details>
+
+      <div class="note"><span class="ic">⚡</span><div><b>Wake-on-LAN per service.</b> Give a service a <code>wol</code> block (MAC + optional broadcast) and the Single&nbsp;app&nbsp;tile shows a wake button while that service is down, hidden once the box is up.</div></div>
     </section>
 
     <section class="doc" id="appearance">
