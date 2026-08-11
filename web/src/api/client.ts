@@ -130,6 +130,14 @@ export const api = {
     }
     return (await r.json()) as T;
   },
+  // Raw variant — returns the proxied Response so callers can read the upstream
+  // status and headers (Transmission's 409 + X-Transmission-Session-Id handshake).
+  fetchRaw: (opts: { url: string; method?: string; headers?: Record<string, string>; body?: string }): Promise<Response> =>
+    fetch("/api/fetch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(opts),
+    }),
 
   forceCheck: (id: string) =>
     fetch(`/api/apps/${encodeURIComponent(id)}/check`, { method: "POST" }).then(

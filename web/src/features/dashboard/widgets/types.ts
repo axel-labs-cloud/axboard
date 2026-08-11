@@ -40,7 +40,10 @@ export type WidgetType =
   | "grafana"
   | "wol"
   | "arr"
-  | "proxmox";
+  | "proxmox"
+  | "transmission"
+  | "dns"
+  | "media";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -428,6 +431,33 @@ export interface ArrConfig {
   days?: number; // calendar look-ahead (default 7)
 }
 
+/** Transmission widget — torrent list + rates via the RPC (CSRF-handshake) API. */
+export interface TransmissionConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:9091
+  username?: string; // optional HTTP basic auth
+  password?: string;
+  title?: string;
+  max?: number; // rows to show (default 8)
+}
+
+/** DNS sinkhole widget — Pi-hole, AdGuard Home or Technitium query/block stats. */
+export interface DnsConfig {
+  kind?: "pihole" | "adguard" | "technitium";
+  baseUrl?: string; // e.g. http://172.24.2.100 (pihole) / :3000 (adguard) / :5380 (technitium)
+  token?: string; // pihole app password / API token; technitium API token
+  username?: string; // adguard basic-auth user
+  password?: string; // adguard basic-auth pass
+  title?: string;
+}
+
+/** Media server widget — Jellyfin or Plex: now-playing sessions + library counts. */
+export interface MediaConfig {
+  kind?: "jellyfin" | "plex";
+  baseUrl?: string; // e.g. http://172.24.2.100:8096 (jellyfin) / :32400 (plex)
+  token?: string; // Jellyfin API key / Plex X-Plex-Token
+  title?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -469,6 +499,9 @@ export type WidgetConfigByType = {
   wol: WolConfig;
   arr: ArrConfig;
   proxmox: ProxmoxConfig;
+  transmission: TransmissionConfig;
+  dns: DnsConfig;
+  media: MediaConfig;
 };
 
 export type AnyWidgetConfig = Partial<

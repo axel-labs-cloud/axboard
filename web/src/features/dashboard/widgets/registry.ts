@@ -39,6 +39,9 @@ import grafana from "./grafana";
 import wol from "./wol";
 import arr from "./arr";
 import proxmox from "./proxmox";
+import transmission from "./transmission";
+import dns from "./dns";
+import media from "./media";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -81,6 +84,9 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   wol,
   arr,
   proxmox,
+  transmission,
+  dns,
+  media,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {
