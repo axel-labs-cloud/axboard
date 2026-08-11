@@ -155,12 +155,15 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
               if (gdefs.length === 1) entries.push({ kind: "single", def: gdefs[0] });
               else entries.push({ kind: "group", name: def.group, defs: gdefs });
             }
+            // Uniform card so the grid never reflows; group variants open in an
+            // absolute popover (doesn't push other cards around).
+            const CARD = "text-left flex items-start gap-3 p-3 h-[74px] rounded-lg border transition-colors";
             const addCard = (def: Def) => (
               <button
                 key={def.type}
                 onClick={() => add.mutate(def.type)}
                 disabled={add.isPending || !dashboardId}
-                className="text-left flex items-start gap-3 p-3 rounded-lg border border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className={`${CARD} border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card disabled:opacity-40 disabled:cursor-not-allowed`}
               >
                 <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">{def.icon}</div>
                 <div className="min-w-0 flex-1">
@@ -178,54 +181,45 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
                   <span className="text-[10px] text-text-muted/60 tabular-nums">{section.items.length}</span>
                   <div className="flex-1 h-px bg-border-subtle" />
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 items-start">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
                   {entries.map((entry) => {
                     if (entry.kind === "single") return addCard(entry.def);
                     const key = `${section.cat}:${entry.name}`;
                     const open = openGroup === key;
                     const first = entry.defs[0];
-                    if (open) {
-                      return (
-                        <div key={key} className="rounded-lg border border-accent/40 bg-bg-card p-3 flex flex-col gap-2">
-                          <button onClick={() => setOpenGroup(null)} className="flex items-center gap-3 text-left">
-                            <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">{first.icon}</div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-[12.5px] text-text font-medium">{entry.name}</div>
-                              <div className="text-[10px] text-text-muted">Choose one</div>
+                    return (
+                      <div key={key} className="relative">
+                        <button
+                          onClick={() => setOpenGroup(open ? null : key)}
+                          className={`${CARD} w-full ${open ? "border-accent/50 bg-bg-card" : "border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card"}`}
+                        >
+                          <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">{first.icon}</div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[12.5px] text-text font-medium flex items-center gap-1">
+                              {entry.name}
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`w-3 h-3 text-text-muted transition-transform ${open ? "rotate-180" : ""}`}>
+                                <path d="m6 9 6 6 6-6" />
+                              </svg>
                             </div>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 text-text-muted"><path d="m18 15-6-6-6 6" /></svg>
-                          </button>
-                          <div className="space-y-1">
+                            <div className="text-[11px] text-text-muted leading-snug mt-0.5">{entry.defs.map((d) => d.variant).join(" · ")}</div>
+                          </div>
+                        </button>
+                        {open && (
+                          <div className="absolute z-30 top-full left-0 right-0 mt-1 rounded-lg border border-accent/40 bg-bg-elevated shadow-2xl p-1.5 space-y-1">
                             {entry.defs.map((d) => (
                               <button
                                 key={d.type}
                                 onClick={() => add.mutate(d.type)}
                                 disabled={add.isPending || !dashboardId}
-                                className="w-full text-left px-2.5 py-1.5 rounded border border-border-subtle hover:border-accent/50 hover:bg-bg-elevated transition-colors disabled:opacity-40"
+                                className="w-full text-left px-2.5 py-1.5 rounded border border-border-subtle hover:border-accent/50 hover:bg-bg-card transition-colors disabled:opacity-40"
                               >
                                 <div className="text-[11.5px] text-text font-medium">{d.variant}</div>
                                 <div className="text-[10px] text-text-muted leading-snug line-clamp-1">{d.description}</div>
                               </button>
                             ))}
                           </div>
-                        </div>
-                      );
-                    }
-                    return (
-                      <button
-                        key={key}
-                        onClick={() => setOpenGroup(key)}
-                        className="text-left flex items-start gap-3 p-3 rounded-lg border border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card transition-colors"
-                      >
-                        <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">{first.icon}</div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-[12.5px] text-text font-medium flex items-center gap-1">
-                            {entry.name}
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 text-text-muted"><path d="m6 9 6 6 6-6" /></svg>
-                          </div>
-                          <div className="text-[11px] text-text-muted leading-snug mt-0.5">{entry.defs.map((d) => d.variant).join(" · ")}</div>
-                        </div>
-                      </button>
+                        )}
+                      </div>
                     );
                   })}
                 </div>

@@ -68,9 +68,17 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
           onChange={(ev) => setLevel(Number((ev.target as HTMLInputElement).value))}
           className="w-full accent-accent h-1.5 cursor-pointer"
         />
-        <div className="flex justify-between text-[9.5px] text-text-muted mt-1 px-0.5">
+        {/* Labels sit under the thumb centres: the native thumb travels between
+            thumbRadius and (width − thumbRadius), so inset the stops by ~8px. */}
+        <div className="relative h-3.5 mt-1 text-[9.5px]">
           {LABELS.map((l, i) => (
-            <span key={i} className={i === level ? "text-accent" : ""}>{l}</span>
+            <span
+              key={i}
+              style={{ left: `calc(8px + ${i / 3} * (100% - 16px))`, transform: "translateX(-50%)" }}
+              className={`absolute whitespace-nowrap ${i === level ? "text-accent" : "text-text-muted"}`}
+            >
+              {l}
+            </span>
           ))}
         </div>
       </div>
