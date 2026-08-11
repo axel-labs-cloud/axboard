@@ -153,29 +153,27 @@ function Bar({ label, value }: { label: string; value: number }) {
   );
 }
 
-// Fixed-width metric columns so header labels and rows line up. `style` picks
-// bar-only, percentage-only, or both.
+// A metric that fills its grid column (so bars use the available width and line
+// up column-to-column). `style` picks bar-only, percentage-only, or both.
 type MetricStyle = "bar" | "pct" | "both";
-const MW = "w-[72px]"; // one metric column
-const MW2 = "w-[152px]"; // two columns + the gap between them (72 + 8 + 72)
 function Metric({ value, style }: { value: number; style: MetricStyle }) {
   const color = scaleColor(value, undefined, CPU_OPTS);
   if (style === "pct") {
-    return <div className={`${MW} shrink-0 text-right font-mono tabular-nums text-[10px] text-text-secondary`}>{value.toFixed(0)}%</div>;
+    return <div className="text-right font-mono tabular-nums text-[10px] text-text-secondary">{value.toFixed(0)}%</div>;
   }
   if (style === "bar") {
     return (
-      <div className={`${MW} shrink-0`}>
+      <div className="min-w-0">
         <Meter pct={value} color={color} />
       </div>
     );
   }
   return (
-    <div className={`${MW} shrink-0 flex items-center gap-1.5`}>
+    <div className="flex items-center gap-1.5 min-w-0">
       <div className="flex-1 min-w-0">
         <Meter pct={value} color={color} />
       </div>
-      <span className="w-7 text-right font-mono tabular-nums text-[10px] text-text-secondary">{value.toFixed(0)}%</span>
+      <span className="w-7 text-right font-mono tabular-nums text-[10px] text-text-secondary shrink-0">{value.toFixed(0)}%</span>
     </div>
   );
 }
@@ -186,14 +184,14 @@ function Metric({ value, style }: { value: number; style: MetricStyle }) {
 function BackupChip({ info }: { info?: BkpInfo }) {
   if (info?.failed) {
     return (
-      <span className="w-12 shrink-0 text-right text-[10px] font-mono text-down" title="Last backup failed">
+      <span className="text-right text-[10px] font-mono text-down" title="Last backup failed">
         failed
       </span>
     );
   }
   if (!info?.ctime) {
     return (
-      <span className="w-12 shrink-0 text-right text-[10px] font-mono text-text-muted/35" title="No backups">
+      <span className="text-right text-[10px] font-mono text-text-muted/35" title="No backups">
         —
       </span>
     );
@@ -204,6 +202,11 @@ function BackupChip({ info }: { info?: BkpInfo }) {
     </span>
   );
 }
+
+// Grid column templates so every section's bars/labels line up and the bars use
+// the full available width. minmax(0,·) lets the name truncate.
+const nodeCols = "minmax(0,1.2fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)";
+const storeCols = "minmax(0,1fr) minmax(0,2fr) auto";
 function timeAgoShort(ctime: number): string {
   const s = Date.now() / 1000 - ctime;
   if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m`;
@@ -223,6 +226,9 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
   // Bars fill their whole column, so center the header over them; with a % the
   // value sits at the right, so right-align the header there.
   const hAlign = mStyle === "bar" ? "text-center" : "text-right";
+  const guestCols = showBackups
+    ? "minmax(0,1fr) 3.25rem minmax(0,1.5fr) minmax(0,1.5fr)"
+    : "minmax(0,1fr) minmax(0,1.5fr) minmax(0,1.5fr)";
 
   const { data, isLoading } = useQuery({
     queryKey: ["pve", servers.map((s) => `${s.baseUrl}|${s.tokenId}`)],
@@ -326,11 +332,11 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
 
               {compact ? (
                 <div>
-                  <div className="flex items-center text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">
-                    <span className="flex-1">Nodes</span>
-                    <span className={`${MW} ${hAlign}`}>CPU</span>
-                    <span className={`${MW} ${hAlign}`}>RAM</span>
-                    <span className={`${MW} ${hAlign}`}>Disk</span>
+                  <div className="grid items-center gap-2 text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5" style={{ gridTemplateColumns: nodeCols }}>
+                    <span>Nodes</span>
+                    <span className={hAlign}>CPU</span>
+                    <span className={hAlign}>RAM</span>
+                    <span className={hAlign}>Disk</span>
                   </div>
                   <div className="divide-y divide-border-subtle">
                     {nodes.map((n) => (
@@ -339,11 +345,14 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                         href={base(d.server.baseUrl)}
                         target="_blank"
                         rel="noreferrer noopener"
-                        className="flex items-center gap-2 py-1 hover:bg-bg-hover/60 rounded -mx-1 px-1"
+                        className="grid items-center gap-2 py-1 hover:bg-bg-hover/60 rounded -mx-1 px-1"
+                        style={{ gridTemplateColumns: nodeCols }}
                         title="Open PVE web UI"
                       >
-                        <StatusDot status={n.status === "online" ? "up" : "down"} size="sm" title={n.status} />
-                        <span className="text-[11.5px] text-text truncate flex-1">{n.node}</span>
+                        <span className="flex items-center gap-2 min-w-0">
+                          <StatusDot status={n.status === "online" ? "up" : "down"} size="sm" title={n.status} />
+                          <span className="text-[11.5px] text-text truncate">{n.node}</span>
+                        </span>
                         <Metric value={(n.cpu ?? 0) * 100} style={mStyle} />
                         <Metric value={clampPct(n.mem, n.maxmem)} style={mStyle} />
                         <Metric value={clampPct(n.disk, n.maxdisk)} style={mStyle} />
@@ -388,11 +397,11 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
 
               {showGuests && guests.length > 0 && (
                 <div>
-                  <div className="flex items-center text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">
-                    <span className="flex-1">Guests · {guests.length}</span>
-                    {showBackups && <span className="w-12 text-right">Bkp</span>}
-                    <span className={`${MW} ${hAlign}`}>CPU</span>
-                    <span className={`${MW} ${hAlign}`}>RAM</span>
+                  <div className="grid items-center gap-2 text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5" style={{ gridTemplateColumns: guestCols }}>
+                    <span>Guests · {guests.length}</span>
+                    {showBackups && <span className="text-right">Bkp</span>}
+                    <span className={hAlign}>CPU</span>
+                    <span className={hAlign}>RAM</span>
                   </div>
                   <div className="divide-y divide-border-subtle">
                     {guests.map((g) => {
@@ -404,13 +413,16 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                           target="_blank"
                           rel="noreferrer noopener"
                           title={`Open ${g.name ?? g.vmid} console`}
-                          className="flex items-center gap-2 py-1 hover:bg-bg-hover/60 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 -mx-1 px-1"
+                          className="grid items-center gap-2 py-1 hover:bg-bg-hover/60 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 -mx-1 px-1"
+                          style={{ gridTemplateColumns: guestCols }}
                         >
-                          <StatusDot status={run ? "up" : "unknown"} size="sm" title={g.status} />
-                          <span className="text-[9px] font-mono px-1 py-px rounded bg-bg-elevated text-text-muted shrink-0">
-                            {g.type === "lxc" ? "CT" : "VM"}
+                          <span className="flex items-center gap-2 min-w-0">
+                            <StatusDot status={run ? "up" : "unknown"} size="sm" title={g.status} />
+                            <span className="text-[9px] font-mono px-1 py-px rounded bg-bg-elevated text-text-muted shrink-0">
+                              {g.type === "lxc" ? "CT" : "VM"}
+                            </span>
+                            <span className="text-[11.5px] text-text-secondary truncate">{g.name ?? g.vmid}</span>
                           </span>
-                          <span className="text-[11.5px] text-text-secondary truncate flex-1">{g.name ?? g.vmid}</span>
                           {showBackups && <BackupChip info={g.vmid != null ? bkp?.[g.vmid] : undefined} />}
                           {run ? (
                             <>
@@ -418,7 +430,7 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                               <Metric value={clampPct(g.mem, g.maxmem)} style={mStyle} />
                             </>
                           ) : (
-                            <span className={`${MW2} text-right text-[10px] text-text-muted/60 shrink-0`}>stopped</span>
+                            <span className="text-right text-[10px] text-text-muted/60" style={{ gridColumn: "span 2" }}>stopped</span>
                           )}
                         </a>
                       );
@@ -434,14 +446,12 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                     {stores.map((s) => {
                       const v = clampPct(s.disk, s.maxdisk);
                       return (
-                        <div key={s.id} className="flex items-center gap-2">
-                          <span className="text-[11px] text-text-secondary truncate flex-1" title={s.storage}>
+                        <div key={s.id} className="grid items-center gap-2" style={{ gridTemplateColumns: storeCols }}>
+                          <span className="text-[11px] text-text-secondary truncate" title={s.storage}>
                             {s.storage}
                           </span>
-                          <div className={`${MW} shrink-0`}>
-                            <Meter pct={v} color={scaleColor(v, undefined, CPU_OPTS)} />
-                          </div>
-                          <span className="w-[84px] text-right font-mono tabular-nums text-[10px] text-text-muted shrink-0">
+                          <Meter pct={v} color={scaleColor(v, undefined, CPU_OPTS)} />
+                          <span className="text-right font-mono tabular-nums text-[10px] text-text-muted whitespace-nowrap">
                             {gb(s.disk)}/{gb(s.maxdisk)}
                           </span>
                         </div>

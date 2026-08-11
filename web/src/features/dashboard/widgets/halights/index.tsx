@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useSharedHassCreds, EntityPicker, isLight, friendly, isOn, Toggle } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isLight, friendly, isOn, Toggle } from "../_hass";
 import type { HassLightsConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -18,6 +18,7 @@ function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
 
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
   const svc = useHassService(b, token ?? "");
+  const opt = useHassOptimistic(b, token ?? "");
 
   if (!b || !token) return <EmptyState icon={BulbIcon} title="Connect Lights" hint="Set the base URL, a long-lived token and pick light entities." />;
   if (ids.length === 0) return <EmptyState icon={BulbIcon} title="Pick entities" hint="Add light.* (or switch.*) entity ids in this widget's config." />;
@@ -35,7 +36,12 @@ function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
         title={title}
         right={
           <button
-            onClick={() => ids.forEach((id) => svc.mutate({ domain: domainOf(id), service: anyOn ? "turn_off" : "turn_on", data: { entity_id: id } }))}
+            onClick={() =>
+              ids.forEach((id) => {
+                opt(id, anyOn ? "off" : "on");
+                svc.mutate({ domain: domainOf(id), service: anyOn ? "turn_off" : "turn_on", data: { entity_id: id } });
+              })
+            }
             className="text-[10px] font-mono text-text-muted hover:text-accent"
             title={anyOn ? "Turn all off" : "Turn all on"}
           >
@@ -57,7 +63,14 @@ function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
                 <BulbIcon2 on={on} />
                 <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
                 {on && pct != null && <span className="text-[10px] font-mono text-text-muted shrink-0">{pct}%</span>}
-                <Toggle on={on} disabled={!e} onClick={() => svc.mutate({ domain: dom, service: "toggle", data: { entity_id: id } })} />
+                <Toggle
+                  on={on}
+                  disabled={!e}
+                  onClick={() => {
+                    opt(id, on ? "off" : "on");
+                    svc.mutate({ domain: dom, service: "toggle", data: { entity_id: id } });
+                  }}
+                />
               </div>
               {on && dimmable && (
                 <input
@@ -65,8 +78,16 @@ function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
                   min={1}
                   max={100}
                   defaultValue={pct ?? 100}
-                  onMouseUp={(ev) => svc.mutate({ domain: "light", service: "turn_on", data: { entity_id: id, brightness_pct: Number((ev.target as HTMLInputElement).value) } })}
-                  onTouchEnd={(ev) => svc.mutate({ domain: "light", service: "turn_on", data: { entity_id: id, brightness_pct: Number((ev.target as HTMLInputElement).value) } })}
+                  onMouseUp={(ev) => {
+                    const v = Number((ev.target as HTMLInputElement).value);
+                    opt(id, "on", { brightness: Math.round((v / 100) * 255) });
+                    svc.mutate({ domain: "light", service: "turn_on", data: { entity_id: id, brightness_pct: v } });
+                  }}
+                  onTouchEnd={(ev) => {
+                    const v = Number((ev.target as HTMLInputElement).value);
+                    opt(id, "on", { brightness: Math.round((v / 100) * 255) });
+                    svc.mutate({ domain: "light", service: "turn_on", data: { entity_id: id, brightness_pct: v } });
+                  }}
                   className="w-full mt-1.5 accent-accent h-1 cursor-pointer"
                 />
               )}

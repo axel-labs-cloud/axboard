@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useSharedHassCreds, EntityPicker, isFan, friendly, isOn, Toggle } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isFan, friendly, isOn, Toggle } from "../_hass";
 import type { HassFanConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -24,6 +24,12 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
 
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
   const svc = useHassService(b, token ?? "");
+  const opt = useHassOptimistic(b, token ?? "");
+  const setPct = (p: number) => {
+    if (!id) return;
+    opt(id, "on", { percentage: p });
+    svc.mutate({ domain: "fan", service: "set_percentage", data: { entity_id: id, percentage: p } });
+  };
 
   if (!b || !token || !id) return <EmptyState icon={FanIcon} title="Connect Fan" hint="Set the base URL, a long-lived token and a fan.* entity id." />;
   if (isError) return <ErrorState message={(error as Error)?.message ?? "Could not reach Home Assistant."} onRetry={() => refetch()} />;
@@ -44,7 +50,14 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
         <div className="flex items-center gap-2">
           <FanSpin on={on} />
           <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
-          <Toggle on={on} disabled={!e} onClick={() => svc.mutate({ domain: "fan", service: "toggle", data: { entity_id: id } })} />
+          <Toggle
+            on={on}
+            disabled={!e}
+            onClick={() => {
+              opt(id, on ? "off" : "on");
+              svc.mutate({ domain: "fan", service: "toggle", data: { entity_id: id } });
+            }}
+          />
         </div>
         <div className="grid grid-cols-3 gap-1.5">
           {PRESETS.map((p) => {
@@ -52,7 +65,7 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
             return (
               <button
                 key={p.label}
-                onClick={() => svc.mutate({ domain: "fan", service: "set_percentage", data: { entity_id: id, percentage: p.pct } })}
+                onClick={() => setPct(p.pct)}
                 className={`px-2 py-2 text-[11px] rounded border transition-colors ${
                   active ? "border-accent/60 bg-accent/15 text-accent" : "border-border text-text-muted hover:text-text"
                 }`}
@@ -69,8 +82,8 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
             max={100}
             defaultValue={pct ?? 100}
             key={pct ?? "x"}
-            onMouseUp={(ev) => svc.mutate({ domain: "fan", service: "set_percentage", data: { entity_id: id, percentage: Number((ev.target as HTMLInputElement).value) } })}
-            onTouchEnd={(ev) => svc.mutate({ domain: "fan", service: "set_percentage", data: { entity_id: id, percentage: Number((ev.target as HTMLInputElement).value) } })}
+            onMouseUp={(ev) => setPct(Number((ev.target as HTMLInputElement).value))}
+            onTouchEnd={(ev) => setPct(Number((ev.target as HTMLInputElement).value))}
             className="w-full accent-accent h-1 cursor-pointer"
           />
         )}
@@ -96,18 +109,21 @@ function FanConfigPanel({ config, save }: WidgetConfigProps<HassFanConfig>) {
   );
 }
 
+// A recognisable fan: four curved blades around a hub. Spins gently only while
+// running so it reads as a fan, not an abstract glyph.
+const FAN_BLADES = "M12 12c0-3 .5-6 3-6.5S19 8 17 10c-1 1-3 2-5 2zM12 12c3 0 6-.5 6.5 1.5S16 19 14 17c-1-1-2-3-2-5zM12 12c0 3-.5 6-3 6.5S5 16 7 14c1-1 3-2 5-2zM12 12c-3 0-6 .5-6.5-1.5S8 5 10 7c1 1 2 3 2 5z";
 function FanSpin({ on }: { on: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-4 h-4 shrink-0 ${on ? "text-accent animate-spin" : "text-text-muted"}`} style={{ animationDuration: "2.5s" }}>
-      <circle cx="12" cy="12" r="2" />
-      <path d="M12 2a4 4 0 0 1 0 8 4 4 0 0 0-4 4M22 12a4 4 0 0 1-8 0 4 4 0 0 0-4-4M12 22a4 4 0 0 1 0-8 4 4 0 0 0 4-4" />
+    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className={`w-4 h-4 shrink-0 ${on ? "text-accent animate-spin" : "text-text-muted"}`} style={{ animationDuration: "3s" }}>
+      <path d={FAN_BLADES} />
+      <circle cx="12" cy="12" r="1.4" fill="var(--color-bg-elevated)" />
     </svg>
   );
 }
 const FanIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-    <circle cx="12" cy="12" r="2" />
-    <path d="M12 2a4 4 0 0 1 0 8 4 4 0 0 0-4 4M22 12a4 4 0 0 1-8 0 4 4 0 0 0-4-4M12 22a4 4 0 0 1 0-8 4 4 0 0 0 4-4" />
+  <svg viewBox="0 0 24 24" fill="currentColor" stroke="none" className="w-4 h-4">
+    <path d={FAN_BLADES} />
+    <circle cx="12" cy="12" r="1.4" fill="var(--color-bg-elevated)" />
   </svg>
 );
 

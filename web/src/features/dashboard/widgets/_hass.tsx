@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client";
 
@@ -52,6 +52,16 @@ export function useHassService(base: string, token: string) {
 export const friendly = (e: HassEntity | undefined, id: string) => e?.attributes?.friendly_name ?? id;
 export const isOn = (s?: string) => s === "on" || s === "playing" || s === "home" || s === "open";
 
+// Optimistically patch an entity in the shared states cache so a control
+// reflects the intended change instantly (before the /api/states refetch lands).
+export function useHassOptimistic(base: string, token: string) {
+  const qc = useQueryClient();
+  return (entity_id: string, nextState: string, attrs?: Record<string, unknown>) =>
+    qc.setQueryData<HassEntity[]>(statesKey(base, token), (old) =>
+      old?.map((e) => (e.entity_id === entity_id ? { ...e, state: nextState, attributes: { ...e.attributes, ...attrs } } : e)),
+    );
+}
+
 // --- Shared connection ----------------------------------------------------
 // Home Assistant creds are entered once: any HA widget that has both a URL and
 // token remembers them in localStorage, and any HA widget opened with empty
@@ -104,17 +114,29 @@ export function EntityPicker({
   multiple?: boolean;
 }) {
   const ready = !!base && !!token;
+  const [q, setQ] = useState("");
   const { data, isLoading, isError } = useHassStates(base, token, ready, 30_000);
   if (!ready) return <p className="text-[11px] text-text-muted">Enter the URL and token to load devices.</p>;
   if (isLoading) return <p className="text-[11px] text-text-muted">Loading devices…</p>;
   if (isError || !data) return <p className="text-[11px] text-down">Couldn't load entities — check the URL/token.</p>;
-  const opts = data.filter(filter).sort((a, z) => friendly(a, a.entity_id).localeCompare(friendly(z, z.entity_id)));
+  const term = q.trim().toLowerCase();
+  const opts = data
+    .filter(filter)
+    .filter((e) => !term || `${friendly(e, e.entity_id)} ${e.entity_id}`.toLowerCase().includes(term))
+    .sort((a, z) => friendly(a, a.entity_id).localeCompare(friendly(z, z.entity_id)));
   const toggle = (id: string) => {
     if (!multiple) return onChange([id]);
     onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
   };
   return (
-    <div className="max-h-52 overflow-auto rounded border border-border divide-y divide-border-subtle">
+    <div className="rounded border border-border overflow-hidden">
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Filter by name…"
+        className="w-full px-2 py-1.5 bg-bg-card border-b border-border-subtle text-[12px] text-text placeholder:text-text-muted focus:outline-none"
+      />
+      <div className="max-h-48 overflow-auto divide-y divide-border-subtle">
       {opts.length === 0 && <p className="text-[11px] text-text-muted p-2">No matching entities found.</p>}
       {opts.map((e) => {
         const sel = value.includes(e.entity_id);
@@ -142,6 +164,7 @@ export function EntityPicker({
           </button>
         );
       })}
+      </div>
     </div>
   );
 }
