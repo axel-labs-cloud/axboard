@@ -288,11 +288,9 @@ function ConcentusComponent({ config, w, h, editing }: WidgetProps<ConcentusConf
       <div className="h-full w-full flex flex-col gap-2 p-2.5 min-h-0">
         <div className="flex-1 min-h-0 w-full relative flex items-center justify-center">
           <Art src={art} />
-          {art && (
-            <div className="absolute bottom-1 left-1 right-1 flex items-center justify-center py-1 rounded-md bg-black/55 backdrop-blur-sm">
-              {Controls}
-            </div>
-          )}
+          <div className={`absolute bottom-1 left-1 right-1 flex items-center justify-center py-1 rounded-md ${art ? "bg-black/55 backdrop-blur-sm" : ""}`}>
+            {Controls}
+          </div>
         </div>
         <Info np={np} session={session} compact />
       </div>
@@ -411,9 +409,9 @@ function ControlButton({
         onClick();
       }}
       disabled={disabled}
-      className={`flex items-center justify-center rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+      className={`flex items-center justify-center rounded-full transition-colors disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 ${
         primary
-          ? "w-8 h-8 bg-text/90 text-bg hover:bg-text"
+          ? "w-8 h-8 bg-accent text-white hover:brightness-110"
           : "w-7 h-7 text-text-secondary hover:text-text hover:bg-bg-hover"
       }`}
     >

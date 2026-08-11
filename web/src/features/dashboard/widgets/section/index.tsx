@@ -14,10 +14,10 @@ function SectionComponent({ config }: WidgetProps<SectionConfig>) {
   const align = config?.align ?? "left";
   return (
     <div className={`h-full flex flex-col justify-center px-3 gap-1.5 ${align === "center" ? "items-center" : "items-start"}`}>
-      <span className="text-[13px] font-semibold uppercase tracking-[0.1em] text-text-secondary truncate max-w-full">
+      <span className="text-[13px] font-semibold uppercase tracking-[0.1em] text-text truncate max-w-full">
         {text}
       </span>
-      <div className="h-px w-full bg-gradient-to-r from-border to-transparent" />
+      <div className={`h-px w-full ${align === "center" ? "bg-gradient-to-r from-transparent via-border to-transparent" : "bg-gradient-to-r from-border to-transparent"}`} />
     </div>
   );
 }

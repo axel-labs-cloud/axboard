@@ -109,9 +109,10 @@ function ChecklistComponent({ config, save }: WidgetProps<ChecklistConfig>) {
             </span>
             <button
               onClick={() => remove(i)}
-              className="text-[10px] text-transparent group-hover:text-text-muted hover:!text-danger transition-colors shrink-0"
+              aria-label="Delete item"
+              className="shrink-0 inline-flex items-center justify-center rounded text-text-muted/40 group-hover:text-text-muted focus-visible:text-text-muted hover:!text-danger focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 transition-colors"
             >
-              ×
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="w-3 h-3"><path d="M18 6 6 18M6 6l12 12" /></svg>
             </button>
           </div>
         ))}

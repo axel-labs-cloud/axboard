@@ -91,7 +91,8 @@ function IframeComponent({ config, editing }: WidgetProps<IframeConfig>) {
           <button
             onClick={() => setNonce((n) => n + 1)}
             title="Reload"
-            className="w-4 h-4 flex items-center justify-center rounded text-text-muted hover:text-text hover:bg-bg-hover"
+            aria-label="Reload"
+            className="w-6 h-6 flex items-center justify-center rounded text-text-muted hover:text-text hover:bg-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           >
             <svg
               viewBox="0 0 24 24"
@@ -111,7 +112,8 @@ function IframeComponent({ config, editing }: WidgetProps<IframeConfig>) {
             target="_blank"
             rel="noreferrer noopener"
             title="Open in new tab"
-            className="w-4 h-4 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-bg-hover"
+            aria-label="Open in new tab"
+            className="w-6 h-6 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           >
             <svg
               viewBox="0 0 24 24"

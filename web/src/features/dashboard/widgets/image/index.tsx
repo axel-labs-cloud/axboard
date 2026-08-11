@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type {
   ImageConfig,
   WidgetConfigProps,
@@ -13,6 +14,8 @@ function ImageComponent({ config }: WidgetProps<ImageConfig>) {
   const url = config?.url?.trim();
   const fit = config?.fit ?? "cover";
   const link = config?.link?.trim();
+  const [broken, setBroken] = useState(false);
+  useEffect(() => setBroken(false), [url]);
 
   if (!url) {
     return (
@@ -22,10 +25,24 @@ function ImageComponent({ config }: WidgetProps<ImageConfig>) {
     );
   }
 
+  if (broken) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-1.5 text-text-muted/60 text-[11px] px-3 text-center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="w-5 h-5">
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="m3 16 5-5 4 4M14 14l2-2 5 5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M3 3 21 21" strokeLinecap="round" />
+        </svg>
+        Image failed to load
+      </div>
+    );
+  }
+
   const img = (
     <img
       src={url}
-      alt=""
+      alt={config?.link ? "banner" : "image"}
+      onError={() => setBroken(true)}
       className="w-full h-full"
       style={{ objectFit: fit }}
       loading="lazy"
