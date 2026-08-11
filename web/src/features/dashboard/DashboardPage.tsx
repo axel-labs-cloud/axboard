@@ -348,7 +348,11 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       const dash = cfg?.dashboards?.find((d) => d.id === activeDashboardId);
       return assembleLayout(dash, state);
     },
-    enabled: activeDashboardId !== null,
+    // Gate on `state` being loaded: assembling with state===undefined yields
+    // base-only widget configs (deltas from state.yaml not merged). If a layout
+    // save then fired off that, it would derive every delta as empty and wipe
+    // the saved widget settings. Don't assemble until state is present.
+    enabled: activeDashboardId !== null && state !== undefined,
   });
 
   // Re-assemble on config/state change.
@@ -365,19 +369,23 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const save = useMutation({
     mutationFn: async (l: DashboardLayout) => {
       if (activeDashboardId === null) return;
-      const current = qc.getQueryData<StatePayload>(["state"]) ?? {};
+      const current = qc.getQueryData<StatePayload>(["state"]);
+      const cfg = qc.getQueryData<ConfigPayload>(["config"]);
+      // Guard against wiping saved widget settings: if either source hasn't
+      // loaded, the effective configs in `l` may be base-only (state deltas not
+      // merged yet). Deriving deltas now would compute them all as empty and
+      // clobber widget_configs. Bail — a later change persists once loaded.
+      if (current === undefined || cfg === undefined) return;
       // Base configs come from config.yaml (the ["config"] query). We persist
       // only the delta of each widget's effective config against its base, so
       // state.yaml never masks config.yaml — see diffConfig().
-      const cfg = qc.getQueryData<ConfigPayload>(["config"]);
       const dash = cfg?.dashboards?.find((d) => d.id === activeDashboardId);
       const baseConfigs: Record<string, Record<string, unknown>> = {};
       for (const bw of dash?.widgets ?? []) {
         baseConfigs[bw.i] = (bw.config ?? {}) as Record<string, unknown>;
       }
-      const widgetConfigs: Record<string, AnyWidgetConfig> = {
-        ...(current.widgetConfigs ?? {}),
-      };
+      const existing = current.widgetConfigs ?? {};
+      const widgetConfigs: Record<string, AnyWidgetConfig> = { ...existing };
       for (const w of l.widgets) {
         const delta = diffConfig(
           (w.config ?? {}) as Record<string, unknown>,
@@ -385,9 +393,14 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         );
         if (Object.keys(delta).length > 0) {
           widgetConfigs[w.i] = delta as AnyWidgetConfig;
-        } else {
+        } else if (!existing[w.i] || Object.keys(existing[w.i] as object).length === 0) {
+          // No delta now and none saved before → nothing to store.
           delete widgetConfigs[w.i];
         }
+        // else: a delta WAS saved but the effective config currently equals base.
+        // That's almost always transient (deltas not merged into `l` yet), so
+        // preserve the saved delta rather than deleting it. Resetting a field to
+        // its exact base default therefore keeps a harmless redundant delta.
       }
       const next: StatePayload = {
         ...current,
