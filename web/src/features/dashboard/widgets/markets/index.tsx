@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonLines } from "../../../../components/Skeleton";
+import { ErrorState } from "../../../../components/widget";
 import type {
   MarketsConfig,
   WidgetConfigProps,
@@ -245,8 +246,8 @@ function MarketsComponent({ config }: WidgetProps<MarketsConfig>) {
   if (isLoading) return <div ref={box.ref} className="h-full"><SkeletonLines rows={ids.length + stocks.length || 2} /></div>;
   if (isError || !data) {
     return (
-      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
-        Could not load prices.
+      <div ref={box.ref} className="h-full">
+        <ErrorState message="Could not load prices." />
       </div>
     );
   }

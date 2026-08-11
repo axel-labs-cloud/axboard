@@ -10,7 +10,8 @@ import type {
   WidgetProps,
 } from "../types";
 import { ServicesEditor } from "./ServicesEditor";
-import { initials, hashColor, statusClasses, tileAlertClasses } from "./appVisual";
+import { initials, hashColor, tileAlertClasses } from "./appVisual";
+import { StatusDot } from "../../../../components/widget";
 
 // ---------------------------------------------------------------------------
 // Apps grid widget — Shortcut-style. Each instance shows a hand-picked
@@ -84,17 +85,13 @@ function Tile({
           <span className="text-[10px] text-text-secondary truncate leading-tight">
             {app.name}
           </span>
-          {showStatus && (
-            <span
-              className={`inline-block w-1.5 h-1.5 rounded-full shrink-0 ${statusClasses(status?.status)}`}
-            />
-          )}
+          {showStatus && <StatusDot status={status} size="sm" />}
         </div>
       )}
       {!showName && showStatus && (
-        <span
-          className={`absolute top-1 right-1 inline-block w-1.5 h-1.5 rounded-full ${statusClasses(status?.status)}`}
-        />
+        <span className="absolute top-1 right-1">
+          <StatusDot status={status} size="sm" />
+        </span>
       )}
     </a>
   );

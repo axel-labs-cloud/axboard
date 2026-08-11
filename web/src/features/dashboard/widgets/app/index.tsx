@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
-import type { AppDef, GroupDef, StatusMap, HistoryMap } from "../../../../api/types";
+import type { AppDef, GroupDef, HistoryMap } from "../../../../api/types";
 import { SimpleIcon } from "../../SimpleIcon";
 import type {
   AppConfig,
@@ -8,7 +8,8 @@ import type {
   WidgetDefinition,
   WidgetProps,
 } from "../types";
-import { initials, hashColor, statusClasses } from "../apps/appVisual";
+import { initials, hashColor } from "../apps/appVisual";
+import { StatusDot } from "../../../../components/widget";
 import { WakeButton, canWake } from "../WakeButton";
 
 // ---------------------------------------------------------------------------
@@ -33,27 +34,6 @@ function Icon({ app, className = "" }: { app: AppDef; className?: string }) {
     <div className={`flex items-center justify-center ${className}`}>
       <SimpleIcon slug={app.icon} fill />
     </div>
-  );
-}
-
-function StatusDot({
-  status,
-  size = "md",
-}: {
-  status?: StatusMap[string];
-  size?: "sm" | "md" | "lg";
-}) {
-  const px = size === "lg" ? "w-2.5 h-2.5" : size === "sm" ? "w-1.5 h-1.5" : "w-2 h-2";
-  const title = status?.status
-    ? `${status.status}${status.response_ms != null ? ` · ${status.response_ms} ms` : ""}${
-        status.last_checked ? ` · ${new Date(status.last_checked).toLocaleTimeString()}` : ""
-      }`
-    : "no health check";
-  return (
-    <span
-      className={`inline-block rounded-full shrink-0 ${px} ${statusClasses(status?.status)}`}
-      title={title}
-    />
   );
 }
 

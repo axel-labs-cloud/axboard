@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonLines } from "../../../../components/Skeleton";
+import { ErrorState } from "../../../../components/widget";
 import type {
   FeedConfig,
   WidgetConfigProps,
@@ -60,11 +61,7 @@ function FeedComponent({ config }: WidgetProps<FeedConfig>) {
     return <SkeletonLines rows={4} />;
   }
   if (isError || !data) {
-    return (
-      <div className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
-        {(error as Error)?.message ?? "Could not load feed."}
-      </div>
-    );
+    return <ErrorState message={(error as Error)?.message ?? "Could not load feed."} />;
   }
 
   const items = data.slice(0, count);

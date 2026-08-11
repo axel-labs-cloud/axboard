@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
 import { ColorControls, scaleColor, type ColorConfig } from "../colorScale";
+import { Meter } from "../../../../components/widget";
 import { ReorderPicker } from "../ReorderPicker";
 import type { DisksConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 import type { HostStats } from "../../../../api/types";
@@ -74,9 +75,7 @@ function DisksComponent({ config }: WidgetProps<DisksConfig>) {
                 </span>
                 <span className="font-mono tabular-nums text-text-muted shrink-0">{fmtBytes(d.used)}/{fmtBytes(d.total)}</span>
               </div>
-              <div className="w-full h-1.5 rounded-full bg-bg-elevated overflow-hidden">
-                <div className="h-full rounded-full" style={{ width: `${Math.min(100, pct)}%`, background: color, transition: "width 0.5s ease" }} />
-              </div>
+              <Meter pct={Math.min(100, pct)} color={color} />
             </div>
           );
         })}
