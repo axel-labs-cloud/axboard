@@ -107,7 +107,7 @@ const definition: WidgetDefinition<TopProcConfig> = {
   type: "topproc",
   title: "Top processes",
   icon: TopProcIcon,
-  category: "infrastructure",
+  category: "system",
   description: "The busiest host processes by CPU or memory, live.",
   minW: 2,
   minH: 2,

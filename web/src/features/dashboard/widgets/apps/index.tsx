@@ -532,7 +532,7 @@ const def: WidgetDefinition<AppsConfig> = {
   type: "apps",
   title: "Apps grid",
   icon: AppsIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Grid of hand-picked services. 2 icons per grid unit, like Shortcuts.",
   minW: 1,
   minH: 1,

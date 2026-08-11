@@ -251,7 +251,7 @@ const definition: WidgetDefinition<SpeedTestConfig> = {
   type: "speedtest",
   title: "Speed test",
   icon: SpeedIcon,
-  category: "infrastructure",
+  category: "network",
   description: "Browser-side internet speed test (download / upload / ping) via Cloudflare.",
   minW: 2,
   minH: 2,

@@ -63,7 +63,7 @@ const definition: WidgetDefinition<PerCpuConfig> = {
   type: "percpu",
   title: "Per-core CPU",
   icon: PerCpuIcon,
-  category: "infrastructure",
+  category: "system",
   description: "Live utilisation of every logical CPU core as a bar strip.",
   minW: 2,
   minH: 2,

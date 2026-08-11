@@ -213,7 +213,7 @@ const definition: WidgetDefinition<ArrConfig> = {
   type: "arr",
   title: "Sonarr / Radarr",
   icon: ArrIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Download queue + upcoming calendar from Sonarr or Radarr.",
   minW: 2,
   minH: 2,

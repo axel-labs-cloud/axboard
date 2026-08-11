@@ -221,7 +221,7 @@ const definition: WidgetDefinition<NetGraphConfig> = {
   type: "netgraph",
   title: "Network graph",
   icon: NetGraphIcon,
-  category: "infrastructure",
+  category: "system",
   description: "Live download/upload throughput as an area chart, with a legend.",
   minW: 3,
   minH: 1,

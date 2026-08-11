@@ -186,7 +186,7 @@ const definition: WidgetDefinition<CustomApiConfig> = {
   type: "customapi",
   title: "Custom API",
   icon: ApiIcon,
-  category: "infrastructure",
+  category: "external",
   description: "Render fields from any JSON endpoint — map paths to labeled stats.",
   minW: 2,
   minH: 2,

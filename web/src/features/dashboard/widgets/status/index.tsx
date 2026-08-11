@@ -517,7 +517,7 @@ const definition: WidgetDefinition<StatusSummaryConfig> = {
   type: "status",
   title: "Status summary",
   icon: StatusIcon,
-  category: "infrastructure",
+  category: "services",
   description: "At-a-glance roll-up of all service health: N up, degraded, down.",
   minW: 2,
   minH: 1,

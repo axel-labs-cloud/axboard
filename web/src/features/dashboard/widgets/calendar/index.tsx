@@ -308,7 +308,7 @@ const definition: WidgetDefinition<CalendarConfig> = {
   type: "calendar",
   title: "Calendar",
   icon: CalendarIcon,
-  category: "external",
+  category: "productivity",
   description: "Upcoming events from an iCal (.ics) feed (via the server proxy).",
   minW: 2,
   minH: 2,

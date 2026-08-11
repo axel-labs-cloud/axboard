@@ -117,7 +117,7 @@ const definition: WidgetDefinition<DisksConfig> = {
   type: "disks",
   title: "Filesystems",
   icon: DisksIcon,
-  category: "infrastructure",
+  category: "system",
   description: "Usage bars for the host filesystems you pick.",
   minW: 2,
   minH: 2,

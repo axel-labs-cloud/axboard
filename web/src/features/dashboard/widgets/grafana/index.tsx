@@ -115,7 +115,7 @@ const definition: WidgetDefinition<GrafanaConfig> = {
   type: "grafana",
   title: "Grafana panel",
   icon: GrafanaIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Embed a live Grafana panel or kiosk dashboard by URL.",
   minW: 3,
   minH: 2,

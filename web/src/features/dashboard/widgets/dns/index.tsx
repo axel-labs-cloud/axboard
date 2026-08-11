@@ -280,7 +280,7 @@ const definition: WidgetDefinition<DnsConfig> = {
   type: "dns",
   title: "DNS Sinkhole",
   icon: ShieldIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Pi-hole / AdGuard Home / Technitium — queries, block rate, blocklist size and top blocked domains.",
   minW: 2,
   minH: 2,

@@ -432,7 +432,7 @@ const def: WidgetDefinition<AppConfig> = {
   type: "app",
   title: "App",
   icon: AppIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Single service tile. Layout adapts from 1x1 to 2x3.",
   minW: 1,
   minH: 1,

@@ -507,7 +507,7 @@ const definition: WidgetDefinition<ProxmoxConfig> = {
   type: "proxmox",
   title: "Proxmox",
   icon: PveIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Proxmox VE — nodes, VMs/LXC and storage with live CPU / RAM / disk. Multiple servers; click to open the console.",
   minW: 2,
   minH: 2,

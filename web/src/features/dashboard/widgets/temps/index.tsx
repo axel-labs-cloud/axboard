@@ -129,7 +129,7 @@ const definition: WidgetDefinition<TempsConfig> = {
   type: "temps",
   title: "Temperatures",
   icon: TempsIcon,
-  category: "infrastructure",
+  category: "system",
   description: "Hardware temperature sensors (CPU, NVMe, chipset) — pick which to show.",
   minW: 2,
   minH: 2,

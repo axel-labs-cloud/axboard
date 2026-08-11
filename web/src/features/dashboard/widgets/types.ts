@@ -45,7 +45,7 @@ export type WidgetType =
   | "dns"
   | "media";
 
-export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
+export type WidgetCategory = "productivity" | "system" | "services" | "network" | "external";
 
 export interface ClockConfig {
   use24h?: boolean;

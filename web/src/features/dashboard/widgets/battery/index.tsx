@@ -68,7 +68,7 @@ const definition: WidgetDefinition<BatteryConfig> = {
   type: "battery",
   title: "Battery / UPS",
   icon: BatteryIcon,
-  category: "infrastructure",
+  category: "system",
   description: "Charge and status of any battery or UPS the host exposes.",
   minW: 2,
   minH: 1,

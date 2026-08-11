@@ -277,7 +277,7 @@ const definition: WidgetDefinition<MediaConfig> = {
   type: "media",
   title: "Jellyfin / Plex",
   icon: PlayIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Jellyfin or Plex — now-playing sessions with progress, plus library counts.",
   minW: 2,
   minH: 2,

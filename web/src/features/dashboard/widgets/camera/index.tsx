@@ -272,7 +272,7 @@ const definition: WidgetDefinition<CameraConfig> = {
   type: "camera",
   title: "Camera",
   icon: CameraIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Live camera feed — Frigate NVR by name, or any MJPEG / JPEG stream URL.",
   minW: 2,
   minH: 2,

@@ -132,7 +132,7 @@ const definition: WidgetDefinition<WolConfig> = {
   type: "wol",
   title: "Wake-on-LAN",
   icon: WolIcon,
-  category: "infrastructure",
+  category: "network",
   description: "One-click Wake-on-LAN buttons that broadcast magic packets.",
   minW: 2,
   minH: 1,

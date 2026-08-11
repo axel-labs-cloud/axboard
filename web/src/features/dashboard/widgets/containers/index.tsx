@@ -242,7 +242,7 @@ const definition: WidgetDefinition<ContainersConfig> = {
   type: "containers",
   title: "Containers",
   icon: ContainersIcon,
-  category: "infrastructure",
+  category: "system",
   description: "Live Docker/Podman container states over the mounted socket.",
   minW: 2,
   minH: 2,

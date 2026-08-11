@@ -7,10 +7,16 @@ import { listWidgetDefinitions } from "./widgets/registry";
 import type { WidgetType } from "./widgets/types";
 
 const CATEGORY_LABELS: Record<string, string> = {
-  system: "System",
-  infrastructure: "Infrastructure",
   productivity: "Productivity",
+  system: "System",
+  services: "Services",
+  network: "Network",
   external: "External",
+};
+const CATEGORY_ORDER = ["services", "system", "network", "productivity", "external"];
+const catRank = (c: string) => {
+  const i = CATEGORY_ORDER.indexOf(c);
+  return i === -1 ? CATEGORY_ORDER.length : i;
 };
 
 interface Props {
@@ -65,13 +71,20 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
   if (!open) return null;
 
   const defs = listWidgetDefinitions();
-  const categories = ["all", ...Array.from(new Set(defs.map((d) => d.category)))];
+  const presentCats = Array.from(new Set(defs.map((d) => d.category))).sort((a, z) => catRank(a) - catRank(z));
+  const categories = ["all", ...presentCats];
   const term = q.trim().toLowerCase();
   const filtered = defs.filter((d) => {
     if (cat !== "all" && d.category !== cat) return false;
     if (term && !`${d.title} ${d.description}`.toLowerCase().includes(term)) return false;
     return true;
   });
+  // In the "All" view, break the wall into labelled per-category sections.
+  const sections = (cat === "all" ? presentCats : [cat]).map((c) => ({
+    cat: c,
+    items: filtered.filter((d) => d.category === c),
+  })).filter((s) => s.items.length > 0);
+  const countFor = (c: string) => (c === "all" ? defs.length : defs.filter((d) => d.category === c).length);
 
   return createPortal(
     <div
@@ -107,6 +120,7 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
                 }`}
               >
                 {c === "all" ? "All" : CATEGORY_LABELS[c] ?? c}
+                <span className="ml-1.5 text-[10px] opacity-60 tabular-nums">{countFor(c)}</span>
               </button>
             ))}
           </div>
@@ -118,27 +132,40 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
           />
         </div>
 
-        <div className="p-4 grid grid-cols-2 md:grid-cols-3 gap-2.5 overflow-y-auto">
-          {filtered.length === 0 && (
-            <div className="col-span-full text-center text-[12px] text-text-muted py-8">No widgets match.</div>
+        <div className="p-4 overflow-y-auto space-y-4">
+          {sections.length === 0 && (
+            <div className="text-center text-[12px] text-text-muted py-8">No widgets match.</div>
           )}
-          {filtered.map((def) => (
-            <button
-              key={def.type}
-              onClick={() => add.mutate(def.type)}
-              disabled={add.isPending || !dashboardId}
-              className="text-left flex items-start gap-3 p-3 rounded-lg border border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">
-                {def.icon}
+          {sections.map((section) => (
+            <div key={section.cat}>
+              <div className="flex items-center gap-2 mb-2 px-0.5">
+                <span className="text-[10px] uppercase tracking-[0.1em] text-text-muted font-semibold">
+                  {CATEGORY_LABELS[section.cat] ?? section.cat}
+                </span>
+                <span className="text-[10px] text-text-muted/60 tabular-nums">{section.items.length}</span>
+                <div className="flex-1 h-px bg-border-subtle" />
               </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-[12.5px] text-text font-medium">{def.title}</div>
-                <div className="text-[11px] text-text-muted leading-snug mt-0.5 line-clamp-2">
-                  {def.description}
-                </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
+                {section.items.map((def) => (
+                  <button
+                    key={def.type}
+                    onClick={() => add.mutate(def.type)}
+                    disabled={add.isPending || !dashboardId}
+                    className="text-left flex items-start gap-3 p-3 rounded-lg border border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">
+                      {def.icon}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[12.5px] text-text font-medium">{def.title}</div>
+                      <div className="text-[11px] text-text-muted leading-snug mt-0.5 line-clamp-2">
+                        {def.description}
+                      </div>
+                    </div>
+                  </button>
+                ))}
               </div>
-            </button>
+            </div>
           ))}
         </div>
 

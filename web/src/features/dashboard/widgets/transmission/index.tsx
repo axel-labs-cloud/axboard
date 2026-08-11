@@ -225,7 +225,7 @@ const definition: WidgetDefinition<TransmissionConfig> = {
   type: "transmission",
   title: "Transmission",
   icon: TorrentIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Transmission torrents — progress, up/down rates and ratio, with live transfer totals.",
   minW: 2,
   minH: 2,

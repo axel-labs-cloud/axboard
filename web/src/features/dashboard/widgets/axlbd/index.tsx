@@ -115,7 +115,7 @@ const definition: WidgetDefinition<AxServiceConfig> = {
   type: "axlbd",
   title: "axlbd",
   icon: LbIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Load balancers + status from an axlbd instance.",
   minW: 2,
   minH: 2,

@@ -96,7 +96,7 @@ const definition: WidgetDefinition<PublicIPConfig> = {
   type: "publicip",
   title: "Public IP",
   icon: IPIcon,
-  category: "infrastructure",
+  category: "network",
   description: "WAN IP + geo/ISP, with an optional VPN on/off check.",
   minW: 2,
   minH: 1,

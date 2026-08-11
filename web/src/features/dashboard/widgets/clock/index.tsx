@@ -294,7 +294,7 @@ const definition: WidgetDefinition<ClockConfig> = {
   type: "clock",
   title: "Clock",
   icon: ClockIcon,
-  category: "system",
+  category: "productivity",
   description: "Live clock with optional secondary timezones. 12/24h format.",
   minW: 2,
   minH: 1,

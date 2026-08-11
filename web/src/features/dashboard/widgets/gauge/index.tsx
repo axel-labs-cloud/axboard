@@ -375,7 +375,7 @@ const definition: WidgetDefinition<GaugeConfig> = {
   type: "gauge",
   title: "Resource gauge",
   icon: GaugeIcon,
-  category: "infrastructure",
+  category: "system",
   description: "One host metric (CPU/RAM/disk/swap) as a ring, bar or live sparkline — configurable colours + glow. Adapts to size.",
   minW: 1,
   minH: 1,

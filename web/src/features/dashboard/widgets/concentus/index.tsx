@@ -547,7 +547,7 @@ const def: WidgetDefinition<ConcentusConfig> = {
   type: "concentus",
   title: "Concentus",
   icon: ConcentusIcon,
-  category: "external",
+  category: "services",
   description: "Now playing from your Concentus music server, with play/pause + skip controls.",
   minW: 2,
   minH: 2,

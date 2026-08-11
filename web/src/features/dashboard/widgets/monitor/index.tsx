@@ -222,7 +222,7 @@ const definition: WidgetDefinition<MonitorConfig> = {
   type: "monitor",
   title: "Uptime monitor",
   icon: MonitorIcon,
-  category: "infrastructure",
+  category: "network",
   description: "Ping a list of URLs and show up/down + latency.",
   minW: 2,
   minH: 1,

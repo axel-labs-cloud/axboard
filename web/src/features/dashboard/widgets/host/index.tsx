@@ -193,7 +193,7 @@ const definition: WidgetDefinition<HostConfig> = {
   type: "host",
   title: "Host stats",
   icon: HostIcon,
-  category: "infrastructure",
+  category: "system",
   description: "CPU, memory, disk, network I/O, load and uptime of the machine axboard runs on.",
   minW: 2,
   minH: 2,

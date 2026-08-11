@@ -103,7 +103,7 @@ const definition: WidgetDefinition<AxServiceConfig> = {
   type: "axdnsd",
   title: "axdnsd",
   icon: DnsIcon,
-  category: "infrastructure",
+  category: "services",
   description: "Zones + health-check status from an axdnsd instance.",
   minW: 2,
   minH: 2,
