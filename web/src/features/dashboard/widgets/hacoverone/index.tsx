@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isCover, friendly } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isCover, friendly, OpenInHass } from "../_hass";
 import type { HassOneConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ function CoverComponent({ config }: WidgetProps<HassOneConfig>) {
       <WidgetHeader
         icon={CoverIcon}
         title={config?.title?.trim() || friendly(e, id)}
-        right={<span className="text-[11px] font-mono text-text-muted">{pos != null ? `${pos}%` : st}</span>}
+        right={<span className="flex items-center gap-1.5"><span className="text-[11px] font-mono text-text-muted">{pos != null ? `${pos}%` : st}</span><OpenInHass base={b} id={id} /></span>}
       />
       <div className="flex-1 min-h-0 overflow-hidden px-3 py-2 flex items-center justify-center gap-2">
         <Btn label="▲" title="Open" onClick={() => act("open_cover", "opening")} />

@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, useTileFit, EntityPicker, isClimate, friendly } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, useTileFit, EntityPicker, isClimate, friendly, OpenInHass } from "../_hass";
 import type { HassClimateConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -41,6 +41,9 @@ function ClimateComponent({ config }: WidgetProps<HassClimateConfig>) {
   const step = (e?.attributes?.target_temp_step as number | undefined) ?? 0.5;
   const unit = (e?.attributes?.temperature_unit as string | undefined) ?? "°";
   const modes = (e?.attributes?.hvac_modes as string[] | undefined) ?? [];
+  const humidity = e?.attributes?.current_humidity as number | undefined;
+  const fanMode = e?.attributes?.fan_mode as string | undefined;
+  const fanModes = (e?.attributes?.fan_modes as string[] | undefined) ?? [];
 
   const setTarget = (t: number) => {
     if (!id || target == null) return;
@@ -52,6 +55,11 @@ function ClimateComponent({ config }: WidgetProps<HassClimateConfig>) {
     if (!id) return;
     opt(id, m);
     svc.mutate({ domain: "climate", service: "set_hvac_mode", data: { entity_id: id, hvac_mode: m } });
+  };
+  const setFanMode = (m: string) => {
+    if (!id) return;
+    opt(id, mode, { fan_mode: m });
+    svc.mutate({ domain: "climate", service: "set_fan_mode", data: { entity_id: id, fan_mode: m } });
   };
 
   const stepBtn = (delta: number, label: string) =>
@@ -80,12 +88,13 @@ function ClimateComponent({ config }: WidgetProps<HassClimateConfig>) {
       <WidgetHeader
         icon={<span className={MODE_TONE[mode] ?? "text-text-muted"}>{ThermoIcon}</span>}
         title={config?.title?.trim() || friendly(e, id)}
-        right={<span className={`text-[11px] font-mono capitalize ${MODE_TONE[mode] ?? "text-text-muted"}`}>{mode.replace("_", " ")}</span>}
+        right={<span className="flex items-center gap-1.5"><span className={`text-[11px] font-mono capitalize ${MODE_TONE[mode] ?? "text-text-muted"}`}>{mode.replace("_", " ")}</span><OpenInHass base={b} id={id} /></span>}
       />
       <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col justify-center gap-2.5">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             {cur != null && <div className="text-[13px] text-text-secondary tabular-nums">now {cur.toFixed(1)}{unit}</div>}
+            {humidity != null && <div className="text-[11px] text-text-muted tabular-nums">humidity {humidity}%</div>}
           </div>
           {target != null && (
             <div className="flex items-center gap-2 shrink-0">
@@ -106,6 +115,22 @@ function ClimateComponent({ config }: WidgetProps<HassClimateConfig>) {
                 }`}
               >
                 {m.replace("_", " ")}
+              </button>
+            ))}
+          </div>
+        )}
+        {fanModes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-[9.5px] uppercase tracking-wide text-text-muted mr-0.5">Fan</span>
+            {fanModes.map((m) => (
+              <button
+                key={m}
+                onClick={() => setFanMode(m)}
+                className={`px-2 py-1 text-[10px] rounded border capitalize transition-colors ${
+                  fanMode === m ? "border-accent/60 bg-accent/15 text-accent" : "border-border text-text-muted hover:text-text"
+                }`}
+              >
+                {m}
               </button>
             ))}
           </div>

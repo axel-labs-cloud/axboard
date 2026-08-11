@@ -66,7 +66,12 @@ export type WidgetType =
   | "halight"
   | "hafans"
   | "hacoverone"
-  | "hasensor";
+  | "hasensor"
+  | "hamedia"
+  | "halock"
+  | "havacuum"
+  | "hapresence"
+  | "habattery";
 
 export type WidgetCategory = "productivity" | "system" | "services" | "homeassistant" | "network" | "external";
 
@@ -640,6 +645,13 @@ export interface HassOneConfig {
   title?: string;
 }
 
+/** A connection-only Home Assistant widget (derives its own entities, no picker). */
+export interface HassConnConfig {
+  baseUrl?: string;
+  token?: string;
+  title?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -707,6 +719,11 @@ export type WidgetConfigByType = {
   hafans: HassCoverConfig;
   hacoverone: HassOneConfig;
   hasensor: HassOneConfig;
+  hamedia: HassOneConfig;
+  halock: HassOneConfig;
+  havacuum: HassOneConfig;
+  hapresence: HassConnConfig;
+  habattery: HassConnConfig;
 };
 
 export type AnyWidgetConfig = Partial<

@@ -57,20 +57,42 @@ function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
         icon={BulbIcon}
         title={title}
         right={
-          <button
-            onClick={() =>
-              ids.forEach((id) => {
-                opt(id, anyOn ? "off" : "on");
-                svc.mutate({ domain: domainOf(id), service: anyOn ? "turn_off" : "turn_on", data: { entity_id: id } });
-              })
-            }
-            className="text-[10px] font-mono text-text-muted hover:text-accent"
-            title={anyOn ? "Turn all off" : "Turn all on"}
-          >
-            all {anyOn ? "off" : "on"}
-          </button>
+          <span className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-text-muted">{onCount}/{ids.length} on</span>
+            <button
+              onClick={() =>
+                ids.forEach((id) => {
+                  opt(id, anyOn ? "off" : "on");
+                  svc.mutate({ domain: domainOf(id), service: anyOn ? "turn_off" : "turn_on", data: { entity_id: id } });
+                })
+              }
+              className="text-[10px] font-mono text-text-muted hover:text-accent"
+              title={anyOn ? "Turn all off" : "Turn all on"}
+            >
+              all {anyOn ? "off" : "on"}
+            </button>
+          </span>
         }
       />
+      {ids.some((id) => id.startsWith("light.")) && (
+        <div className="flex items-center gap-2 px-2.5 py-1 border-b border-border-subtle">
+          <span className="text-[9.5px] uppercase tracking-wide text-text-muted shrink-0">Master</span>
+          <input
+            type="range"
+            min={1}
+            max={100}
+            defaultValue={100}
+            onMouseUp={(ev) => {
+              const v = Number((ev.target as HTMLInputElement).value);
+              ids.filter((id) => id.startsWith("light.")).forEach((id) => {
+                opt(id, "on", { brightness: Math.round((v / 100) * 255) });
+                svc.mutate({ domain: "light", service: "turn_on", data: { entity_id: id, brightness_pct: v } });
+              });
+            }}
+            className="flex-1 accent-accent h-1 cursor-pointer"
+          />
+        </div>
+      )}
       <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 flex flex-col">
        <div className="my-auto w-full space-y-1">
         {ids.map((id) => {

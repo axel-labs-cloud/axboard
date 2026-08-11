@@ -204,6 +204,23 @@ export const isPowerSensor = (e: HassEntity) => {
 };
 export const isClimate = (e: HassEntity) => e.entity_id.startsWith("climate.");
 export const isCover = (e: HassEntity) => e.entity_id.startsWith("cover.");
+export const isMedia = (e: HassEntity) => e.entity_id.startsWith("media_player.");
+export const isLock = (e: HassEntity) => e.entity_id.startsWith("lock.");
+export const isVacuum = (e: HassEntity) => e.entity_id.startsWith("vacuum.");
+
+// Deep link to an entity's more-info / history in Home Assistant.
+export const moreInfoUrl = (base: string, id: string) => `${base}/history?entity_id=${encodeURIComponent(id)}`;
+
+// A small "open in Home Assistant" external-link button for widget headers.
+export function OpenInHass({ base, id }: { base: string; id: string }) {
+  return (
+    <a href={moreInfoUrl(base, id)} target="_blank" rel="noreferrer noopener" title="Open in Home Assistant" className="text-text-muted hover:text-accent shrink-0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+        <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      </svg>
+    </a>
+  );
+}
 export const isScene = (e: HassEntity) =>
   ["scene.", "script.", "button.", "automation.", "input_button."].some((p) => e.entity_id.startsWith(p));
 export const isSensor = (e: HassEntity) => e.entity_id.startsWith("sensor.") || e.entity_id.startsWith("binary_sensor.");

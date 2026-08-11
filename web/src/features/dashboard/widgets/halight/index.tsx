@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState, Meter } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isLight, friendly, isOn, Toggle } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isLight, friendly, isOn, Toggle, OpenInHass } from "../_hass";
 import type { HassOneConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -28,7 +28,15 @@ function LightComponent({ config }: WidgetProps<HassOneConfig>) {
   const dom = id.split(".")[0];
   const bright = e?.attributes?.brightness as number | undefined;
   const pct = bright != null ? Math.round((bright / 255) * 100) : null;
-  const dimmable = dom === "light" && (e?.attributes?.supported_color_modes?.some((m) => m !== "onoff") ?? bright != null);
+  const modes = (e?.attributes?.supported_color_modes as string[] | undefined) ?? [];
+  const dimmable = dom === "light" && (modes.some((m) => m !== "onoff") ?? bright != null);
+  const ctCapable = modes.includes("color_temp");
+  const rgbCapable = modes.some((m) => ["rgb", "rgbw", "rgbww", "hs", "xy"].includes(m));
+  const minK = (e?.attributes?.min_color_temp_kelvin as number | undefined) ?? 2000;
+  const maxK = (e?.attributes?.max_color_temp_kelvin as number | undefined) ?? 6500;
+  const curK = (e?.attributes?.color_temp_kelvin as number | undefined) ?? Math.round((minK + maxK) / 2);
+  const setK = (k: number) => { opt(id, "on", { color_temp_kelvin: k }); svc.mutate({ domain: "light", service: "turn_on", data: { entity_id: id, color_temp_kelvin: k } }); };
+  const setRgb = (rgb: [number, number, number]) => { opt(id, "on", { rgb_color: rgb }); svc.mutate({ domain: "light", service: "turn_on", data: { entity_id: id, rgb_color: rgb } }); };
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -36,17 +44,20 @@ function LightComponent({ config }: WidgetProps<HassOneConfig>) {
         icon={<BulbGlyph on={on} />}
         title={config?.title?.trim() || friendly(e, id)}
         right={
-          <Toggle
-            on={on}
-            disabled={!e}
-            onClick={() => {
-              opt(id, on ? "off" : "on");
-              svc.mutate({ domain: dom, service: "toggle", data: { entity_id: id } });
-            }}
-          />
+          <span className="flex items-center gap-2">
+            <OpenInHass base={b} id={id} />
+            <Toggle
+              on={on}
+              disabled={!e}
+              onClick={() => {
+                opt(id, on ? "off" : "on");
+                svc.mutate({ domain: dom, service: "toggle", data: { entity_id: id } });
+              }}
+            />
+          </span>
         }
       />
-      <div className="flex-1 min-h-0 overflow-hidden px-3 py-2 flex flex-col justify-center">
+      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col justify-center gap-2.5">
         {dimmable ? (
           <div>
             <div className="flex items-center justify-between text-[10px] text-text-muted mb-1">
@@ -76,6 +87,36 @@ function LightComponent({ config }: WidgetProps<HassOneConfig>) {
           <div className="flex items-center gap-2">
             <Meter pct={on ? 100 : 0} color={on ? "var(--color-degraded)" : "var(--color-border)"} />
             <span className={`text-[11px] font-mono shrink-0 ${on ? "text-degraded" : "text-text-muted"}`}>{on ? "on" : "off"}</span>
+          </div>
+        )}
+        {ctCapable && (
+          <div>
+            <div className="text-[10px] text-text-muted mb-1">Warmth</div>
+            <input
+              type="range"
+              min={minK}
+              max={maxK}
+              step={100}
+              key={curK}
+              defaultValue={curK}
+              onMouseUp={(ev) => setK(Number((ev.target as HTMLInputElement).value))}
+              onTouchEnd={(ev) => setK(Number((ev.target as HTMLInputElement).value))}
+              className="w-full h-1.5 cursor-pointer rounded-full appearance-none"
+              style={{ background: "linear-gradient(90deg,#ffb04d,#fff,#bcd8ff)" }}
+            />
+          </div>
+        )}
+        {rgbCapable && (
+          <div className="flex items-center gap-1.5">
+            {([[255,80,80],[255,170,60],[255,235,120],[110,220,120],[90,170,255],[190,120,255],[255,255,255]] as [number,number,number][]).map((c, i) => (
+              <button
+                key={i}
+                onClick={() => setRgb(c)}
+                title={`rgb(${c.join(",")})`}
+                className="w-5 h-5 rounded-full border border-white/20 hover:scale-110 transition-transform"
+                style={{ background: `rgb(${c[0]},${c[1]},${c[2]})` }}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -124,7 +165,7 @@ const definition: WidgetDefinition<HassOneConfig> = {
   minW: 2,
   minH: 1,
   maxW: 4,
-  maxH: 3,
+  maxH: 4,
   defaultW: 2,
   defaultH: 1,
   defaultConfig: {},

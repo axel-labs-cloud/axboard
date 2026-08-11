@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState, StatusDot } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useSharedHassCreds, EntityPicker, isSensor, friendly, isOn } from "../_hass";
+import { hbase, useHassStates, useSharedHassCreds, EntityPicker, isSensor, friendly, isOn, OpenInHass } from "../_hass";
 import type { HassOneConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -27,7 +27,7 @@ function SensorComponent({ config }: WidgetProps<HassOneConfig>) {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <WidgetHeader icon={GaugeIcon} title={config?.title?.trim() || friendly(e, id)} />
+      <WidgetHeader icon={GaugeIcon} title={config?.title?.trim() || friendly(e, id)} right={<OpenInHass base={b} id={id} />} />
       <div className="flex-1 min-h-0 overflow-hidden px-3 py-2 flex items-center justify-center">
         {binary ? (
           <span className="flex items-center gap-2">
