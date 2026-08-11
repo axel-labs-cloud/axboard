@@ -180,9 +180,10 @@ function MonitorConfigPanel({ config, save }: WidgetConfigProps<MonitorConfig>) 
             />
             <button
               onClick={() => set(targets.filter((_, j) => j !== i))}
+              aria-label="Remove target"
               className="w-6 shrink-0 flex items-center justify-center rounded text-text-muted hover:text-danger"
             >
-              ×
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="w-3.5 h-3.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
             </button>
           </div>
         ))}

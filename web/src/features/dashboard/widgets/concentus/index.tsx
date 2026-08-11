@@ -465,7 +465,7 @@ function Empty({ hint, variant = "muted" }: { hint: string; variant?: "muted" | 
         strokeWidth="1.5"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={`w-6 h-6 ${variant === "error" ? "text-rose-400/80" : "text-text-muted/60"}`}
+        className={`w-6 h-6 ${variant === "error" ? "text-down/80" : "text-text-muted/60"}`}
       >
         <path d="M9 18V5l12-2v13" />
         <circle cx="6" cy="18" r="3" />

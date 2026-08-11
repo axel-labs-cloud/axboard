@@ -37,8 +37,11 @@ function BatteryComponent(_: WidgetProps<BatteryConfig>) {
           <div key={b.name} className="space-y-1.5">
             <div className="flex items-baseline justify-between text-[11px]">
               <span className="text-text-muted uppercase tracking-wide truncate">{b.name}</span>
-              <span className="font-mono tabular-nums font-semibold" style={{ color }}>
-                {b.pct}%{charging ? " ⚡" : ""}
+              <span className="font-mono tabular-nums font-semibold inline-flex items-center gap-1" style={{ color }}>
+                {b.pct}%
+                {charging && (
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 shrink-0" aria-label="charging"><path d="M13 2 3 14h7l-1 8 10-12h-7l1-8Z" /></svg>
+                )}
               </span>
             </div>
             <div className="relative flex items-center gap-1">

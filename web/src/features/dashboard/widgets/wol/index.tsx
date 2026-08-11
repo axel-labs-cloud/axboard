@@ -78,7 +78,7 @@ function WolComponent({ config }: WidgetProps<WolConfig>) {
               </svg>
               <span className="text-[11px] font-medium truncate max-w-full">{t.name}</span>
               <span className="text-[9px] font-mono text-text-muted">
-                {st === "sending" ? "sending…" : st === "ok" ? "sent ✓" : st === "err" ? "failed" : "wake"}
+                {st === "sending" ? "sending…" : st === "ok" ? "sent" : st === "err" ? "failed" : "wake"}
               </span>
             </button>
           );
@@ -112,7 +112,7 @@ function WolConfigPanel({ config, save }: WidgetConfigProps<WolConfig>) {
         <div key={i} className="space-y-1.5 rounded border border-border-subtle p-2">
           <div className="flex gap-1.5">
             <input value={t.name} onChange={(e) => set(i, { name: e.target.value })} placeholder="Name" className="flex-1 px-2 py-1 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent" />
-            <button onClick={() => remove(i)} className="px-2 text-text-muted hover:text-down text-[12px]">✕</button>
+            <button onClick={() => remove(i)} aria-label="Remove device" className="px-2 text-text-muted hover:text-down inline-flex items-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="w-3.5 h-3.5"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
           </div>
           <input value={t.mac} onChange={(e) => set(i, { mac: e.target.value })} placeholder="AA:BB:CC:DD:EE:FF" className="w-full px-2 py-1 rounded bg-bg-card border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent" />
           <input value={t.broadcast ?? ""} onChange={(e) => set(i, { broadcast: e.target.value })} placeholder="broadcast (optional, e.g. 10.10.0.255)" className="w-full px-2 py-1 rounded bg-bg-card border border-border text-[11px] text-text font-mono focus:outline-none focus:border-accent" />

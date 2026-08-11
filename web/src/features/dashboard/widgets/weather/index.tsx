@@ -119,7 +119,7 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-full text-rose-400 text-[11px] p-3 text-center">
+      <div className="flex items-center justify-center h-full text-down text-[11px] p-3 text-center">
         Weather fetch failed: {(error as Error).message}
       </div>
     );

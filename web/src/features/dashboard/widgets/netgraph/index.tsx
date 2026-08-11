@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
@@ -63,6 +63,12 @@ function NetGraphComponent({ config, save }: WidgetProps<NetGraphConfig>) {
   const rx = useRef<number[]>([]);
   const tx = useRef<number[]>([]);
   const [, tick] = useState(0);
+  // Unique gradient ids per instance (hoisted above the early return so the
+  // hook runs every render) — fixed ids bleed colours between two netgraph
+  // widgets sharing one <defs> namespace.
+  const gid = useId().replace(/:/g, "");
+  const inId = `ng-in-${gid}`;
+  const outId = `ng-out-${gid}`;
   const { data, isError } = useQuery({ queryKey: ["host"], queryFn: api.getHost, refetchInterval: POLL_MS });
 
   useEffect(() => {
@@ -110,11 +116,11 @@ function NetGraphComponent({ config, save }: WidgetProps<NetGraphConfig>) {
       )}
       <svg width={w} height={chartH} className="w-full flex-1" preserveAspectRatio="none" viewBox={`0 0 ${w} ${chartH}`}>
         <defs>
-          <linearGradient id="ng-in" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={inId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={inColor} stopOpacity="0.5" />
             <stop offset="1" stopColor={inColor} stopOpacity="0.04" />
           </linearGradient>
-          <linearGradient id="ng-out" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={outId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={outColor} stopOpacity="0.5" />
             <stop offset="1" stopColor={outColor} stopOpacity="0.04" />
           </linearGradient>
@@ -124,18 +130,18 @@ function NetGraphComponent({ config, save }: WidgetProps<NetGraphConfig>) {
         ))}
         {style === "mirror" ? (
           <>
-            <path d={inP.fill} fill="url(#ng-in)" />
+            <path d={inP.fill} fill={`url(#${inId})`} />
             <path d={inP.line} fill="none" stroke={inColor} strokeWidth="1.75" style={{ filter: `drop-shadow(0 0 3px ${inColor})` }} />
             <g transform={`translate(0,${chartH / 2})`}>
-              <path d={outP.fill} fill="url(#ng-out)" />
+              <path d={outP.fill} fill={`url(#${outId})`} />
               <path d={outP.line} fill="none" stroke={outColor} strokeWidth="1.75" style={{ filter: `drop-shadow(0 0 3px ${outColor})` }} />
             </g>
           </>
         ) : (
           <>
-            <path d={outP.fill} fill="url(#ng-out)" />
+            <path d={outP.fill} fill={`url(#${outId})`} />
             <path d={outP.line} fill="none" stroke={outColor} strokeWidth="1.75" style={{ filter: `drop-shadow(0 0 3px ${outColor})` }} />
-            <path d={inP.fill} fill="url(#ng-in)" />
+            <path d={inP.fill} fill={`url(#${inId})`} />
             <path d={inP.line} fill="none" stroke={inColor} strokeWidth="1.75" style={{ filter: `drop-shadow(0 0 3px ${inColor})` }} />
           </>
         )}

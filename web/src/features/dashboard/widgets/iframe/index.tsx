@@ -167,12 +167,12 @@ function IframeConfigPanel({ config, save }: WidgetConfigProps<IframeConfig>) {
           placeholder="https://grafana.example.com/d/foo"
           className={`w-full px-2.5 py-1.5 text-[12px] font-mono bg-bg-card border rounded text-text focus:outline-none ${
             urlInvalid
-              ? "border-rose-500/50 focus:border-rose-500"
+              ? "border-down/60 focus:border-down"
               : "border-border focus:border-accent/50"
           }`}
         />
         {urlInvalid && (
-          <span className="text-[10px] text-rose-400">
+          <span className="text-[10px] text-down">
             Needs to be an http:// or https:// URL.
           </span>
         )}

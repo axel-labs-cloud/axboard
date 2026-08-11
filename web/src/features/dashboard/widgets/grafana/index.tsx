@@ -32,7 +32,7 @@ function GrafanaComponent({ config, editing }: WidgetProps<GrafanaConfig>) {
   const src = `${url}${url.includes("?") ? "&" : "?"}_n=${nonce}`;
   const title = config?.title?.trim();
   return (
-    <div className="relative h-full w-full bg-black/20 flex flex-col">
+    <div className="relative h-full w-full bg-bg flex flex-col">
       {title && (
         <div className="shrink-0 px-3 py-1.5 text-[12px] font-medium text-text-secondary border-b border-border-subtle truncate">
           {title}

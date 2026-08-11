@@ -62,7 +62,7 @@ function CountdownComponent({ config, h }: WidgetProps<CountdownConfig>) {
         {cell(p.m, "min")}
         {cell(p.s, "sec")}
       </div>
-      <div className={`text-[10px] uppercase tracking-wider ${past ? "text-amber-400" : "text-text-muted"}`}>
+      <div className={`text-[10px] uppercase tracking-wider ${past ? "text-degraded" : "text-text-muted"}`}>
         {past ? "elapsed" : "remaining"}
       </div>
     </div>

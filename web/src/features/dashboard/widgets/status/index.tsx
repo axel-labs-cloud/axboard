@@ -127,10 +127,10 @@ function ServiceDetail({ name, points, certExpiry, certIssuer, certNotBefore, wi
 
   return createPortal(
     <div className="fixed inset-0 z-[400] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label={`${name} status`} className="w-[min(420px,92vw)] rounded-xl bg-bg-elevated border border-border shadow-2xl ring-1 ring-white/5 p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+      <div role="dialog" aria-modal="true" aria-label={`${name} status`} className="w-[min(420px,92vw)] rounded-xl bg-bg-elevated border border-border shadow-2xl ring-1 ring-border-subtle p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <span className="text-[14px] font-semibold text-text truncate">{name}</span>
-          <button onClick={onClose} className="text-text-muted hover:text-text text-[13px]">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-text-muted hover:text-text inline-flex items-center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="w-4 h-4"><path d="M18 6 6 18M6 6l12 12" /></svg></button>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {[

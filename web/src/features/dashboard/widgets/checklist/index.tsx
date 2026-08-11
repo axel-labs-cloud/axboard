@@ -62,14 +62,14 @@ function ChecklistComponent({ config, save }: WidgetProps<ChecklistConfig>) {
         {items.map((item, i) => (
           <div
             key={i}
-            className="flex items-center gap-2.5 py-1.5 group min-h-[22px] border-b border-white/[0.04] last:border-b-0"
+            className="flex items-center gap-2.5 py-1.5 group min-h-[22px] border-b border-border-subtle last:border-b-0"
           >
             <button
               onClick={() => toggle(i)}
               className={`w-[18px] h-[18px] rounded-sm border-2 flex items-center justify-center shrink-0 transition-all ${
                 item.done
                   ? "bg-accent border-accent"
-                  : "border-[#555] hover:border-accent"
+                  : "border-border hover:border-accent"
               }`}
             >
               {item.done && (
@@ -80,7 +80,7 @@ function ChecklistComponent({ config, save }: WidgetProps<ChecklistConfig>) {
                   strokeWidth="3"
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  className="w-3 h-3 text-white"
+                  className="w-3 h-3 text-bg"
                 >
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
@@ -132,7 +132,7 @@ function ChecklistComponent({ config, save }: WidgetProps<ChecklistConfig>) {
           />
           <button
             onClick={addItem}
-            className="w-7 h-7 flex items-center justify-center rounded bg-accent/10 text-accent hover:bg-accent hover:text-white active:bg-accent-hover transition-colors shrink-0 cursor-pointer"
+            className="w-7 h-7 flex items-center justify-center rounded bg-accent/10 text-accent hover:bg-accent hover:text-bg active:bg-accent-hover transition-colors shrink-0 cursor-pointer"
             title="Add item"
           >
             <svg
