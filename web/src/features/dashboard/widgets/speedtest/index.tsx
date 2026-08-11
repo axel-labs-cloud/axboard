@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { useSize } from "../useSize";
+import { timeAgo } from "../../../../lib/time";
 import type {
   SpeedTestConfig,
   WidgetConfigProps,
@@ -23,6 +24,7 @@ interface Result {
   down: number; // Mbps
   up: number; // Mbps
   ping: number; // ms
+  t?: number; // epoch ms when the run finished
 }
 
 // Measure latency as the best of a few tiny downloads (TTFB-ish).
@@ -114,12 +116,12 @@ function SpeedTestComponent({ config }: WidgetProps<SpeedTestConfig>) {
       const ping = await measurePing(ac.signal);
       setPhase("download");
       // Two passes; keep the faster to shed connection warm-up.
-      const d1 = await measureDown(10_000_000, ac.signal);
-      const d2 = await measureDown(25_000_000, ac.signal);
+      const d1 = await measureDown(25_000_000, ac.signal); // warm-up
+      const d2 = await measureDown(100_000_000, ac.signal); // timed
       setPhase("upload");
-      const u1 = await measureUp(5_000_000, ac.signal);
-      const u2 = await measureUp(10_000_000, ac.signal);
-      const r: Result = { down: Math.max(d1, d2), up: Math.max(u1, u2), ping };
+      const u1 = await measureUp(10_000_000, ac.signal); // warm-up
+      const u2 = await measureUp(25_000_000, ac.signal); // timed
+      const r: Result = { down: Math.max(d1, d2), up: Math.max(u1, u2), ping, t: Date.now() };
       setResult(r);
       setHistory((h) => {
         const next = [...h, r].slice(-30);
@@ -183,6 +185,25 @@ function SpeedTestComponent({ config }: WidgetProps<SpeedTestConfig>) {
             <span className="font-mono">{Math.max(...history.map((h) => h.down)).toFixed(0)} peak</span>
           </div>
           <Sparkline vals={history.map((h) => h.down)} color="var(--color-up, #10b981)" w={box.w - 24} />
+        </div>
+      )}
+
+      {!compact && history.length >= 1 && box.h >= 210 && (
+        <div className="w-full px-1">
+          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-x-3 text-[10.5px] font-mono tabular-nums">
+            <span className="uppercase tracking-wide text-text-muted">When</span>
+            <span className="uppercase tracking-wide text-text-muted text-right">↓ Mbps</span>
+            <span className="uppercase tracking-wide text-text-muted text-right">↑ Mbps</span>
+            <span className="uppercase tracking-wide text-text-muted text-right">Ping</span>
+            {[...history].reverse().slice(0, 5).map((r, i) => (
+              <Fragment key={i}>
+                <span className="text-text-muted truncate">{r.t ? timeAgo(r.t) : "—"}</span>
+                <span className="text-up text-right">{r.down.toFixed(0)}</span>
+                <span className="text-accent text-right">{r.up.toFixed(0)}</span>
+                <span className="text-text-secondary text-right">{r.ping.toFixed(0)}</span>
+              </Fragment>
+            ))}
+          </div>
         </div>
       )}
 

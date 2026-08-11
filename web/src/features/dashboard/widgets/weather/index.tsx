@@ -206,7 +206,7 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
   );
 
   // Next ~12 hours from the current hour (only when enabled + room to show it).
-  const showHourly = !!config?.hourly && (tall || (wide && !tall));
+  const showHourly = !!config?.hourly && tall; // needs h>=3; at 2H it overflows
   const HourlyStrip = (() => {
     const hr = data.hourly;
     if (!hr?.time?.length) return null;

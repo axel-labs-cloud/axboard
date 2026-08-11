@@ -574,7 +574,10 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
   .name{min-width:0;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .nwrap{flex:1;min-width:0;display:flex;align-items:center;gap:7px}
   .crit{font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--down);border:1px solid color-mix(in srgb,var(--down) 45%,transparent);border-radius:5px;padding:1px 5px;flex:none}
-  .cert{font-size:10px;padding:2px 6px;border-radius:6px;background:rgba(245,158,11,.15);color:var(--deg)}
+  .cert{font-size:10px;padding:2px 6px;border-radius:6px;background:rgba(245,158,11,.15);color:var(--deg);white-space:nowrap}
+  /* Fixed trailing slot so the bar strips line up across every row whether or
+     not a cert badge is present. */
+  .certcell{flex:none;width:84px;display:flex;justify-content:flex-end}
   .cert.exp{background:rgba(244,63,94,.15);color:var(--down)}
   .bars{display:flex;gap:3px;align-items:stretch;height:26px;flex:1;min-width:90px;max-width:360px}
   .bars span{flex:1;border-radius:2px;background:var(--line);min-width:4px}
@@ -624,10 +627,10 @@ var statusPageTmpl = template.Must(template.New("status").Parse(`<!doctype html>
         <span class="dot {{.Status}}"></span>
         <span class="nwrap"><span class="name">{{.Name}}</span>{{if .Critical}}<span class="crit" title="Critical service">critical</span>{{end}}</span>
         {{if .Bars}}<span class="bars">{{range .Bars}}<span class="{{.}}"></span>{{end}}</span>{{end}}
-        {{if .HasCert}}<span class="cert {{if lt .CertDays 0}}exp{{else if le .CertDays 14}}exp{{end}}">{{if lt .CertDays 0}}cert expired{{else}}cert {{.CertDays}}d{{end}}</span>{{end}}
         {{if .HasMS}}<span class="ms">{{.AvgMS}}ms</span>{{end}}
         {{if .HasUptime}}<span class="pct">{{.UptimePct}}%</span>{{end}}
         <span class="st {{.Status}}">{{.StatusText}}</span>
+        <span class="certcell">{{if .HasCert}}<span class="cert {{if lt .CertDays 0}}exp{{else if le .CertDays 14}}exp{{end}}">{{if lt .CertDays 0}}cert expired{{else}}cert {{.CertDays}}d{{end}}</span>{{end}}</span>
       </div>
       {{end}}
     </div>
