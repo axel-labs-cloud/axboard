@@ -55,7 +55,10 @@ export type WidgetType =
   | "pbs"
   | "traefik"
   | "tailscale"
-  | "notify";
+  | "notify"
+  | "halights"
+  | "hafan"
+  | "hapower";
 
 export type WidgetCategory = "productivity" | "system" | "services" | "network" | "external";
 
@@ -564,6 +567,31 @@ export interface NotifyConfig {
   title?: string;
 }
 
+/** Home Assistant lights — toggle + brightness for the chosen light entities. */
+export interface HassLightsConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:8123
+  token?: string; // long-lived access token
+  entities?: string[]; // light.* (or switch.*) entity ids
+  title?: string;
+}
+
+/** Home Assistant fan — on/off + speed for a single fan entity. */
+export interface HassFanConfig {
+  baseUrl?: string;
+  token?: string;
+  entity?: string; // fan.* entity id
+  title?: string;
+}
+
+/** Home Assistant power — live power/energy sensor readouts. */
+export interface HassPowerConfig {
+  baseUrl?: string;
+  token?: string;
+  entities?: string[]; // sensor.* (power/energy) entity ids
+  max?: number; // watts for the current-draw bar scale (default 3000)
+  title?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -620,6 +648,9 @@ export type WidgetConfigByType = {
   traefik: TraefikConfig;
   tailscale: TailscaleConfig;
   notify: NotifyConfig;
+  halights: HassLightsConfig;
+  hafan: HassFanConfig;
+  hapower: HassPowerConfig;
 };
 
 export type AnyWidgetConfig = Partial<

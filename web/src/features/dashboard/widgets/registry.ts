@@ -54,6 +54,9 @@ import pbs from "./pbs";
 import traefik from "./traefik";
 import tailscale from "./tailscale";
 import notify from "./notify";
+import halights from "./halights";
+import hafan from "./hafan";
+import hapower from "./hapower";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -111,6 +114,9 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   traefik,
   tailscale,
   notify,
+  halights,
+  hafan,
+  hapower,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

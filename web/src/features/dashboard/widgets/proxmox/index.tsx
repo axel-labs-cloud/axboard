@@ -73,12 +73,19 @@ function serverList(config?: ProxmoxConfig): ProxmoxServer[] {
   return list.filter((s) => s.baseUrl && s.tokenId && s.tokenSecret);
 }
 
-// Best-effort: latest backup ctime (unix seconds) per vmid across a server's
-// backup-capable datastores. Shared stores are queried once.
-async function fetchBackups(s: ProxmoxServer): Promise<Record<number, number>> {
+interface BkpInfo {
+  ctime?: number; // newest successful backup (unix seconds)
+  failed?: boolean; // most recent vzdump task for this guest errored
+}
+// Best-effort per-vmid backup state across a server: newest snapshot ctime from
+// each backup datastore, plus whether the latest vzdump *task* failed (queried
+// with errors=1 and attributed by the task's numeric id = vmid). Shared stores
+// are queried once. A guest with no snapshot and no failure is simply "none".
+async function fetchBackups(s: ProxmoxServer): Promise<Record<number, BkpInfo>> {
   const b = base(s.baseUrl);
   const headers = authHeader(s);
-  const latest: Record<number, number> = {};
+  const out: Record<number, BkpInfo> = {};
+  const at = (vmid: number) => (out[vmid] ??= {});
   const nodes = await api.fetchJson<{ data: { node: string; status: string }[] }>({
     url: `${b}/api2/json/nodes`,
     headers,
@@ -103,14 +110,34 @@ async function fetchBackups(s: ProxmoxServer): Promise<Record<number, number>> {
         });
         for (const it of content.data ?? []) {
           if (it.vmid == null || it.ctime == null) continue;
-          if ((latest[it.vmid] ?? 0) < it.ctime) latest[it.vmid] = it.ctime;
+          const cur = at(it.vmid);
+          if ((cur.ctime ?? 0) < it.ctime) cur.ctime = it.ctime;
         }
       } catch {
         /* ignore a store we can't read */
       }
     }
   }
-  return latest;
+  // Failed vzdump tasks — errors=1 returns only errored tasks; attribute by the
+  // task's numeric id (the vmid, for per-guest backups) and only flag when the
+  // failure is newer than the last good snapshot.
+  for (const n of online) {
+    try {
+      const tasks = await api.fetchJson<{ data: { id?: string; endtime?: number }[] }>({
+        url: `${b}/api2/json/nodes/${n.node}/tasks?typefilter=vzdump&errors=1&limit=100`,
+        headers,
+      });
+      for (const t of tasks.data ?? []) {
+        if (!t.id || !/^\d+$/.test(t.id) || t.endtime == null) continue;
+        const vmid = Number(t.id);
+        const cur = at(vmid);
+        if (!cur.ctime || t.endtime > cur.ctime) cur.failed = true;
+      }
+    } catch {
+      /* tasks may be unreadable — just skip failure detection */
+    }
+  }
+  return out;
 }
 
 // A full-width host resource bar (label above, fill below).
@@ -153,21 +180,27 @@ function Metric({ value, style }: { value: number; style: MetricStyle }) {
   );
 }
 
-// Backup-age chip: muted when fresh, amber >2d, red >7d or never.
-function BackupChip({ ctime }: { ctime?: number }) {
-  if (!ctime) {
+// Backup chip. Red only when the latest backup task FAILED; a guest with no
+// backup at all is shown quietly (a faint dash), not as an error. A present
+// backup shows its age in muted text.
+function BackupChip({ info }: { info?: BkpInfo }) {
+  if (info?.failed) {
     return (
-      <span className="w-12 shrink-0 text-right text-[10px] font-mono text-down/70" title="No backup found">
-        no bkp
+      <span className="w-12 shrink-0 text-right text-[10px] font-mono text-down" title="Last backup failed">
+        failed
       </span>
     );
   }
-  const days = (Date.now() / 1000 - ctime) / 86400;
-  const tone = days > 7 ? "text-down" : days > 2 ? "text-degraded" : "text-text-muted";
-  const label = timeAgoShort(ctime);
+  if (!info?.ctime) {
+    return (
+      <span className="w-12 shrink-0 text-right text-[10px] font-mono text-text-muted/35" title="No backups">
+        —
+      </span>
+    );
+  }
   return (
-    <span className={`w-12 shrink-0 text-right text-[10px] font-mono ${tone}`} title={`Last backup ${new Date(ctime * 1000).toLocaleString()}`}>
-      {label}
+    <span className="w-12 shrink-0 text-right text-[10px] font-mono text-text-muted" title={`Last backup ${new Date(info.ctime * 1000).toLocaleString()}`}>
+      {timeAgoShort(info.ctime)}
     </span>
   );
 }
@@ -213,8 +246,8 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
     queryKey: ["pve-backups", servers.map((s) => `${s.baseUrl}|${s.tokenId}`)],
     enabled: showBackups && servers.length > 0,
     refetchInterval: 300_000,
-    queryFn: async (): Promise<Record<number, number>[]> =>
-      Promise.all(servers.map((s) => fetchBackups(s).catch(() => ({}) as Record<number, number>))),
+    queryFn: async (): Promise<Record<number, BkpInfo>[]> =>
+      Promise.all(servers.map((s) => fetchBackups(s).catch(() => ({}) as Record<number, BkpInfo>))),
   });
 
   if (servers.length === 0) {
@@ -375,7 +408,7 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                             {g.type === "lxc" ? "CT" : "VM"}
                           </span>
                           <span className="text-[11.5px] text-text-secondary truncate flex-1">{g.name ?? g.vmid}</span>
-                          {showBackups && <BackupChip ctime={g.vmid != null ? bkp?.[g.vmid] : undefined} />}
+                          {showBackups && <BackupChip info={g.vmid != null ? bkp?.[g.vmid] : undefined} />}
                           {run ? (
                             <>
                               <Metric value={(g.cpu ?? 0) * 100} style={mStyle} />
