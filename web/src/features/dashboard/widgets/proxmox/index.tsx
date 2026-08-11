@@ -220,6 +220,9 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
   const showStorage = config?.showStorage !== false && !compact;
   const showBackups = config?.showBackups === true && showGuests;
   const mStyle: MetricStyle = config?.metricStyle ?? "both";
+  // Bars fill their whole column, so center the header over them; with a % the
+  // value sits at the right, so right-align the header there.
+  const hAlign = mStyle === "bar" ? "text-center" : "text-right";
 
   const { data, isLoading } = useQuery({
     queryKey: ["pve", servers.map((s) => `${s.baseUrl}|${s.tokenId}`)],
@@ -325,9 +328,9 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                 <div>
                   <div className="flex items-center text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">
                     <span className="flex-1">Nodes</span>
-                    <span className={`${MW} text-right`}>CPU</span>
-                    <span className={`${MW} text-right`}>RAM</span>
-                    <span className={`${MW} text-right`}>Disk</span>
+                    <span className={`${MW} ${hAlign}`}>CPU</span>
+                    <span className={`${MW} ${hAlign}`}>RAM</span>
+                    <span className={`${MW} ${hAlign}`}>Disk</span>
                   </div>
                   <div className="divide-y divide-border-subtle">
                     {nodes.map((n) => (
@@ -388,8 +391,8 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                   <div className="flex items-center text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">
                     <span className="flex-1">Guests · {guests.length}</span>
                     {showBackups && <span className="w-12 text-right">Bkp</span>}
-                    <span className={`${MW} text-right`}>CPU</span>
-                    <span className={`${MW} text-right`}>RAM</span>
+                    <span className={`${MW} ${hAlign}`}>CPU</span>
+                    <span className={`${MW} ${hAlign}`}>RAM</span>
                   </div>
                   <div className="divide-y divide-border-subtle">
                     {guests.map((g) => {

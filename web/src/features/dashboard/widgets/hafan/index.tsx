@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, friendly, isOn, Toggle } from "../_hass";
+import { hbase, useHassStates, useHassService, useSharedHassCreds, EntityPicker, isFan, friendly, isOn, Toggle } from "../_hass";
 import type { HassFanConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -80,13 +80,18 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
 }
 
 function FanConfigPanel({ config, save }: WidgetConfigProps<HassFanConfig>) {
+  useSharedHassCreds(config?.baseUrl, config?.token, save);
+  const b = hbase(config?.baseUrl);
   return (
     <div className="space-y-3">
-      <ConfigField label="Base URL" value={config?.baseUrl} onChange={(baseUrl) => save({ baseUrl })} placeholder="http://172.24.2.100:8123" />
-      <ConfigField label="Access token" value={config?.token} onChange={(token) => save({ token })} placeholder="long-lived token" hint="Profile → Security" />
-      <ConfigField label="Fan entity" value={config?.entity} onChange={(entity) => save({ entity })} placeholder="fan.ceiling" />
+      <ConfigField label="Base URL" value={config?.baseUrl} onChange={(baseUrl) => save({ baseUrl })} placeholder="http://172.24.2.100:8123" hint="shared" />
+      <ConfigField label="Access token" value={config?.token} onChange={(token) => save({ token })} placeholder="long-lived token" hint="shared" />
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Fan</label>
+        <EntityPicker base={b} token={config?.token?.trim() ?? ""} filter={isFan} multiple={false} value={config?.entity ? [config.entity] : []} onChange={(ids) => save({ entity: ids[0] })} />
+      </div>
       <ConfigField label="Title" value={config?.title} onChange={(title) => save({ title })} placeholder="Fan" mono={false} />
-      <p className="text-[11px] text-text-muted leading-snug">Presets/slider call fan.set_percentage. The token stays in your config.yaml.</p>
+      <p className="text-[11px] text-text-muted leading-snug">URL + token are shared across HA widgets — set them once. Presets/slider call fan.set_percentage.</p>
     </div>
   );
 }

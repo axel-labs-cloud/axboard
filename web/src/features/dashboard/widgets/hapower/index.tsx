@@ -2,7 +2,7 @@ import { WidgetHeader, EmptyState, ErrorState, Meter } from "../../../../compone
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { scaleColor } from "../colorScale";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, friendly } from "../_hass";
+import { hbase, useHassStates, useSharedHassCreds, EntityPicker, isPowerSensor, friendly } from "../_hass";
 import type { HassPowerConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -73,20 +73,19 @@ function PowerComponent({ config }: WidgetProps<HassPowerConfig>) {
 }
 
 function PowerConfigPanel({ config, save }: WidgetConfigProps<HassPowerConfig>) {
+  useSharedHassCreds(config?.baseUrl, config?.token, save);
+  const b = hbase(config?.baseUrl);
   return (
     <div className="space-y-3">
-      <ConfigField label="Base URL" value={config?.baseUrl} onChange={(baseUrl) => save({ baseUrl })} placeholder="http://172.24.2.100:8123" />
-      <ConfigField label="Access token" value={config?.token} onChange={(token) => save({ token })} placeholder="long-lived token" hint="Profile → Security" />
-      <ConfigField
-        label="Sensor entities"
-        value={(config?.entities ?? []).join(", ")}
-        onChange={(v) => save({ entities: v.split(",").map((s) => s.trim()).filter(Boolean) })}
-        placeholder="sensor.house_power, sensor.solar_power"
-        hint="comma-separated"
-      />
+      <ConfigField label="Base URL" value={config?.baseUrl} onChange={(baseUrl) => save({ baseUrl })} placeholder="http://172.24.2.100:8123" hint="shared" />
+      <ConfigField label="Access token" value={config?.token} onChange={(token) => save({ token })} placeholder="long-lived token" hint="shared" />
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Power / energy sensors</label>
+        <EntityPicker base={b} token={config?.token?.trim() ?? ""} filter={isPowerSensor} value={config?.entities ?? []} onChange={(entities) => save({ entities })} />
+      </div>
       <ConfigField label="Bar max (W)" value={config?.max != null ? String(config.max) : ""} onChange={(v) => save({ max: v ? Number(v) : undefined })} placeholder="3000" />
       <ConfigField label="Title" value={config?.title} onChange={(title) => save({ title })} placeholder="Power" mono={false} />
-      <p className="text-[11px] text-text-muted leading-snug">Power sensors (W/kW) get a draw bar; energy sensors show their value. Refreshes every 5s.</p>
+      <p className="text-[11px] text-text-muted leading-snug">URL + token are shared across HA widgets — set them once. Refreshes every 5s.</p>
     </div>
   );
 }

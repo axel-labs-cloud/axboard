@@ -3,6 +3,7 @@ import { api } from "../../../../api/client";
 import { WidgetHeader, EmptyState, ErrorState, StatTiles } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
+import { useSharedHassCreds } from "../_hass";
 import type { HomeAssistantConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -74,10 +75,11 @@ function HomeAssistantComponent({ config }: WidgetProps<HomeAssistantConfig>) {
 }
 
 function HomeAssistantConfigPanel({ config, save }: WidgetConfigProps<HomeAssistantConfig>) {
+  useSharedHassCreds(config?.baseUrl, config?.token, save);
   return (
     <div className="space-y-3">
-      <ConfigField label="Base URL" value={config?.baseUrl} onChange={(baseUrl) => save({ baseUrl })} placeholder="http://172.24.2.100:8123" />
-      <ConfigField label="Access token" value={config?.token} onChange={(token) => save({ token })} placeholder="long-lived token" hint="Profile → Security" />
+      <ConfigField label="Base URL" value={config?.baseUrl} onChange={(baseUrl) => save({ baseUrl })} placeholder="http://172.24.2.100:8123" hint="shared" />
+      <ConfigField label="Access token" value={config?.token} onChange={(token) => save({ token })} placeholder="long-lived token" hint="shared" />
       <ConfigField
         label="Pinned entities"
         value={(config?.entities ?? []).join(", ")}

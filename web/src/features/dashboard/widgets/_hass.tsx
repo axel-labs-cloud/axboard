@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client";
 
@@ -50,6 +51,110 @@ export function useHassService(base: string, token: string) {
 
 export const friendly = (e: HassEntity | undefined, id: string) => e?.attributes?.friendly_name ?? id;
 export const isOn = (s?: string) => s === "on" || s === "playing" || s === "home" || s === "open";
+
+// --- Shared connection ----------------------------------------------------
+// Home Assistant creds are entered once: any HA widget that has both a URL and
+// token remembers them in localStorage, and any HA widget opened with empty
+// creds auto-fills from that. So you configure one, and the rest inherit.
+const HASS_LS = "axboard.hass.connection";
+export function useSharedHassCreds(
+  baseUrl: string | undefined,
+  token: string | undefined,
+  save: (p: { baseUrl?: string; token?: string }) => void,
+) {
+  useEffect(() => {
+    if (!baseUrl && !token) {
+      try {
+        const s = JSON.parse(localStorage.getItem(HASS_LS) || "null");
+        if (s?.baseUrl && s?.token) save({ baseUrl: s.baseUrl, token: s.token });
+      } catch {
+        /* ignore */
+      }
+    }
+    // run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (baseUrl && token) {
+      try {
+        localStorage.setItem(HASS_LS, JSON.stringify({ baseUrl, token }));
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [baseUrl, token]);
+}
+
+// --- Entity picker --------------------------------------------------------
+// A checkbox list of HA entities (fetched live) filtered to a domain, so users
+// pick devices from a list instead of typing entity ids.
+export function EntityPicker({
+  base,
+  token,
+  filter,
+  value,
+  onChange,
+  multiple = true,
+}: {
+  base: string;
+  token: string;
+  filter: (e: HassEntity) => boolean;
+  value: string[];
+  onChange: (ids: string[]) => void;
+  multiple?: boolean;
+}) {
+  const ready = !!base && !!token;
+  const { data, isLoading, isError } = useHassStates(base, token, ready, 30_000);
+  if (!ready) return <p className="text-[11px] text-text-muted">Enter the URL and token to load devices.</p>;
+  if (isLoading) return <p className="text-[11px] text-text-muted">Loading devices…</p>;
+  if (isError || !data) return <p className="text-[11px] text-down">Couldn't load entities — check the URL/token.</p>;
+  const opts = data.filter(filter).sort((a, z) => friendly(a, a.entity_id).localeCompare(friendly(z, z.entity_id)));
+  const toggle = (id: string) => {
+    if (!multiple) return onChange([id]);
+    onChange(value.includes(id) ? value.filter((x) => x !== id) : [...value, id]);
+  };
+  return (
+    <div className="max-h-52 overflow-auto rounded border border-border divide-y divide-border-subtle">
+      {opts.length === 0 && <p className="text-[11px] text-text-muted p-2">No matching entities found.</p>}
+      {opts.map((e) => {
+        const sel = value.includes(e.entity_id);
+        return (
+          <button
+            key={e.entity_id}
+            onClick={() => toggle(e.entity_id)}
+            className={`w-full text-left px-2 py-1.5 flex items-center gap-2 hover:bg-bg-hover/60 transition-colors ${sel ? "bg-accent/10" : ""}`}
+          >
+            <span className={`w-3.5 h-3.5 ${multiple ? "rounded" : "rounded-full"} border shrink-0 flex items-center justify-center ${sel ? "bg-accent border-accent" : "border-border"}`}>
+              {sel && (
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+              )}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] text-text truncate">{friendly(e, e.entity_id)}</span>
+              <span className="block text-[10px] font-mono text-text-muted truncate">{e.entity_id}</span>
+            </span>
+            <span className="text-[10px] font-mono text-text-muted shrink-0">
+              {e.state}
+              {e.attributes?.unit_of_measurement ? ` ${e.attributes.unit_of_measurement}` : ""}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Entity-domain filters for the pickers.
+export const isLight = (e: HassEntity) => e.entity_id.startsWith("light.") || e.entity_id.startsWith("switch.");
+export const isFan = (e: HassEntity) => e.entity_id.startsWith("fan.");
+export const isPowerSensor = (e: HassEntity) => {
+  if (!e.entity_id.startsWith("sensor.")) return false;
+  const dc = e.attributes?.device_class;
+  const u = e.attributes?.unit_of_measurement;
+  return dc === "power" || dc === "energy" || ["W", "kW", "Wh", "kWh"].includes(u ?? "");
+};
 
 // A small on/off pill toggle.
 export function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {

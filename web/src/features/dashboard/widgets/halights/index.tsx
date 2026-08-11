@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, friendly, isOn, Toggle } from "../_hass";
+import { hbase, useHassStates, useHassService, useSharedHassCreds, EntityPicker, isLight, friendly, isOn, Toggle } from "../_hass";
 import type { HassLightsConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -79,19 +79,18 @@ function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
 }
 
 function LightsConfigPanel({ config, save }: WidgetConfigProps<HassLightsConfig>) {
+  useSharedHassCreds(config?.baseUrl, config?.token, save);
+  const b = hbase(config?.baseUrl);
   return (
     <div className="space-y-3">
-      <ConfigField label="Base URL" value={config?.baseUrl} onChange={(baseUrl) => save({ baseUrl })} placeholder="http://172.24.2.100:8123" />
-      <ConfigField label="Access token" value={config?.token} onChange={(token) => save({ token })} placeholder="long-lived token" hint="Profile → Security" />
-      <ConfigField
-        label="Light entities"
-        value={(config?.entities ?? []).join(", ")}
-        onChange={(v) => save({ entities: v.split(",").map((s) => s.trim()).filter(Boolean) })}
-        placeholder="light.kitchen, light.desk, switch.lamp"
-        hint="comma-separated"
-      />
+      <ConfigField label="Base URL" value={config?.baseUrl} onChange={(baseUrl) => save({ baseUrl })} placeholder="http://172.24.2.100:8123" hint="shared" />
+      <ConfigField label="Access token" value={config?.token} onChange={(token) => save({ token })} placeholder="long-lived token" hint="shared" />
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Lights</label>
+        <EntityPicker base={b} token={config?.token?.trim() ?? ""} filter={isLight} value={config?.entities ?? []} onChange={(entities) => save({ entities })} />
+      </div>
       <ConfigField label="Title" value={config?.title} onChange={(title) => save({ title })} placeholder="Lights" mono={false} />
-      <p className="text-[11px] text-text-muted leading-snug">Toggles and dims via /api/services. The token stays in your config.yaml.</p>
+      <p className="text-[11px] text-text-muted leading-snug">URL + token are shared across HA widgets — set them once. The token stays in your config.yaml.</p>
     </div>
   );
 }
