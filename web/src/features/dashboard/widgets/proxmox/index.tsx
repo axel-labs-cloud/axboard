@@ -1,31 +1,38 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
-import { WidgetHeader, EmptyState, ErrorState, StatusDot, Meter } from "../../../../components/widget";
+import { WidgetHeader, EmptyState, StatusDot, Meter } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { scaleColor } from "../colorScale";
-import type { ProxmoxConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
+import type { ProxmoxConfig, ProxmoxServer, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
-// Proxmox VE widget — one /cluster/resources call returns every node, VM and
-// LXC with live CPU / memory / disk, so we render the whole cluster from a
-// single request (PVEAPIToken auth via the shared /api/fetch proxy).
+// Proxmox VE widget — one or more PVE endpoints. Each /cluster/resources call
+// returns every node, VM and LXC with live CPU / memory / disk; results merge
+// into one panel. Node names open the PVE UI; guests open their noVNC console.
+// Auth: a PVEAPIToken (create it WITHOUT privilege separation, or give the
+// token PVEAuditor on /) forwarded via the shared /api/fetch proxy.
 // ---------------------------------------------------------------------------
 
 interface Res {
   id: string;
-  type: string; // node | qemu | lxc | storage | sdn | pool
+  type: string; // node | qemu | lxc | storage | …
   node?: string;
-  status?: string; // online/offline (node) · running/stopped (guest)
+  status?: string;
   name?: string;
   vmid?: number;
   template?: number;
-  cpu?: number; // 0..1 fraction of maxcpu
-  maxcpu?: number; // cores
-  mem?: number; // bytes
+  cpu?: number; // 0..1
+  maxcpu?: number;
+  mem?: number;
   maxmem?: number;
   disk?: number;
   maxdisk?: number;
   uptime?: number;
+}
+interface ServerResult {
+  server: ProxmoxServer;
+  resources: Res[];
+  error: string | null;
 }
 
 const CPU_OPTS = { lo: 0, hi: 100, warn: 75, crit: 90 };
@@ -41,13 +48,32 @@ const uptime = (s?: number) => {
   const h = Math.floor((s % 86400) / 3600);
   return d > 0 ? `${d}d ${h}h` : `${h}h`;
 };
+const hostOf = (u?: string) => {
+  try {
+    return new URL(u ?? "").hostname;
+  } catch {
+    return u ?? "";
+  }
+};
+const consoleUrl = (s: ProxmoxServer, g: Res) =>
+  `${base(s.baseUrl)}/?console=${g.type === "lxc" ? "lxc" : "kvm"}&novnc=1&vmid=${g.vmid}&node=${g.node}&resize=off`;
+
+// Normalise config → a list of complete servers (honours the legacy single-server fields).
+function serverList(config?: ProxmoxConfig): ProxmoxServer[] {
+  const list = config?.servers?.length
+    ? config.servers
+    : config?.baseUrl
+      ? [{ baseUrl: config.baseUrl, tokenId: config.tokenId, tokenSecret: config.tokenSecret }]
+      : [];
+  return list.filter((s) => s.baseUrl && s.tokenId && s.tokenSecret);
+}
 
 function Bar({ label, value }: { label: string; value: number }) {
   return (
     <div className="min-w-0">
       <div className="flex items-baseline justify-between text-[9.5px] text-text-muted leading-none mb-1">
-        <span>{label}</span>
-        <span className="font-mono tabular-nums text-text-secondary">{value.toFixed(0)}%</span>
+        <span className="truncate">{label}</span>
+        <span className="font-mono tabular-nums text-text-secondary shrink-0">{value.toFixed(0)}%</span>
       </div>
       <Meter pct={value} color={scaleColor(value, undefined, CPU_OPTS)} />
     </div>
@@ -55,126 +81,185 @@ function Bar({ label, value }: { label: string; value: number }) {
 }
 
 function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
-  const b = base(config?.baseUrl);
-  const tokenId = config?.tokenId?.trim();
-  const secret = config?.tokenSecret?.trim();
+  const servers = serverList(config);
   const title = config?.title?.trim() || "Proxmox";
-  const ready = !!b && !!tokenId && !!secret;
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["pve", b, tokenId],
-    enabled: ready,
+  const { data, isLoading } = useQuery({
+    queryKey: ["pve", servers.map((s) => `${s.baseUrl}|${s.tokenId}`)],
+    enabled: servers.length > 0,
     refetchInterval: 10_000,
-    queryFn: () =>
-      api.fetchJson<{ data: Res[] }>({
-        url: `${b}/api2/json/cluster/resources`,
-        headers: { Authorization: `PVEAPIToken=${tokenId}=${secret}` },
-      }),
+    queryFn: (): Promise<ServerResult[]> =>
+      Promise.all(
+        servers.map(async (s): Promise<ServerResult> => {
+          try {
+            const r = await api.fetchJson<{ data: Res[] }>({
+              url: `${base(s.baseUrl)}/api2/json/cluster/resources`,
+              headers: { Authorization: `PVEAPIToken=${s.tokenId}=${s.tokenSecret}` },
+            });
+            return { server: s, resources: r.data ?? [], error: null };
+          } catch (e) {
+            return { server: s, resources: [], error: (e as Error).message };
+          }
+        }),
+      ),
   });
 
-  if (!ready) {
+  if (servers.length === 0) {
     return (
       <EmptyState
         icon={PveIcon}
         title="Connect Proxmox"
-        hint="Set the API URL (https://host:8006), an API token id (user@realm!name) and its secret in config."
+        hint="Add a server: API URL (https://host:8006), a token id (user@realm!name) and its secret."
       />
     );
   }
-  if (isError) return <ErrorState message={(error as Error)?.message ?? "Could not reach the PVE API."} onRetry={() => refetch()} />;
-  if (isLoading) return <SkeletonLines rows={4} />;
+  if (isLoading || !data) return <SkeletonLines rows={4} />;
 
-  const all = data?.data ?? [];
-  const nodes = all.filter((r) => r.type === "node").sort((a, z) => (a.node ?? "").localeCompare(z.node ?? ""));
-  const guests = all
-    .filter((r) => (r.type === "qemu" || r.type === "lxc") && !r.template)
-    .sort((a, z) => (z.status === "running" ? 1 : 0) - (a.status === "running" ? 1 : 0) || (a.name ?? "").localeCompare(z.name ?? ""));
-  const running = guests.filter((g) => g.status === "running").length;
+  const guestsOf = (rs: Res[]) => rs.filter((r) => (r.type === "qemu" || r.type === "lxc") && !r.template);
+  const allGuests = data.flatMap((d) => guestsOf(d.resources));
+  const running = allGuests.filter((g) => g.status === "running").length;
+  const multi = data.length > 1;
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <WidgetHeader
         icon={PveIcon}
         title={title}
-        right={<span className="text-[11px] font-mono text-text-muted">{running}/{guests.length} up</span>}
+        right={<span className="text-[11px] font-mono text-text-muted">{running}/{allGuests.length} up</span>}
       />
       <div className="flex-1 min-h-0 overflow-auto px-2.5 pb-2 space-y-2">
-        {nodes.map((n) => (
-          <div key={n.id} className="rounded-lg bg-bg-card/40 border border-border-subtle/50 p-2">
-            <div className="flex items-center gap-2 mb-1.5">
-              <StatusDot status={n.status === "online" ? "up" : "down"} size="md" title={n.status} />
-              <span className="text-[12px] text-text font-medium truncate flex-1">{n.node}</span>
-              <span className="text-[10px] font-mono text-text-muted shrink-0">
-                {n.maxcpu ?? 0}c{uptime(n.uptime) ? ` · ${uptime(n.uptime)}` : ""}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-2.5">
-              <Bar label="CPU" value={(n.cpu ?? 0) * 100} />
-              <Bar label={`RAM ${gb(n.mem)}/${gb(n.maxmem)}`} value={pct(n.mem, n.maxmem)} />
-              <Bar label="Disk" value={pct(n.disk, n.maxdisk)} />
-            </div>
-          </div>
-        ))}
-
-        {guests.length > 0 && (
-          <div className="pt-0.5">
-            <div className="text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">
-              Guests · {guests.length}
-            </div>
-            <div className="divide-y divide-border-subtle">
-              {guests.map((g) => {
-                const run = g.status === "running";
-                return (
-                  <div key={g.id} className="flex items-center gap-2 py-1">
-                    <StatusDot status={run ? "up" : "unknown"} size="sm" title={g.status} />
-                    <span className="text-[9px] font-mono px-1 py-px rounded bg-bg-elevated text-text-muted shrink-0">
-                      {g.type === "lxc" ? "CT" : "VM"}
+        {data.map((d, si) => {
+          const nodes = d.resources.filter((r) => r.type === "node").sort((a, z) => (a.node ?? "").localeCompare(z.node ?? ""));
+          const guests = guestsOf(d.resources).sort(
+            (a, z) => (z.status === "running" ? 1 : 0) - (a.status === "running" ? 1 : 0) || (a.name ?? "").localeCompare(z.name ?? ""),
+          );
+          const label = d.server.name?.trim() || hostOf(d.server.baseUrl);
+          return (
+            <div key={si} className="space-y-2">
+              {multi && (
+                <div className="text-[10px] uppercase tracking-wide text-text-muted/80 px-0.5 pt-1 font-semibold">{label}</div>
+              )}
+              {d.error && (
+                <div className="text-[11px] text-down px-1 py-1.5">{label}: {d.error}</div>
+              )}
+              {nodes.map((n) => (
+                <div key={n.id} className="rounded-lg bg-bg-card/40 border border-border-subtle/50 p-2">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <StatusDot status={n.status === "online" ? "up" : "down"} size="md" title={n.status} />
+                    <a
+                      href={base(d.server.baseUrl)}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      className="text-[12px] text-text font-medium truncate flex-1 hover:text-accent focus-visible:outline-none focus-visible:underline"
+                      title="Open PVE web UI"
+                    >
+                      {n.node}
+                    </a>
+                    <span className="text-[10px] font-mono text-text-muted shrink-0">
+                      {n.maxcpu ?? 0}c{uptime(n.uptime) ? ` · ${uptime(n.uptime)}` : ""}
                     </span>
-                    <span className="text-[11.5px] text-text-secondary truncate flex-1" title={`${g.name ?? g.vmid} · ${g.node}`}>
-                      {g.name ?? g.vmid}
-                    </span>
-                    {run ? (
-                      <span className="text-[10px] font-mono tabular-nums text-text-muted shrink-0">
-                        {((g.cpu ?? 0) * 100).toFixed(0)}% · {pct(g.mem, g.maxmem).toFixed(0)}%
-                      </span>
-                    ) : (
-                      <span className="text-[10px] text-text-muted/60 shrink-0">stopped</span>
-                    )}
                   </div>
-                );
-              })}
+                  <div className="grid grid-cols-3 gap-2.5">
+                    <Bar label="CPU" value={(n.cpu ?? 0) * 100} />
+                    <Bar label={`RAM ${gb(n.mem)}/${gb(n.maxmem)}`} value={pct(n.mem, n.maxmem)} />
+                    <Bar label="Disk" value={pct(n.disk, n.maxdisk)} />
+                  </div>
+                </div>
+              ))}
+
+              {guests.length > 0 && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">Guests · {guests.length}</div>
+                  <div className="divide-y divide-border-subtle">
+                    {guests.map((g) => {
+                      const run = g.status === "running";
+                      return (
+                        <a
+                          key={g.id}
+                          href={consoleUrl(d.server, g)}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          title={`Open ${g.name ?? g.vmid} console`}
+                          className="flex items-center gap-2 py-1 hover:bg-bg-hover/60 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 -mx-1 px-1"
+                        >
+                          <StatusDot status={run ? "up" : "unknown"} size="sm" title={g.status} />
+                          <span className="text-[9px] font-mono px-1 py-px rounded bg-bg-elevated text-text-muted shrink-0">
+                            {g.type === "lxc" ? "CT" : "VM"}
+                          </span>
+                          <span className="text-[11.5px] text-text-secondary truncate flex-1">{g.name ?? g.vmid}</span>
+                          {run ? (
+                            <span className="text-[10px] font-mono tabular-nums text-text-muted shrink-0">
+                              {((g.cpu ?? 0) * 100).toFixed(0)}% · {pct(g.mem, g.maxmem).toFixed(0)}%
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-text-muted/60 shrink-0">stopped</span>
+                          )}
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          );
+        })}
       </div>
     </div>
   );
 }
 
 function ProxmoxConfigPanel({ config, save }: WidgetConfigProps<ProxmoxConfig>) {
-  const F = (label: string, key: keyof ProxmoxConfig, ph: string, mono = true, hint?: string) => (
-    <div className="space-y-1.5">
-      <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold flex items-center gap-2">
-        {label}
-        {hint && <span className="normal-case tracking-normal text-text-muted/70 font-normal">{hint}</span>}
-      </label>
-      <input
-        value={(config?.[key] as string) ?? ""}
-        onChange={(e) => save({ [key]: e.target.value } as Partial<ProxmoxConfig>)}
-        placeholder={ph}
-        className={`w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent ${mono ? "font-mono" : ""}`}
-      />
-    </div>
+  // Seed from legacy single-server fields the first time.
+  const servers: ProxmoxServer[] =
+    config?.servers ?? (config?.baseUrl ? [{ baseUrl: config.baseUrl, tokenId: config.tokenId, tokenSecret: config.tokenSecret }] : [{}]);
+
+  const setServer = (i: number, patch: Partial<ProxmoxServer>) =>
+    save({ servers: servers.map((s, j) => (j === i ? { ...s, ...patch } : s)), baseUrl: undefined, tokenId: undefined, tokenSecret: undefined });
+  const addServer = () => save({ servers: [...servers, {}] });
+  const removeServer = (i: number) => save({ servers: servers.filter((_, j) => j !== i) });
+
+  const inp = (v: string | undefined, on: (s: string) => void, ph: string, mono = true) => (
+    <input
+      value={v ?? ""}
+      onChange={(e) => on(e.target.value)}
+      placeholder={ph}
+      className={`w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent ${mono ? "font-mono" : ""}`}
+    />
   );
+
   return (
     <div className="space-y-3">
-      {F("API URL", "baseUrl", "https://10.10.0.31:8006")}
-      {F("Token ID", "tokenId", "root@pam!axboard")}
-      {F("Token secret", "tokenSecret", "xxxxxxxx-xxxx-…")}
-      {F("Title", "title", "Proxmox", false)}
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Title</label>
+        {inp(config?.title, (title) => save({ title }), "Proxmox", false)}
+      </div>
+
+      {servers.map((s, i) => (
+        <div key={i} className="rounded-lg border border-border-subtle p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Server {i + 1}</span>
+            {servers.length > 1 && (
+              <button onClick={() => removeServer(i)} aria-label="Remove server" className="text-text-muted hover:text-down inline-flex">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="w-3.5 h-3.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
+              </button>
+            )}
+          </div>
+          {inp(s.name, (name) => setServer(i, { name }), "Label (optional)", false)}
+          {inp(s.baseUrl, (baseUrl) => setServer(i, { baseUrl }), "https://10.10.0.31:8006")}
+          {inp(s.tokenId, (tokenId) => setServer(i, { tokenId }), "root@pam!axboard")}
+          {inp(s.tokenSecret, (tokenSecret) => setServer(i, { tokenSecret }), "token secret")}
+        </div>
+      ))}
+
+      <button
+        onClick={addServer}
+        className="w-full px-2 py-2 rounded border border-dashed border-border text-text-muted hover:text-text hover:border-text-muted text-[12px] transition-colors"
+      >
+        + Add server
+      </button>
       <p className="text-[11px] text-text-muted leading-snug">
-        Create a read-only API token in PVE: Datacenter → Permissions → API Tokens. Give it{" "}
-        <span className="font-mono">PVEAuditor</span> on <span className="font-mono">/</span>. The secret stays in your config.yaml.
+        Create the API token WITHOUT privilege separation (or grant the token <span className="font-mono">PVEAuditor</span> on <span className="font-mono">/</span>).
+        Secrets stay in your config.yaml.
       </p>
     </div>
   );
@@ -194,7 +279,7 @@ const definition: WidgetDefinition<ProxmoxConfig> = {
   title: "Proxmox",
   icon: PveIcon,
   category: "infrastructure",
-  description: "Proxmox VE cluster — nodes + VMs/LXC with live CPU / RAM / disk.",
+  description: "Proxmox VE — nodes + VMs/LXC with live CPU / RAM / disk. Multiple servers; click to open the console.",
   minW: 2,
   minH: 2,
   maxW: 8,

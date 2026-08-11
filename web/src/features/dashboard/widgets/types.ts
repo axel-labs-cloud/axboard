@@ -396,12 +396,22 @@ export interface WolConfig {
   title?: string;
 }
 
-/** Proxmox VE widget — nodes + VMs/LXC with live resource usage. */
-export interface ProxmoxConfig {
+/** One Proxmox endpoint (a standalone node or any node of a cluster). */
+export interface ProxmoxServer {
+  name?: string; // optional label; falls back to the host
   baseUrl?: string; // e.g. https://10.10.0.31:8006
   tokenId?: string; // user@realm!tokenid
   tokenSecret?: string; // the token UUID
+}
+
+/** Proxmox VE widget — one or more servers; nodes + VMs/LXC with live usage. */
+export interface ProxmoxConfig {
+  servers?: ProxmoxServer[];
   title?: string;
+  // Legacy single-server fields (pre-multi); still honoured as one server.
+  baseUrl?: string;
+  tokenId?: string;
+  tokenSecret?: string;
 }
 
 /** Sonarr/Radarr widget — download queue + upcoming calendar via the *arr v3 API. */
