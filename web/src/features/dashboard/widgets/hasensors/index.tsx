@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState, StatusDot } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useSharedHassCreds, EntityPicker, isSensor, friendly, isOn } from "../_hass";
+import { hbase, useHassStates, useSharedHassCreds, useTileFit, EntityPicker, isSensor, friendly, isOn } from "../_hass";
 import type { HassSensorsConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -9,7 +9,7 @@ import type { HassSensorsConfig, WidgetConfigProps, WidgetDefinition, WidgetProp
 // (temperature, humidity, doors, motion, …). Binary sensors show a state dot.
 // ---------------------------------------------------------------------------
 
-function SensorsComponent({ config, h }: WidgetProps<HassSensorsConfig>) {
+function SensorsComponent({ config }: WidgetProps<HassSensorsConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const title = config?.title?.trim() || "Sensors";
@@ -17,6 +17,7 @@ function SensorsComponent({ config, h }: WidgetProps<HassSensorsConfig>) {
   const ready = !!b && !!token && ids.length > 0;
 
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready, 15_000);
+  const { ref, compact } = useTileFit();
 
   if (!b || !token) return <EmptyState icon={GaugeIcon} title="Connect Sensors" hint="Set the base URL, a long-lived token and pick sensors." />;
   if (ids.length === 0) return <EmptyState icon={GaugeIcon} title="Pick sensors" hint="Add sensor.* / binary_sensor.* entities in this widget's config." />;
@@ -25,14 +26,14 @@ function SensorsComponent({ config, h }: WidgetProps<HassSensorsConfig>) {
 
   const byId = new Map(data.map((e) => [e.entity_id, e]));
 
-  // Compact single-row layout for short (1-row) tiles: show the first sensor.
-  if (h <= 1) {
+  // Compact single-row layout only when the tile is genuinely too short.
+  if (compact) {
     const first = ids[0];
     const e = byId.get(first);
     const unit = e?.attributes?.unit_of_measurement;
     const binary = first.startsWith("binary_sensor.");
     return (
-      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+      <div ref={ref} className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
         {binary && <StatusDot status={isOn(e?.state) ? "up" : "unknown"} size="sm" />}
         <span className="text-[12px] text-text-secondary truncate flex-1" title={first}>{friendly(e, first)}</span>
         <span className="text-[12.5px] font-mono tabular-nums text-text shrink-0">
@@ -44,10 +45,10 @@ function SensorsComponent({ config, h }: WidgetProps<HassSensorsConfig>) {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={GaugeIcon} title={title} />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5">
-        <div className="divide-y divide-border-subtle">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 flex flex-col">
+        <div className="divide-y divide-border-subtle my-auto w-full">
           {ids.map((id) => {
             const e = byId.get(id);
             const binary = id.startsWith("binary_sensor.");

@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isFan, friendly, isOn, Toggle } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, useTileFit, EntityPicker, isFan, friendly, isOn, Toggle } from "../_hass";
 import type { HassFanConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -15,7 +15,7 @@ const PRESETS = [
   { label: "High", pct: 100 },
 ];
 
-function FanComponent({ config, h }: WidgetProps<HassFanConfig>) {
+function FanComponent({ config }: WidgetProps<HassFanConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const id = config?.entity?.trim();
@@ -25,6 +25,7 @@ function FanComponent({ config, h }: WidgetProps<HassFanConfig>) {
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
   const svc = useHassService(b, token ?? "");
   const opt = useHassOptimistic(b, token ?? "");
+  const { ref, compact } = useTileFit();
   const setPct = (p: number) => {
     if (!id) return;
     opt(id, "on", { percentage: p });
@@ -43,10 +44,10 @@ function FanComponent({ config, h }: WidgetProps<HassFanConfig>) {
     svc.mutate({ domain: "fan", service: "toggle", data: { entity_id: id } });
   };
 
-  // Compact single-row layout for short (1-row) tiles.
-  if (h <= 1) {
+  // Compact single-row layout only when the tile is genuinely too short.
+  if (compact) {
     return (
-      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+      <div ref={ref} className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
         <FanSpin on={on} />
         <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
         <div className="flex gap-1 shrink-0">
@@ -70,13 +71,13 @@ function FanComponent({ config, h }: WidgetProps<HassFanConfig>) {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader
         icon={FanIcon}
         title={title}
         right={<span className="text-[11px] font-mono text-text-muted">{on ? (pct != null ? `${pct}%` : "on") : "off"}</span>}
       />
-      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col gap-2.5">
+      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col justify-center gap-2.5">
         <div className="flex items-center gap-2">
           <FanSpin on={on} />
           <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>

@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useSharedHassCreds, EntityPicker, isScene, friendly } from "../_hass";
+import { hbase, useHassStates, useHassService, useSharedHassCreds, useTileFit, EntityPicker, isScene, friendly } from "../_hass";
 import type { HassScenesConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ const serviceFor = (id: string): { domain: string; service: string } => {
   return { domain, service: "turn_on" };
 };
 
-function ScenesComponent({ config, h }: WidgetProps<HassScenesConfig>) {
+function ScenesComponent({ config }: WidgetProps<HassScenesConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const title = config?.title?.trim() || "Scenes";
@@ -26,6 +26,7 @@ function ScenesComponent({ config, h }: WidgetProps<HassScenesConfig>) {
 
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
   const svc = useHassService(b, token ?? "");
+  const { ref, compact } = useTileFit();
 
   if (!b || !token) return <EmptyState icon={SceneIcon} title="Connect Scenes" hint="Set the base URL, a long-lived token and pick scenes/scripts." />;
   if (ids.length === 0) return <EmptyState icon={SceneIcon} title="Pick scenes" hint="Add scene.* / script.* / button.* entities in this widget's config." />;
@@ -38,10 +39,10 @@ function ScenesComponent({ config, h }: WidgetProps<HassScenesConfig>) {
     svc.mutate({ domain: s.domain, service: s.service, data: { entity_id: id } });
   };
 
-  // Compact single-row layout for short (1-row) tiles: horizontal button strip.
-  if (h <= 1) {
+  // Compact single-row layout only when the tile is genuinely too short.
+  if (compact) {
     return (
-      <div className="h-full flex items-center gap-1.5 px-2.5 overflow-x-auto">
+      <div ref={ref} className="h-full flex items-center gap-1.5 px-2.5 overflow-x-auto">
         {ids.map((id) => (
           <button
             key={id}
@@ -57,10 +58,10 @@ function ScenesComponent({ config, h }: WidgetProps<HassScenesConfig>) {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={SceneIcon} title={title} />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2">
-        <div className="grid grid-cols-2 gap-1.5">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 flex flex-col">
+        <div className="grid grid-cols-2 gap-1.5 my-auto w-full">
           {ids.map((id) => {
             const s = serviceFor(id);
             return (

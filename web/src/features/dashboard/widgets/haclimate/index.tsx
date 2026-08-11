@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isClimate, friendly } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, useTileFit, EntityPicker, isClimate, friendly } from "../_hass";
 import type { HassClimateConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -19,7 +19,7 @@ const MODE_TONE: Record<string, string> = {
   off: "text-text-muted",
 };
 
-function ClimateComponent({ config, h }: WidgetProps<HassClimateConfig>) {
+function ClimateComponent({ config }: WidgetProps<HassClimateConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const id = config?.entity?.trim();
@@ -29,6 +29,7 @@ function ClimateComponent({ config, h }: WidgetProps<HassClimateConfig>) {
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
   const svc = useHassService(b, token ?? "");
   const opt = useHassOptimistic(b, token ?? "");
+  const { ref, compact } = useTileFit();
 
   if (!b || !token || !id) return <EmptyState icon={ThermoIcon} title="Connect Thermostat" hint="Set the base URL, a long-lived token and a climate.* entity id." />;
   if (isError) return <ErrorState message={(error as Error)?.message ?? "Could not reach Home Assistant."} onRetry={() => refetch()} />;
@@ -61,10 +62,10 @@ function ClimateComponent({ config, h }: WidgetProps<HassClimateConfig>) {
       </button>
     );
 
-  // Compact single-row layout for short (1-row) tiles.
-  if (h <= 1) {
+  // Compact single-row layout only when the tile is genuinely too short.
+  if (compact) {
     return (
-      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+      <div ref={ref} className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
         <span className={`shrink-0 ${MODE_TONE[mode] ?? "text-text-muted"}`}>{ThermoIcon}</span>
         <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
         {cur != null && <span className="text-[11px] font-mono text-text-muted tabular-nums shrink-0">{cur.toFixed(1)}{unit}</span>}
@@ -76,9 +77,9 @@ function ClimateComponent({ config, h }: WidgetProps<HassClimateConfig>) {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={ThermoIcon} title={title} right={<span className={`text-[11px] font-mono capitalize ${MODE_TONE[mode] ?? "text-text-muted"}`}>{mode.replace("_", " ")}</span>} />
-      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 space-y-2.5">
+      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col justify-center gap-2.5">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <div className="text-[11px] text-text-muted truncate">{friendly(e, id)}</div>

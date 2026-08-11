@@ -2,7 +2,7 @@ import { WidgetHeader, EmptyState, ErrorState, Meter } from "../../../../compone
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { scaleColor } from "../colorScale";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useSharedHassCreds, EntityPicker, isPowerSensor, friendly } from "../_hass";
+import { hbase, useHassStates, useSharedHassCreds, useTileFit, EntityPicker, isPowerSensor, friendly } from "../_hass";
 import type { HassPowerConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -24,7 +24,7 @@ function fmtW(w: number): string {
   return w >= 1000 ? `${(w / 1000).toFixed(2)} kW` : `${w.toFixed(0)} W`;
 }
 
-function PowerComponent({ config, h }: WidgetProps<HassPowerConfig>) {
+function PowerComponent({ config }: WidgetProps<HassPowerConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const title = config?.title?.trim() || "Power";
@@ -33,6 +33,7 @@ function PowerComponent({ config, h }: WidgetProps<HassPowerConfig>) {
   const ready = !!b && !!token && ids.length > 0;
 
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready, 5_000);
+  const { ref, compact } = useTileFit();
 
   if (!b || !token) return <EmptyState icon={BoltIcon} title="Connect Power" hint="Set the base URL, a long-lived token and pick power/energy sensors." />;
   if (ids.length === 0) return <EmptyState icon={BoltIcon} title="Pick sensors" hint="Add sensor.* power/energy entity ids in this widget's config." />;
@@ -48,10 +49,10 @@ function PowerComponent({ config, h }: WidgetProps<HassPowerConfig>) {
   });
   const totalW = rows.reduce((n, r) => n + (r.w ?? 0), 0);
 
-  // Compact single-row layout for short (1-row) tiles.
-  if (h <= 1) {
+  // Compact single-row layout only when the tile is genuinely too short.
+  if (compact) {
     return (
-      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+      <div ref={ref} className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
         <span className="shrink-0 text-degraded">{BoltIcon}</span>
         <span className="text-[12px] text-text-secondary truncate flex-1">{title}</span>
         <span className="text-[14px] font-semibold font-mono tabular-nums text-degraded shrink-0">{fmtW(totalW)}</span>
@@ -60,9 +61,9 @@ function PowerComponent({ config, h }: WidgetProps<HassPowerConfig>) {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={BoltIcon} title={title} right={totalW > 0 ? <span className="text-[11px] font-mono text-degraded">{fmtW(totalW)}</span> : undefined} />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 space-y-2">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 flex flex-col justify-center gap-2">
         {rows.map((r) => (
           <div key={r.id}>
             <div className="flex items-baseline gap-2">

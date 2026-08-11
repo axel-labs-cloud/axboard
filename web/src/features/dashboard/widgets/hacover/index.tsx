@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isCover, friendly } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, useTileFit, EntityPicker, isCover, friendly } from "../_hass";
 import type { HassCoverConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -9,7 +9,7 @@ import type { HassCoverConfig, WidgetConfigProps, WidgetDefinition, WidgetProps 
 // blinds, garage doors, curtains. Uses cover.open_cover/close_cover/stop_cover.
 // ---------------------------------------------------------------------------
 
-function CoverComponent({ config, h }: WidgetProps<HassCoverConfig>) {
+function CoverComponent({ config }: WidgetProps<HassCoverConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const title = config?.title?.trim() || "Covers";
@@ -19,6 +19,7 @@ function CoverComponent({ config, h }: WidgetProps<HassCoverConfig>) {
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
   const svc = useHassService(b, token ?? "");
   const opt = useHassOptimistic(b, token ?? "");
+  const { ref, compact } = useTileFit();
 
   if (!b || !token) return <EmptyState icon={CoverIcon} title="Connect Covers" hint="Set the base URL, a long-lived token and pick cover entities." />;
   if (ids.length === 0) return <EmptyState icon={CoverIcon} title="Pick covers" hint="Add cover.* entity ids in this widget's config." />;
@@ -31,13 +32,13 @@ function CoverComponent({ config, h }: WidgetProps<HassCoverConfig>) {
     svc.mutate({ domain: "cover", service, data: { entity_id: id } });
   };
 
-  // Compact single-row layout for short (1-row) tiles: first cover's controls.
-  if (h <= 1) {
+  // Compact single-row layout only when the tile is genuinely too short.
+  if (compact) {
     const id = ids[0];
     const e = byId.get(id);
     const st = e?.state ?? "";
     return (
-      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+      <div ref={ref} className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
         <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>
           {friendly(e, id)}{ids.length > 1 ? ` +${ids.length - 1}` : ""}
         </span>
@@ -51,9 +52,9 @@ function CoverComponent({ config, h }: WidgetProps<HassCoverConfig>) {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={CoverIcon} title={title} />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 space-y-1.5">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 flex flex-col justify-center gap-1.5">
         {ids.map((id) => {
           const e = byId.get(id);
           const pos = e?.attributes?.current_position as number | undefined;

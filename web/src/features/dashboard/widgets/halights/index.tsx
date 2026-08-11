@@ -1,7 +1,7 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isLight, friendly, isOn, Toggle } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, useTileFit, EntityPicker, isLight, friendly, isOn, Toggle } from "../_hass";
 import type { HassLightsConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -9,7 +9,7 @@ import type { HassLightsConfig, WidgetConfigProps, WidgetDefinition, WidgetProps
 // entities via /api/services. Shares the deduped /api/states query.
 // ---------------------------------------------------------------------------
 
-function LightsComponent({ config, h }: WidgetProps<HassLightsConfig>) {
+function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const title = config?.title?.trim() || "Lights";
@@ -19,6 +19,7 @@ function LightsComponent({ config, h }: WidgetProps<HassLightsConfig>) {
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
   const svc = useHassService(b, token ?? "");
   const opt = useHassOptimistic(b, token ?? "");
+  const { ref, compact } = useTileFit();
 
   if (!b || !token) return <EmptyState icon={BulbIcon} title="Connect Lights" hint="Set the base URL, a long-lived token and pick light entities." />;
   if (ids.length === 0) return <EmptyState icon={BulbIcon} title="Pick entities" hint="Add light.* (or switch.*) entity ids in this widget's config." />;
@@ -37,10 +38,10 @@ function LightsComponent({ config, h }: WidgetProps<HassLightsConfig>) {
       svc.mutate({ domain: domainOf(id), service: target ? "turn_on" : "turn_off", data: { entity_id: id } });
     });
 
-  // Compact single-row layout for short (1-row) tiles.
-  if (h <= 1) {
+  // Compact single-row layout only when the tile is genuinely too short.
+  if (compact) {
     return (
-      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+      <div ref={ref} className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
         <BulbIcon2 on={anyOn} />
         <span className="text-[12px] text-text-secondary truncate flex-1" title={ids.join(", ")}>
           {ids.length === 1 ? friendly(byId.get(ids[0]), ids[0]) : `${onCount}/${ids.length} on`}
@@ -51,7 +52,7 @@ function LightsComponent({ config, h }: WidgetProps<HassLightsConfig>) {
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader
         icon={BulbIcon}
         title={title}
@@ -70,7 +71,8 @@ function LightsComponent({ config, h }: WidgetProps<HassLightsConfig>) {
           </button>
         }
       />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 space-y-1">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 flex flex-col">
+       <div className="my-auto w-full space-y-1">
         {ids.map((id) => {
           const e = byId.get(id);
           const on = isOn(e?.state);
@@ -115,6 +117,7 @@ function LightsComponent({ config, h }: WidgetProps<HassLightsConfig>) {
             </div>
           );
         })}
+       </div>
       </div>
     </div>
   );

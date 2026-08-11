@@ -3,7 +3,7 @@ import { api } from "../../../../api/client";
 import { WidgetHeader, EmptyState, ErrorState, StatTiles } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { useSharedHassCreds } from "../_hass";
+import { useSharedHassCreds, useTileFit } from "../_hass";
 import type { HomeAssistantConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -21,12 +21,13 @@ interface Entity {
 const base = (u?: string) => (u ?? "").trim().replace(/\/+$/, "");
 const onState = (s: string) => s === "on" || s === "home" || s === "open" || s === "playing";
 
-function HomeAssistantComponent({ config, h }: WidgetProps<HomeAssistantConfig>) {
+function HomeAssistantComponent({ config }: WidgetProps<HomeAssistantConfig>) {
   const b = base(config?.baseUrl);
   const title = config?.title?.trim() || "Home Assistant";
   const token = config?.token?.trim();
   const pinned = config?.entities ?? [];
   const ready = !!b && !!token;
+  const { ref, compact } = useTileFit();
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ["hass", b, token],
@@ -43,10 +44,10 @@ function HomeAssistantComponent({ config, h }: WidgetProps<HomeAssistantConfig>)
   const count = (prefix: string) => data.filter((e) => e.entity_id.startsWith(prefix) && onState(e.state)).length;
   const peopleHome = data.filter((e) => e.entity_id.startsWith("person.") && e.state === "home").length;
 
-  // Compact single-row summary for short (1-row) tiles.
-  if (h <= 1) {
+  // Compact single-row summary only when the tile is genuinely too short.
+  if (compact) {
     return (
-      <div className="h-full flex items-center gap-2.5 px-2.5 overflow-hidden text-[12px]">
+      <div ref={ref} className="h-full flex items-center gap-2.5 px-2.5 overflow-hidden text-[12px]">
         <span className="shrink-0 text-text-muted">{HomeIcon}</span>
         <span className="text-text-secondary">{peopleHome} home</span>
         <span className="text-text-muted/40">·</span>
@@ -58,9 +59,9 @@ function HomeAssistantComponent({ config, h }: WidgetProps<HomeAssistantConfig>)
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={HomeIcon} title={title} />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 space-y-2.5">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 flex flex-col justify-center gap-2.5">
         <StatTiles
           tiles={[
             { label: "Home", value: String(peopleHome), color: peopleHome > 0 ? "var(--color-up)" : undefined },

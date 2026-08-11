@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../api/client";
 
@@ -8,6 +8,23 @@ import { api } from "../../../api/client";
 // /api/services/{domain}/{service} then refresh that shared query.
 
 export const hbase = (u?: string) => (u ?? "").trim().replace(/\/+$/, "");
+
+// Measures a tile's real pixel height so a widget can pick a layout that fills
+// the space — grid rows vary wildly in pixels across screen widths, so a
+// row-count heuristic doesn't work. `compact` is true only when the tile is
+// genuinely too short for the full layout.
+export function useTileFit(threshold = 112) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [px, setPx] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => setPx(entries[0].contentRect.height));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return { ref, compact: px > 0 && px < threshold };
+}
 
 export interface HassEntity {
   entity_id: string;
