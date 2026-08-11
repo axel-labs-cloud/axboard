@@ -39,7 +39,8 @@ export type WidgetType =
   | "battery"
   | "grafana"
   | "wol"
-  | "arr";
+  | "arr"
+  | "proxmox";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -395,6 +396,14 @@ export interface WolConfig {
   title?: string;
 }
 
+/** Proxmox VE widget — nodes + VMs/LXC with live resource usage. */
+export interface ProxmoxConfig {
+  baseUrl?: string; // e.g. https://10.10.0.31:8006
+  tokenId?: string; // user@realm!tokenid
+  tokenSecret?: string; // the token UUID
+  title?: string;
+}
+
 /** Sonarr/Radarr widget — download queue + upcoming calendar via the *arr v3 API. */
 export interface ArrConfig {
   kind?: "sonarr" | "radarr";
@@ -444,6 +453,7 @@ export type WidgetConfigByType = {
   grafana: GrafanaConfig;
   wol: WolConfig;
   arr: ArrConfig;
+  proxmox: ProxmoxConfig;
 };
 
 export type AnyWidgetConfig = Partial<

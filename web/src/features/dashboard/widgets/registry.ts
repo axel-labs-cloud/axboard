@@ -38,6 +38,7 @@ import battery from "./battery";
 import grafana from "./grafana";
 import wol from "./wol";
 import arr from "./arr";
+import proxmox from "./proxmox";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -79,6 +80,7 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   grafana,
   wol,
   arr,
+  proxmox,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {
