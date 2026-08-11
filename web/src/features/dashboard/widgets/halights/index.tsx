@@ -95,12 +95,13 @@ function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
                   }}
                 />
               </div>
-              {on && dimmable && (
+              {dimmable && (
                 <input
                   type="range"
                   min={1}
                   max={100}
-                  defaultValue={pct ?? 100}
+                  key={`${on}-${pct}`}
+                  defaultValue={pct ?? (on ? 100 : 1)}
                   onMouseUp={(ev) => {
                     const v = Number((ev.target as HTMLInputElement).value);
                     opt(id, "on", { brightness: Math.round((v / 100) * 255) });
@@ -111,7 +112,7 @@ function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
                     opt(id, "on", { brightness: Math.round((v / 100) * 255) });
                     svc.mutate({ domain: "light", service: "turn_on", data: { entity_id: id, brightness_pct: v } });
                   }}
-                  className="w-full mt-1.5 accent-accent h-1 cursor-pointer"
+                  className={`w-full mt-1.5 accent-accent h-1 cursor-pointer ${on ? "" : "opacity-50"}`}
                 />
               )}
             </div>

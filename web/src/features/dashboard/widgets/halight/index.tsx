@@ -47,17 +47,18 @@ function LightComponent({ config }: WidgetProps<HassOneConfig>) {
         }
       />
       <div className="flex-1 min-h-0 overflow-hidden px-3 py-2 flex flex-col justify-center">
-        {on && dimmable ? (
+        {dimmable ? (
           <div>
             <div className="flex items-center justify-between text-[10px] text-text-muted mb-1">
               <span>Brightness</span>
-              {pct != null && <span className="font-mono text-text-secondary">{pct}%</span>}
+              <span className="font-mono text-text-secondary">{on ? (pct != null ? `${pct}%` : "on") : "off"}</span>
             </div>
             <input
               type="range"
               min={1}
               max={100}
-              defaultValue={pct ?? 100}
+              key={`${on}-${pct}`}
+              defaultValue={pct ?? (on ? 100 : 1)}
               onMouseUp={(ev) => {
                 const v = Number((ev.target as HTMLInputElement).value);
                 opt(id, "on", { brightness: Math.round((v / 100) * 255) });
