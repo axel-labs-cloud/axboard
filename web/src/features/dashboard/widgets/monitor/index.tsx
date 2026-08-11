@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
+import { WidgetHeader, WIDGET_HEADER_H, StatusDot } from "../../../../components/widget";
 import type {
   MonitorConfig,
   MonitorTarget,
@@ -87,7 +88,7 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
             return editing ? (
               <span key={t.url} title={title} className={cls} />
             ) : (
-              <a key={t.url} href={t.url} target="_blank" rel="noreferrer" title={title} className={`${cls} hover:ring-2 hover:ring-white/30`} />
+              <a key={t.url} href={t.url} target="_blank" rel="noreferrer" title={title} className={`${cls} hover:ring-2 hover:ring-accent/40`} />
             );
           })}
         </div>
@@ -99,7 +100,7 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
   // them stretch to fill so there's no scrollbar and no big blank gap.
   const rank = (r: Ping | undefined) => (r === undefined ? 1 : r.ok ? 2 : 0);
   const sorted = [...rows].sort((a, b) => rank(a.r) - rank(b.r));
-  const HEADER_H = 34;
+  const HEADER_H = WIDGET_HEADER_H;
   const ROW_H = 21;
   const visible = Math.max(1, Math.floor((box.h - HEADER_H) / ROW_H));
   const shown = sorted.slice(0, visible);
@@ -107,16 +108,16 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
 
   return (
     <div ref={box.ref} className="h-full flex flex-col overflow-hidden">
-      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1 shrink-0" style={{ height: HEADER_H }}>
-        <span className="text-text-muted shrink-0">{MonitorIcon}</span>
-        {Count}
-        {down > 0 && <span className="ml-auto text-[11px] font-mono text-down shrink-0">{down} down</span>}
-      </div>
+      <WidgetHeader
+        icon={MonitorIcon}
+        title={Count}
+        right={down > 0 ? <span className="text-[11px] font-mono text-down">{down} down</span> : undefined}
+      />
       <div className="flex-1 min-h-0 flex flex-col px-2 divide-y divide-border-subtle">
         {shown.map(({ t, r }) => {
           const inner = (
             <>
-              <span className={`w-2 h-2 rounded-full shrink-0 ${dotClass(r)}`} />
+              <StatusDot status={r === undefined ? undefined : r.ok ? "up" : "down"} size="md" />
               <div className="min-w-0 flex-1">
                 <div className="text-[12px] text-text-secondary truncate leading-tight">{t.name || host(t.url)}</div>
                 {showHost && t.name && box.h / visible > 30 && (

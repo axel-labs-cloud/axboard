@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
+import { WidgetHeader, WIDGET_HEADER_H, StatusDot, ErrorState } from "../../../../components/widget";
 import type {
   ContainersConfig,
   WidgetConfigProps,
@@ -15,15 +16,15 @@ import type {
 // otherwise. Liveness only, per the design.
 // ---------------------------------------------------------------------------
 
-function stateDot(state: string): string {
+function stateTone(state: string): "up" | "degraded" | "down" {
   switch (state) {
     case "running":
-      return "bg-up";
+      return "up";
     case "paused":
     case "created":
-      return "bg-degraded";
+      return "degraded";
     default:
-      return "bg-down"; // exited, dead…
+      return "down"; // exited, dead…
   }
 }
 
@@ -96,8 +97,8 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
 
   if (isError || data?.error) {
     return (
-      <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/70 text-[11px] px-3 text-center">
-        {data?.error ?? (error as Error)?.message ?? "Cannot reach the container socket."}
+      <div ref={box.ref} className="h-full">
+        <ErrorState message={data?.error ?? (error as Error)?.message ?? "Cannot reach the container socket."} />
       </div>
     );
   }
@@ -125,7 +126,7 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
         {Count}
         <div className="flex flex-wrap gap-1.5">
           {list.map((c) => (
-            <span key={c.name} title={`${c.name} · ${c.state}`} className={`w-2 h-2 rounded-full ${stateDot(c.state)}`} />
+            <StatusDot key={c.name} status={stateTone(c.state)} size="md" title={`${c.name} · ${c.state}`} />
           ))}
         </div>
       </div>
@@ -133,7 +134,7 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
   }
 
   // Fit to height: show as many containers as fit and distribute to fill.
-  const HEADER_H = 40;
+  const HEADER_H = WIDGET_HEADER_H;
   const ROW_H = cols > 1 ? 44 : stats || showSub ? 34 : 28;
   const perCol = Math.max(1, Math.floor((box.h - HEADER_H) / ROW_H));
   const shown = list.slice(0, perCol * cols);
@@ -141,11 +142,11 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
 
   return (
     <div ref={box.ref} className="h-full flex flex-col overflow-hidden">
-      <div className="flex items-center gap-2 px-3 pt-2.5 pb-1.5 shrink-0" style={{ height: HEADER_H }}>
-        <span className="text-text-muted shrink-0">{ContainersIcon}</span>
-        {Count}
-        {hidden > 0 && <span className="ml-auto text-[10px] font-mono text-text-muted">+{hidden}</span>}
-      </div>
+      <WidgetHeader
+        icon={ContainersIcon}
+        title={Count}
+        right={hidden > 0 ? <span className="text-[10px] font-mono text-text-muted">+{hidden}</span> : undefined}
+      />
       {cols > 1 ? (
         <div
           className="flex-1 min-h-0 overflow-hidden p-2"
@@ -154,7 +155,7 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
           {shown.length === 0 && <div className="text-[11px] text-text-muted px-1 py-2">No containers.</div>}
           {shown.map((c) => (
             <div key={c.name} className="group/c flex items-center gap-2 px-2.5 py-2 rounded-md bg-bg-card/40 border border-border-subtle/50 min-w-0">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${stateDot(c.state)}`} title={c.state} />
+              <StatusDot status={stateTone(c.state)} size="md" title={c.state} />
               <div className="min-w-0 flex-1">
                 <div className="text-[12px] text-text-secondary truncate">{c.name}</div>
                 <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>
@@ -171,7 +172,7 @@ function ContainersComponent({ config }: WidgetProps<ContainersConfig>) {
           )}
           {shown.map((c) => (
             <div key={c.name} className="group/c flex-1 min-h-0 flex items-center gap-2 px-1.5">
-              <span className={`w-2 h-2 rounded-full shrink-0 ${stateDot(c.state)}`} title={c.state} />
+              <StatusDot status={stateTone(c.state)} size="md" title={c.state} />
               <div className="min-w-0 flex-1">
                 <div className="text-[12px] text-text-secondary truncate">{c.name}</div>
                 {showSub && <div className="text-[10px] text-text-muted truncate font-mono">{c.status || c.image}</div>}

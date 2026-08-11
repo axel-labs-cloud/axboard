@@ -47,11 +47,17 @@ export function StatusDot({
 
 // --- WidgetHeader ---------------------------------------------------------
 // One title-row idiom: optional leading icon, a muted title, optional right slot.
-export function WidgetHeader({ icon, title, right }: { icon?: ReactNode; title?: string; right?: ReactNode }) {
+// Fixed 32px tall (h-8); widgets that fit-to-height should subtract 32.
+export const WIDGET_HEADER_H = 32;
+export function WidgetHeader({ icon, title, right }: { icon?: ReactNode; title?: ReactNode; right?: ReactNode }) {
   return (
     <div className="flex items-center gap-1.5 px-3 h-8 shrink-0">
       {icon && <span className="text-text-muted shrink-0 inline-flex items-center [&>svg]:w-3.5 [&>svg]:h-3.5">{icon}</span>}
-      {title && <span className="text-[12px] font-medium text-text-secondary truncate">{title}</span>}
+      {typeof title === "string" ? (
+        <span className="text-[12px] font-medium text-text-secondary truncate">{title}</span>
+      ) : (
+        title
+      )}
       {right && <span className="ml-auto shrink-0 flex items-center gap-1">{right}</span>}
     </div>
   );

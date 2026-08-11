@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
+import { WidgetHeader, WIDGET_HEADER_H } from "../../../../components/widget";
 import type { WolConfig, WolTarget, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
@@ -30,12 +31,7 @@ function WolComponent({ config }: WidgetProps<WolConfig>) {
     window.setTimeout(() => setState((s) => ({ ...s, [t.mac]: "idle" })), 2500);
   };
 
-  const header = (
-    <div className="flex items-center gap-1.5 px-3 pt-2.5 pb-1.5 shrink-0" style={{ height: 34 }}>
-      <span className="text-text-muted shrink-0">{WolIcon}</span>
-      <span className="text-[12px] font-medium text-text-secondary truncate">{title}</span>
-    </div>
-  );
+  const header = <WidgetHeader icon={WolIcon} title={title} />;
 
   if (targets.length === 0) {
     return (
@@ -48,7 +44,7 @@ function WolComponent({ config }: WidgetProps<WolConfig>) {
     );
   }
 
-  const bodyH = box.h - 34;
+  const bodyH = box.h - WIDGET_HEADER_H;
   const cols = box.w >= 420 ? 3 : box.w >= 240 ? 2 : 1;
 
   return (
