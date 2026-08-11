@@ -1,17 +1,16 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, useTileFit, EntityPicker, isFan, friendly, isOn } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, EntityPicker, isFan, friendly, isOn } from "../_hass";
 import type { HassFanConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
-// Home Assistant fan — a 4-level speed control (Off / Low / Med / High) shown
-// as tappable bars, so it fits any tile height without a slider or scrollbar.
-// Level 0 = fan.turn_off; 1-3 = fan.set_percentage(33/66/100).
+// Home Assistant fan — a stepped slider with 4 positions: Off / 1 / 2 / 3.
+// Position 0 = fan.turn_off; 1-3 = fan.set_percentage(33/66/100).
 // ---------------------------------------------------------------------------
 
-const LEVELS = [0, 33, 66, 100]; // off, low, med, high
-const LABELS = ["Off", "Low", "Med", "High"];
+const LEVELS = [0, 33, 66, 100]; // off, 1, 2, 3
+const LABELS = ["Off", "1", "2", "3"];
 
 function levelOf(on: boolean, pct: number | null): number {
   if (!on) return 0;
@@ -20,25 +19,6 @@ function levelOf(on: boolean, pct: number | null): number {
   if (pct <= 49) return 1;
   if (pct <= 83) return 2;
   return 3;
-}
-
-function SpeedBars({ level, onSet, tall }: { level: number; onSet: (l: number) => void; tall?: boolean }) {
-  const heights = tall ? [10, 18, 26, 34] : [8, 13, 18, 23];
-  return (
-    <div className="flex items-end gap-1.5 shrink-0">
-      {heights.map((hpx, i) => {
-        const active = i === level;
-        return (
-          <button key={i} onClick={() => onSet(i)} title={LABELS[i]} className="flex items-end group/bar py-0.5" aria-label={LABELS[i]}>
-            <span
-              style={{ height: hpx }}
-              className={`w-3.5 rounded-sm transition-colors ${active ? "bg-accent" : "bg-border group-hover/bar:bg-text-muted"}`}
-            />
-          </button>
-        );
-      })}
-    </div>
-  );
 }
 
 function FanComponent({ config }: WidgetProps<HassFanConfig>) {
@@ -51,7 +31,6 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
   const svc = useHassService(b, token ?? "");
   const opt = useHassOptimistic(b, token ?? "");
-  const { ref, compact } = useTileFit(72);
 
   if (!b || !token || !id) return <EmptyState icon={FanIcon} title="Connect Fan" hint="Set the base URL, a long-lived token and a fan.* entity id." />;
   if (isError) return <ErrorState message={(error as Error)?.message ?? "Could not reach Home Assistant."} onRetry={() => refetch()} />;
@@ -73,46 +52,33 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
     }
   };
 
-  if (compact) {
-    return (
-      <div ref={ref} className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
-        <FanSpin on={on} />
-        <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
-        <SpeedBars level={level} onSet={setLevel} />
-      </div>
-    );
-  }
-
   return (
-    <div ref={ref} className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col overflow-hidden">
       <WidgetHeader
         icon={FanIcon}
         title={title}
-        right={<span className="text-[11px] font-mono text-text-muted">{LABELS[level].toLowerCase()}</span>}
+        right={<span className="text-[11px] font-mono text-text-muted">{level === 0 ? "off" : `speed ${level}`}</span>}
       />
-      <div className="flex-1 min-h-0 overflow-hidden px-3 flex flex-col justify-center gap-3">
+      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col justify-center gap-2">
         <div className="flex items-center gap-2">
           <FanSpin on={on} />
           <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
         </div>
-        <div className="flex items-end justify-between">
-          {[0, 1, 2, 3].map((lvl) => {
-            const active = lvl === level;
-            return (
-              <button
-                key={lvl}
-                onClick={() => setLevel(lvl)}
-                className="flex flex-col items-center gap-1 group/lvl"
-                aria-label={LABELS[lvl]}
-              >
-                <span
-                  style={{ height: [12, 20, 28, 36][lvl] }}
-                  className={`w-6 rounded-sm transition-colors ${active ? "bg-accent" : "bg-border group-hover/lvl:bg-text-muted"}`}
-                />
-                <span className={`text-[9.5px] ${active ? "text-accent" : "text-text-muted"}`}>{LABELS[lvl]}</span>
-              </button>
-            );
-          })}
+        <div>
+          <input
+            type="range"
+            min={0}
+            max={3}
+            step={1}
+            value={level}
+            onChange={(ev) => setLevel(Number((ev.target as HTMLInputElement).value))}
+            className="w-full accent-accent h-1.5 cursor-pointer"
+          />
+          <div className="flex justify-between text-[9.5px] text-text-muted mt-1 px-0.5">
+            {LABELS.map((l, i) => (
+              <span key={i} className={i === level ? "text-accent" : ""}>{l}</span>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -131,7 +97,7 @@ function FanConfigPanel({ config, save }: WidgetConfigProps<HassFanConfig>) {
         <EntityPicker base={b} token={config?.token?.trim() ?? ""} filter={isFan} multiple={false} value={config?.entity ? [config.entity] : []} onChange={(ids) => save({ entity: ids[0] })} />
       </div>
       <ConfigField label="Title" value={config?.title} onChange={(title) => save({ title })} placeholder="Fan" mono={false} />
-      <p className="text-[11px] text-text-muted leading-snug">URL + token are shared across HA widgets — set them once. Off / Low / Med / High map to fan.set_percentage.</p>
+      <p className="text-[11px] text-text-muted leading-snug">URL + token are shared across HA widgets — set them once. The slider steps Off / 1 / 2 / 3 (fan.set_percentage).</p>
     </div>
   );
 }
@@ -159,13 +125,13 @@ const definition: WidgetDefinition<HassFanConfig> = {
   title: "HA Fan",
   icon: FanIcon,
   category: "services",
-  description: "Home Assistant fan — a 4-level speed control (Off / Low / Med / High) that fits any tile height.",
+  description: "Home Assistant fan — a stepped Off / 1 / 2 / 3 speed slider.",
   minW: 2,
   minH: 1,
   maxW: 4,
   maxH: 4,
   defaultW: 2,
-  defaultH: 1,
+  defaultH: 2,
   defaultConfig: {},
   Component: FanComponent,
   ConfigPanel: FanConfigPanel,
