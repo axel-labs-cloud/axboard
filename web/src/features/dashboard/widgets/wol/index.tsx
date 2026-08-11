@@ -73,7 +73,7 @@ function WolComponent({ config }: WidgetProps<WolConfig>) {
                 <path d="M18.36 6.64a9 9 0 1 1-12.73 0" /><line x1="12" y1="2" x2="12" y2="12" />
               </svg>
               <span className="text-[11px] font-medium truncate max-w-full">{t.name}</span>
-              <span className="text-[9px] font-mono text-text-muted">
+              <span className="text-[10px] font-mono text-text-muted">
                 {st === "sending" ? "sending…" : st === "ok" ? "sent" : st === "err" ? "failed" : "wake"}
               </span>
             </button>

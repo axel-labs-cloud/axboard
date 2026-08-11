@@ -184,7 +184,7 @@ function SunComponent({ config }: WidgetProps<SunConfig>) {
             style={{ top: "54%" }}
           >
             <span className="font-mono tabular-nums text-text text-[15px] leading-none">{hero.value}</span>
-            <span className="text-text-muted text-[9px] uppercase tracking-[0.12em] mt-0.5">{hero.label}</span>
+            <span className="text-text-muted text-[10px] uppercase tracking-[0.12em] mt-0.5">{hero.label}</span>
           </div>
         </div>
       </div>
@@ -193,7 +193,7 @@ function SunComponent({ config }: WidgetProps<SunConfig>) {
         <div className="flex items-center gap-1.5">
           <RiseIcon className="w-3.5 h-3.5 shrink-0" style={{ color: "#fbbf24" }} />
           <div className="flex flex-col leading-tight">
-            <span className="text-text-muted text-[8.5px] uppercase tracking-[0.1em]">Rise</span>
+            <span className="text-text-muted text-[10px] uppercase tracking-[0.1em]">Rise</span>
             <span className="font-mono tabular-nums text-text-secondary text-[12px]">{hhmm(data.daily.sunrise[0])}</span>
           </div>
         </div>
@@ -203,14 +203,14 @@ function SunComponent({ config }: WidgetProps<SunConfig>) {
               <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: uvInfo.color }} />
               <span className="font-mono tabular-nums text-text text-[12px]">UV {uvNow.toFixed(1)}</span>
             </div>
-            <span className="text-[8.5px] uppercase tracking-[0.1em]" style={{ color: uvInfo.color }}>
+            <span className="text-[10px] uppercase tracking-[0.1em]" style={{ color: uvInfo.color }}>
               {uvInfo.label}
             </span>
           </div>
         )}
         <div className="flex items-center gap-1.5">
           <div className="flex flex-col leading-tight text-right">
-            <span className="text-text-muted text-[8.5px] uppercase tracking-[0.1em]">Set</span>
+            <span className="text-text-muted text-[10px] uppercase tracking-[0.1em]">Set</span>
             <span className="font-mono tabular-nums text-text-secondary text-[12px]">{hhmm(data.daily.sunset[0])}</span>
           </div>
           <SetIcon className="w-3.5 h-3.5 shrink-0" style={{ color: "#f97316" }} />

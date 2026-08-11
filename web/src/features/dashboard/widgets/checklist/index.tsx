@@ -43,7 +43,7 @@ function ChecklistComponent({ config, save }: WidgetProps<ChecklistConfig>) {
             </span>
             <span>{Math.round((done / items.length) * 100)}%</span>
           </div>
-          <div className="h-1 bg-border rounded-full overflow-hidden">
+          <div className="h-1 bg-border-subtle rounded-full overflow-hidden">
             <div
               className="h-full bg-accent transition-all"
               style={{ width: `${(done / items.length) * 100}%` }}

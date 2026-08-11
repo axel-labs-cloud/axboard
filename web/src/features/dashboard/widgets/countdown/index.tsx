@@ -47,7 +47,7 @@ function CountdownComponent({ config, h }: WidgetProps<CountdownConfig>) {
       <span className="text-2xl font-mono tabular-nums text-text leading-none">
         {String(n).padStart(2, "0")}
       </span>
-      <span className="text-[9px] uppercase tracking-wider text-text-muted mt-1">{unit}</span>
+      <span className="text-[10px] uppercase tracking-wider text-text-muted mt-1">{unit}</span>
     </div>
   );
 

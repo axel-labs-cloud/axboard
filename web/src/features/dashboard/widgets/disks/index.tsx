@@ -70,7 +70,7 @@ function DisksComponent({ config }: WidgetProps<DisksConfig>) {
             <div key={d.path} className="space-y-1">
               <div className="flex items-baseline justify-between text-[11px] gap-2">
                 <span className="text-text-secondary font-mono truncate flex items-center gap-1.5">
-                  {tag && <span className="px-1 py-px rounded bg-accent/15 text-accent text-[9px] font-sans font-semibold not-italic shrink-0">{tag}</span>}
+                  {tag && <span className="px-1 py-px rounded bg-accent/15 text-accent text-[10px] font-sans font-semibold not-italic shrink-0">{tag}</span>}
                   <span className="truncate">{d.path}</span>
                 </span>
                 <span className="font-mono tabular-nums text-text-muted shrink-0">{fmtBytes(d.used)}/{fmtBytes(d.total)}</span>

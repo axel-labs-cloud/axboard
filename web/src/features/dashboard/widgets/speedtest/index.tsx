@@ -175,7 +175,7 @@ function SpeedTestComponent({ config }: WidgetProps<SpeedTestConfig>) {
 
       {!compact && history.length >= 2 && (
         <div className="w-full px-1">
-          <div className="flex items-center justify-between text-[9px] uppercase tracking-wide text-text-muted mb-0.5">
+          <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-text-muted mb-0.5">
             <span>Download history · {history.length} runs</span>
             <span className="font-mono">{Math.max(...history.map((h) => h.down)).toFixed(0)} peak</span>
           </div>

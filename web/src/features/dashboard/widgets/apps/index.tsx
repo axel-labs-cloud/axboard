@@ -415,7 +415,7 @@ function AppsConfigPanel({ config, save }: WidgetConfigProps<AppsConfig>) {
                           <SimpleIcon slug={app.icon} fill />
                         ) : (
                           <div
-                            className="w-full h-full rounded-sm flex items-center justify-center text-[8px] font-semibold text-text"
+                            className="w-full h-full rounded-sm flex items-center justify-center text-[10px] font-semibold text-text"
                             style={{ background: hashColor(app.name) }}
                           >
                             {initials(app.name)}

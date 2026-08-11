@@ -203,7 +203,7 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
           const hour = new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", hour12: false }).slice(0, 2);
           return (
             <div key={t} className="flex-1 min-w-0 flex flex-col items-center gap-0.5 rounded-md bg-bg-card/40 px-0.5 py-1.5">
-              <span className="text-[9.5px] text-text-muted tabular-nums">{k === 0 ? "now" : `${hour}h`}</span>
+              <span className="text-[10px] text-text-muted tabular-nums">{k === 0 ? "now" : `${hour}h`}</span>
               <div className="w-5 h-5"><H className="w-full h-full" /></div>
               <span className="text-[11px] font-mono tabular-nums text-text">{Math.round(hr.temperature_2m[idx])}°</span>
             </div>

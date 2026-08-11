@@ -39,7 +39,7 @@ function StatCol({ cpu, mem }: { cpu?: number; mem?: number }) {
   return (
     <div className="shrink-0 text-right font-mono leading-tight">
       <div className="text-[11px] text-text-secondary tabular-nums">{cpu != null ? `${cpu.toFixed(0)}%` : "—"}</div>
-      <div className="text-[9.5px] text-text-muted tabular-nums">{fmtMem(mem) || "—"}</div>
+      <div className="text-[10px] text-text-muted tabular-nums">{fmtMem(mem) || "—"}</div>
     </div>
   );
 }

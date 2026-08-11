@@ -115,7 +115,7 @@ function MonthView({
       </div>
       <div className="grid grid-cols-7 gap-0.5 shrink-0">
         {WEEKDAYS.map((wd, i) => (
-          <div key={i} className="text-center text-[9px] text-text-muted uppercase">
+          <div key={i} className="text-center text-[10px] text-text-muted uppercase">
             {wd}
           </div>
         ))}
@@ -208,7 +208,7 @@ function CalendarComponent({ config, w, h }: WidgetProps<CalendarConfig>) {
       {upcoming.map((e, i) => (
         <div key={i} className="flex items-center gap-2.5 px-1.5 py-1.5">
           <div className="flex flex-col items-center justify-center w-9 shrink-0 rounded bg-bg-elevated py-0.5">
-            <span className="text-[9px] uppercase text-text-muted leading-none">
+            <span className="text-[10px] uppercase text-text-muted leading-none">
               {e.start.toLocaleDateString(undefined, { month: "short" })}
             </span>
             <span className="text-[14px] font-mono text-text leading-tight">{e.start.getDate()}</span>

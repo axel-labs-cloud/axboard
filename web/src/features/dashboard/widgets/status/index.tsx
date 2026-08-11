@@ -139,7 +139,7 @@ function ServiceDetail({ name, points, certExpiry, certIssuer, certNotBefore, wi
             { k: "Avg RT", v: avg != null ? `${avg} ms` : "—", cls: "text-text" },
           ].map((s) => (
             <div key={s.k} className="rounded-lg bg-bg-card/50 border border-border-subtle/50 px-2.5 py-2">
-              <div className="text-[9px] uppercase tracking-wide text-text-muted">{s.k}</div>
+              <div className="text-[10px] uppercase tracking-wide text-text-muted">{s.k}</div>
               <div className={`text-[15px] font-mono tabular-nums font-semibold ${s.cls}`}>{s.v}</div>
             </div>
           ))}
@@ -148,7 +148,7 @@ function ServiceDetail({ name, points, certExpiry, certIssuer, certNotBefore, wi
           <div className="grid grid-cols-3 gap-2">
             {(["24h", "7d", "30d"] as const).map((k) => (
               <div key={k} className="rounded-lg bg-bg-card/50 border border-border-subtle/50 px-2.5 py-2">
-                <div className="text-[9px] uppercase tracking-wide text-text-muted">{k} uptime</div>
+                <div className="text-[10px] uppercase tracking-wide text-text-muted">{k} uptime</div>
                 <div className={`text-[15px] font-mono tabular-nums font-semibold ${windows[k] < 0 ? "text-text-muted" : windows[k] >= 99 ? "text-up" : windows[k] >= 90 ? "text-degraded" : "text-down"}`}>
                   {windows[k] < 0 ? "—" : `${windows[k]}%`}
                 </div>

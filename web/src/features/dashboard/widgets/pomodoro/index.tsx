@@ -61,7 +61,7 @@ function PomodoroComponent({ config }: WidgetProps<PomodoroConfig>) {
       <div className={`text-4xl font-mono font-semibold tabular-nums leading-none ${tone}`}>
         {mm}:{ss}
       </div>
-      <div className="w-full max-w-[160px] h-1 rounded-full bg-bg-elevated overflow-hidden">
+      <div className="w-full max-w-[160px] h-1 rounded-full bg-border-subtle overflow-hidden">
         <div className={mode === "work" ? "h-full bg-accent" : "h-full bg-up"} style={{ width: `${pct}%` }} />
       </div>
       <div className="flex items-center gap-2 mt-0.5">

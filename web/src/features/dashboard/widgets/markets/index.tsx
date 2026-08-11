@@ -200,7 +200,7 @@ function ChangeTag({ change }: { change: number | null }) {
 function Marker({ kind }: { kind: Row["kind"] }) {
   return (
     <span
-      className={`text-[9px] font-mono shrink-0 w-3 ${kind === "crypto" ? "text-accent" : "text-text-muted"}`}
+      className={`text-[10px] font-mono shrink-0 w-3 ${kind === "crypto" ? "text-accent" : "text-text-muted"}`}
       title={kind}
     >
       {kind === "crypto" ? "₿" : "$"}
@@ -262,7 +262,7 @@ function MarketsComponent({ config }: WidgetProps<MarketsConfig>) {
     return (
       <div ref={box.ref} className="h-full overflow-auto flex flex-col gap-1.5 p-1.5">
         <div className="flex items-center justify-end px-1 shrink-0">
-          <span className="text-[9px] uppercase tracking-wider text-text-muted/70">{period.label} history</span>
+          <span className="text-[10px] uppercase tracking-wider text-text-muted/70">{period.label} history</span>
         </div>
         {data.map((row) => {
           const up = (row.change ?? 0) >= 0;
@@ -275,7 +275,7 @@ function MarketsComponent({ config }: WidgetProps<MarketsConfig>) {
                 </span>
                 {row.price != null && (
                   <span className="text-[12px] font-mono tabular-nums text-text">
-                    {fmtPrice(row.price)} <span className="text-text-muted uppercase text-[9px]">{row.unit}</span>
+                    {fmtPrice(row.price)} <span className="text-text-muted uppercase text-[10px]">{row.unit}</span>
                   </span>
                 )}
                 <ChangeTag change={row.change} />
