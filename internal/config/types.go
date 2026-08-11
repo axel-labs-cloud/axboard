@@ -234,7 +234,12 @@ type Dashboard struct {
 	Default    bool        `yaml:"default,omitempty" json:"default,omitempty"`
 	Accent     string      `yaml:"accent,omitempty" json:"accent,omitempty"`
 	Background *Background `yaml:"background,omitempty" json:"background,omitempty"`
-	Widgets    []Widget    `yaml:"widgets,omitempty" json:"widgets,omitempty"`
+	// Per-dashboard appearance. Density is "compact" | "cozy" | "spacious";
+	// Radius is the widget corner radius in px. Both fall back to the browser
+	// defaults when unset.
+	Density string   `yaml:"density,omitempty" json:"density,omitempty"`
+	Radius  *int     `yaml:"radius,omitempty" json:"radius,omitempty"`
+	Widgets []Widget `yaml:"widgets,omitempty" json:"widgets,omitempty"`
 }
 
 // Background is the per-dashboard page backdrop behind the widget grid.

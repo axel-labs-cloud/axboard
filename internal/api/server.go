@@ -223,6 +223,8 @@ type dashboardOut struct {
 	Default    bool               `json:"default,omitempty"`
 	Accent     string             `json:"accent,omitempty"`
 	Background *config.Background `json:"background,omitempty"`
+	Density    string             `json:"density,omitempty"`
+	Radius     *int               `json:"radius,omitempty"`
 	Widgets    []widgetOut        `json:"widgets,omitempty"`
 }
 
@@ -265,6 +267,8 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
 			Default:    d.Default,
 			Accent:     d.Accent,
 			Background: d.Background,
+			Density:    d.Density,
+			Radius:     d.Radius,
 			Widgets:    make([]widgetOut, 0, len(d.Widgets)),
 		}
 		for _, w := range d.Widgets {

@@ -27,6 +27,7 @@ import { TemplatePickerModal } from "./TemplatePickerModal";
 import type { DashboardTemplate } from "./templates";
 import type { AlertsDef, BackgroundDef, HeaderDef } from "../../api/types";
 import { backgroundLayerStyle } from "./appearance";
+import { loadWidgetStyle } from "../../hooks/widgetStyle";
 import type {
   AnyWidgetConfig,
   DashboardLayout,
@@ -55,6 +56,8 @@ interface ServerDashboard {
   default?: boolean;
   accent?: string;
   background?: BackgroundDef;
+  density?: string;
+  radius?: number;
   widgets?: ServerWidget[];
 }
 
@@ -199,31 +202,22 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   );
   useDownAlerts(alertsEnabled);
 
-  // Board density is remembered per theme — each look keeps its own spacing.
-  const [densityMap, setDensityMap] = useState<Record<string, string>>(() => {
+  // Board density + corner radius are per-dashboard (stored in config.yaml).
+  // The old per-theme localStorage map is kept only as a fallback default for
+  // dashboards that haven't set their own density yet.
+  const densityMap: Record<string, string> = (() => {
     try {
       return JSON.parse(window.localStorage.getItem("axboard-density-map") || "{}");
     } catch {
       return {};
     }
-  });
+  })();
   const legacyDensity =
     (typeof window !== "undefined" && window.localStorage.getItem("axboard-density")) || "cozy";
-  const density = densityMap[theme] || legacyDensity;
-  const setDensity = useCallback(
-    (d: string) => {
-      setDensityMap((m) => {
-        const next = { ...m, [theme]: d };
-        try {
-          window.localStorage.setItem("axboard-density-map", JSON.stringify(next));
-        } catch {
-          /* ignore */
-        }
-        return next;
-      });
-    },
-    [theme],
-  );
+  const activeDashAppearance = dashboards.find((d) => d.id === activeDashboardId);
+  const density = activeDashAppearance?.density || densityMap[theme] || legacyDensity;
+  const dashRadius = activeDashAppearance?.radius;
+  // setDensity / setRadius are defined after patchActiveDashboard (below).
 
   const toggleAlerts = useCallback(async () => {
     if (!alertsEnabled) {
@@ -668,6 +662,9 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     (bg: BackgroundDef | undefined) => patchActiveDashboard({ background: bg }),
     [patchActiveDashboard],
   );
+  // Per-dashboard density + corner radius.
+  const setDensity = useCallback((d: string) => patchActiveDashboard({ density: d }), [patchActiveDashboard]);
+  const setDashRadius = useCallback((r: number) => patchActiveDashboard({ radius: r }), [patchActiveDashboard]);
   // Top bar is global: patch cfg.topBar (not the active dashboard).
   const patchTopBar = useCallback(
     (patch: Partial<ServerTopBar>) =>
@@ -1157,6 +1154,14 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     else root.style.removeProperty("--color-accent");
   }, [activeAccent]);
 
+  // Apply the active dashboard's widget corner radius, overriding the global
+  // widget-style default; restore the global value when this board has none.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (dashRadius != null) root.style.setProperty("--widget-radius", `${dashRadius}px`);
+    else root.style.setProperty("--widget-radius", `${loadWidgetStyle().radius}px`);
+  }, [dashRadius]);
+
   // Arrow keys nudge the selected widget by one grid cell in edit mode.
   useEffect(() => {
     if (!editing) return;
@@ -1277,6 +1282,8 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onEnterKiosk={() => setKiosk(true)}
         density={density}
         onSetDensity={setDensity}
+        radius={dashRadius}
+        onSetRadius={setDashRadius}
         onAddWidget={() => setAddWidgetOpen(true)}
         onManageServices={() => openServices("services")}
         onAddDashboard={handleAddDashboard}

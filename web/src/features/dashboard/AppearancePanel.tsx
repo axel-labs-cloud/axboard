@@ -39,6 +39,8 @@ interface Props {
   onSetAccent: (color: string) => void;
   density: string;
   onSetDensity: (d: string) => void;
+  radius?: number;
+  onSetRadius: (r: number) => void;
 }
 
 const BG_TYPES: { id: BackgroundDef["type"] | "none"; label: string }[] = [
@@ -103,13 +105,15 @@ function FontSection() {
   );
 }
 
-function WidgetStyleSection() {
+function WidgetStyleSection({ radius, onSetRadius }: { radius?: number; onSetRadius: (r: number) => void }) {
   const [ws, setWs] = useState<WidgetStyle>(() => loadWidgetStyle());
   const update = (p: Partial<WidgetStyle>) => {
     const next = { ...ws, ...p };
     setWs(next);
     saveWidgetStyle(next); // applies + persists immediately (live preview)
   };
+  // Corners are per-dashboard; the rest (opacity/blur/border) stay global.
+  const activeRadius = radius ?? ws.radius;
   return (
     <Section title="Widget style">
       <div className="space-y-3">
@@ -122,10 +126,10 @@ function WidgetStyleSection() {
           <input type="range" min={0} max={24} value={ws.blur} onChange={(e) => update({ blur: Number(e.target.value) })} className="w-full accent-accent" />
         </div>
         <div>
-          <Label>Corners</Label>
+          <Label>Corners · this board</Label>
           <div className="grid grid-cols-4 gap-1.5">
             {RADIUS_PRESETS.map((r) => (
-              <button key={r.value} onClick={() => update({ radius: r.value })} className={`px-2 py-1.5 text-[11px] border transition-colors ${ws.radius === r.value ? "bg-accent/15 border-accent text-accent" : "bg-bg-elevated border-border text-text-muted hover:text-text"}`} style={{ borderRadius: Math.min(r.value, 8) }}>
+              <button key={r.value} onClick={() => onSetRadius(r.value)} className={`px-2 py-1.5 text-[11px] border transition-colors ${activeRadius === r.value ? "bg-accent/15 border-accent text-accent" : "bg-bg-elevated border-border text-text-muted hover:text-text"}`} style={{ borderRadius: Math.min(r.value, 8) }}>
                 {r.label}
               </button>
             ))}
@@ -159,11 +163,15 @@ function ThemesTab({
   setTheme,
   density,
   onSetDensity,
+  radius,
+  onSetRadius,
 }: {
   theme: string;
   setTheme: (t: string) => void;
   density: string;
   onSetDensity: (d: string) => void;
+  radius?: number;
+  onSetRadius: (r: number) => void;
 }) {
   const [customs, setCustoms] = useState<CustomTheme[]>(() => loadCustomThemes());
   const [draft, setDraft] = useState<CustomTheme | null>(null);
@@ -290,7 +298,7 @@ function ThemesTab({
         </div>
       </Section>
 
-      <Section title="Board density">
+      <Section title="Board density · this board">
         <div className="inline-flex p-0.5 rounded-md border border-border-subtle bg-bg-card w-full">
           {(["compact", "cozy", "spacious"] as const).map((d) => (
             <button
@@ -304,18 +312,18 @@ function ThemesTab({
             </button>
           ))}
         </div>
-        <p className="text-[10px] text-text-muted mt-1.5">Remembered per theme.</p>
+        <p className="text-[10px] text-text-muted mt-1.5">Spacing for this dashboard only.</p>
       </Section>
 
       <FontSection />
-      <WidgetStyleSection />
+      <WidgetStyleSection radius={radius} onSetRadius={onSetRadius} />
       <CustomCssSection />
     </div>
   );
 }
 
 export function AppearancePanel(props: Props) {
-  const { open, onClose, background, onSetBackground, barStyle, onSetBarStyle, header, onSetHeader, apps, theme, setTheme, accent, onSetAccent, density, onSetDensity } = props;
+  const { open, onClose, background, onSetBackground, barStyle, onSetBarStyle, header, onSetHeader, apps, theme, setTheme, accent, onSetAccent, density, onSetDensity, radius, onSetRadius } = props;
   const [tab, setTab] = useState<"dashboard" | "themes">("dashboard");
   const bg = background ?? {};
   const type = bg.type ?? "none";
@@ -391,7 +399,7 @@ export function AppearancePanel(props: Props) {
           </div>
         </div>
 
-        {tab === "themes" && <ThemesTab theme={theme} setTheme={setTheme} density={density} onSetDensity={onSetDensity} />}
+        {tab === "themes" && <ThemesTab theme={theme} setTheme={setTheme} density={density} onSetDensity={onSetDensity} radius={radius} onSetRadius={onSetRadius} />}
 
         <div className={`p-4 space-y-4 ${tab === "dashboard" ? "" : "hidden"}`}>
           {/* -------- Accent (per-dashboard) -------- */}

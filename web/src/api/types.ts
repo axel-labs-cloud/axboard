@@ -85,6 +85,8 @@ export interface DashboardDef {
   default?: boolean;
   accent?: string;
   background?: BackgroundDef;
+  density?: string; // per-dashboard "compact" | "cozy" | "spacious"
+  radius?: number; // per-dashboard widget corner radius (px)
   widgets?: WidgetDef[];
 }
 

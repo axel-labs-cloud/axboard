@@ -46,6 +46,8 @@ interface Props {
   onEnterKiosk: () => void;
   density: string;
   onSetDensity: (d: string) => void;
+  radius?: number;
+  onSetRadius: (r: number) => void;
   onAddWidget: () => void;
   onManageServices: () => void;
   onAddDashboard: () => void;
@@ -89,6 +91,8 @@ export function DashboardTabBar({
   onEnterKiosk,
   density,
   onSetDensity,
+  radius,
+  onSetRadius,
   onAddWidget,
   onManageServices,
   onAddDashboard,
@@ -456,6 +460,8 @@ export function DashboardTabBar({
         onSetAccent={onSetAccent}
         density={density}
         onSetDensity={onSetDensity}
+        radius={radius}
+        onSetRadius={onSetRadius}
       />
     </div>
   );
