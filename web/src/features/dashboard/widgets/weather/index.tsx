@@ -85,6 +85,33 @@ function dayLabel(iso: string, i: number): string {
   return new Date(iso + "T12:00").toLocaleDateString(undefined, { weekday: "short" });
 }
 
+// One forecast day, rendered as a stacked card (horizontal strip) or a flat row
+// (vertical list). Shared so the two layouts can't drift apart.
+function ForecastDay({ label, code, max, min, variant }: { label: string; code: number; max: number; min: number; variant: "card" | "row" }) {
+  const F = wmoIcon(code, true).Icon;
+  if (variant === "row") {
+    return (
+      <div className="flex items-center gap-2 py-1 border-t border-border-subtle first:border-0">
+        <span className="text-[11px] text-text-muted w-12 shrink-0">{label}</span>
+        <div className="w-5 h-5 shrink-0"><F className="w-full h-full" /></div>
+        <span className="flex-1" />
+        <span className="text-[12px] font-mono tabular-nums text-text">{Math.round(max)}°</span>
+        <span className="text-[12px] font-mono tabular-nums text-text-muted">{Math.round(min)}°</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 rounded-md bg-bg-card/40 px-1 py-1.5">
+      <span className="text-[10.5px] text-text-muted truncate max-w-full">{label}</span>
+      <div className="w-6 h-6 shrink-0"><F className="w-full h-full" /></div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-[12px] font-mono font-semibold tabular-nums text-text">{Math.round(max)}°</span>
+        <span className="text-[11px] font-mono tabular-nums text-text-muted">{Math.round(min)}°</span>
+      </div>
+    </div>
+  );
+}
+
 function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
   const lat = config?.lat;
   const lon = config?.lon;
@@ -209,28 +236,16 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
 
   const ForecastRow = (
     <div className="flex-1 flex gap-1.5 min-h-0">
-      {(data.daily?.time ?? []).slice(0, numForecast).map((d, i) => {
-        const F = wmoIcon(data.daily!.weather_code[i], true).Icon;
-        return (
-          <div
-            key={d}
-            className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 rounded-md bg-bg-card/40 px-1 py-1.5"
-          >
-            <span className="text-[10.5px] text-text-muted truncate max-w-full">{dayLabel(d, i)}</span>
-            <div className="w-6 h-6 shrink-0">
-              <F className="w-full h-full" />
-            </div>
-            <div className="flex items-baseline gap-1">
-              <span className="text-[12px] font-mono font-semibold tabular-nums text-text">
-                {Math.round(data.daily!.temperature_2m_max[i])}°
-              </span>
-              <span className="text-[11px] font-mono tabular-nums text-text-muted">
-                {Math.round(data.daily!.temperature_2m_min[i])}°
-              </span>
-            </div>
-          </div>
-        );
-      })}
+      {(data.daily?.time ?? []).slice(0, numForecast).map((d, i) => (
+        <ForecastDay
+          key={d}
+          label={dayLabel(d, i)}
+          code={data.daily!.weather_code[i]}
+          max={data.daily!.temperature_2m_max[i]}
+          min={data.daily!.temperature_2m_min[i]}
+          variant="card"
+        />
+      ))}
     </div>
   );
 
@@ -263,27 +278,16 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
         {Hero}
         {showHourly && HourlyStrip}
         <div className="flex-1 flex flex-col min-h-0 gap-0.5 overflow-hidden">
-          {(data.daily?.time ?? []).slice(0, veryTall ? 7 : 5).map((d, i) => {
-            const F = wmoIcon(data.daily!.weather_code[i], true).Icon;
-            return (
-              <div
-                key={d}
-                className="flex items-center gap-2 py-1 border-t border-border-subtle first:border-0"
-              >
-                <span className="text-[11px] text-text-muted w-12 shrink-0">{dayLabel(d, i)}</span>
-                <div className="w-5 h-5 shrink-0">
-                  <F className="w-full h-full" />
-                </div>
-                <span className="flex-1" />
-                <span className="text-[12px] font-mono tabular-nums text-text">
-                  {Math.round(data.daily!.temperature_2m_max[i])}°
-                </span>
-                <span className="text-[12px] font-mono tabular-nums text-text-muted">
-                  {Math.round(data.daily!.temperature_2m_min[i])}°
-                </span>
-              </div>
-            );
-          })}
+          {(data.daily?.time ?? []).slice(0, veryTall ? 7 : 5).map((d, i) => (
+            <ForecastDay
+              key={d}
+              label={dayLabel(d, i)}
+              code={data.daily!.weather_code[i]}
+              max={data.daily!.temperature_2m_max[i]}
+              min={data.daily!.temperature_2m_min[i]}
+              variant="row"
+            />
+          ))}
         </div>
       </div>
     );
