@@ -101,7 +101,8 @@ function LightComponent({ config }: WidgetProps<HassOneConfig>) {
               defaultValue={curK}
               onMouseUp={(ev) => setK(Number((ev.target as HTMLInputElement).value))}
               onTouchEnd={(ev) => setK(Number((ev.target as HTMLInputElement).value))}
-              className="w-full h-1.5 cursor-pointer rounded-full appearance-none"
+              data-nofill
+              className="w-full cursor-pointer rounded-full appearance-none"
               style={{ background: "linear-gradient(90deg,#ffb04d,#fff,#bcd8ff)" }}
             />
           </div>

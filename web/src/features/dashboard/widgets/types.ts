@@ -71,7 +71,10 @@ export type WidgetType =
   | "halock"
   | "havacuum"
   | "hapresence"
-  | "habattery";
+  | "habattery"
+  | "unifi"
+  | "speedtesttracker"
+  | "prometheus";
 
 export type WidgetCategory = "productivity" | "system" | "services" | "homeassistant" | "network" | "external";
 
@@ -652,6 +655,30 @@ export interface HassConnConfig {
   title?: string;
 }
 
+/** UniFi widget — client count + WAN throughput from a UniFi OS console. */
+export interface UnifiConfig {
+  baseUrl?: string; // e.g. https://192.168.1.1
+  username?: string;
+  password?: string;
+  site?: string; // default "default"
+  title?: string;
+}
+
+/** Speedtest Tracker widget — latest result + recent history. */
+export interface SpeedtestTrackerConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:8765
+  token?: string; // optional bearer token
+  title?: string;
+}
+
+/** Prometheus widget — firing/pending alerts. */
+export interface PrometheusConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:9090
+  username?: string; // optional basic auth
+  password?: string;
+  title?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -724,6 +751,9 @@ export type WidgetConfigByType = {
   havacuum: HassOneConfig;
   hapresence: HassConnConfig;
   habattery: HassConnConfig;
+  unifi: UnifiConfig;
+  speedtesttracker: SpeedtestTrackerConfig;
+  prometheus: PrometheusConfig;
 };
 
 export type AnyWidgetConfig = Partial<

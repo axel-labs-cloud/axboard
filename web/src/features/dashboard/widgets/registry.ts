@@ -70,6 +70,9 @@ import halock from "./halock";
 import havacuum from "./havacuum";
 import hapresence from "./hapresence";
 import habattery from "./habattery";
+import unifi from "./unifi";
+import speedtesttracker from "./speedtesttracker";
+import prometheus from "./prometheus";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -143,6 +146,9 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   havacuum,
   hapresence,
   habattery,
+  unifi,
+  speedtesttracker,
+  prometheus,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {
