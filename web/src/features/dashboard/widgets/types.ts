@@ -38,7 +38,8 @@ export type WidgetType =
   | "netgraph"
   | "battery"
   | "grafana"
-  | "wol";
+  | "wol"
+  | "arr";
 
 export type WidgetCategory = "system" | "infrastructure" | "productivity" | "external";
 
@@ -394,6 +395,15 @@ export interface WolConfig {
   title?: string;
 }
 
+/** Sonarr/Radarr widget — download queue + upcoming calendar via the *arr v3 API. */
+export interface ArrConfig {
+  kind?: "sonarr" | "radarr";
+  baseUrl?: string; // e.g. http://172.24.2.100:8989
+  apiKey?: string; // Settings → General → API Key
+  title?: string;
+  days?: number; // calendar look-ahead (default 7)
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -433,6 +443,7 @@ export type WidgetConfigByType = {
   battery: BatteryConfig;
   grafana: GrafanaConfig;
   wol: WolConfig;
+  arr: ArrConfig;
 };
 
 export type AnyWidgetConfig = Partial<

@@ -111,6 +111,26 @@ export const api = {
     fetch("/api/publicip").then(
       jsonOk<{ ip?: string; city?: string; country?: string; isp?: string; org?: string }>,
     ),
+  // Authenticated outbound proxy for service widgets (Sonarr, Proxmox, …).
+  // Returns the upstream JSON; throws with the upstream status on failure.
+  fetchJson: async <T = unknown>(opts: {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }): Promise<T> => {
+    const r = await fetch("/api/fetch", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(opts),
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(() => "");
+      throw new Error(`${r.status} ${r.statusText}${t ? `: ${t.slice(0, 140)}` : ""}`);
+    }
+    return (await r.json()) as T;
+  },
+
   forceCheck: (id: string) =>
     fetch(`/api/apps/${encodeURIComponent(id)}/check`, { method: "POST" }).then(
       jsonOk<{ status: string }>,

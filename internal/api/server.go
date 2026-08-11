@@ -189,6 +189,7 @@ func (s *Server) Router(spaFS fs.FS) http.Handler {
 		r.Get("/ping", s.handleUptimePing)
 		r.Get("/publicip", s.handlePublicIP)
 		r.Get("/proxy", s.handleProxy)
+		r.Post("/fetch", s.handleFetch) // authenticated outbound proxy for service widgets
 		r.Post("/icons", s.handleUploadIcon)
 		r.Get("/icons/{name}", s.handleGetIcon)
 		r.Post("/apps/{id}/check", s.handleForceCheck)

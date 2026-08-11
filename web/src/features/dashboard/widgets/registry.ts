@@ -37,6 +37,7 @@ import netgraph from "./netgraph";
 import battery from "./battery";
 import grafana from "./grafana";
 import wol from "./wol";
+import arr from "./arr";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -77,6 +78,7 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   battery,
   grafana,
   wol,
+  arr,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {
