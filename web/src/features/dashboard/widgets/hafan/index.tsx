@@ -25,7 +25,6 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const id = config?.entity?.trim();
-  const title = config?.title?.trim() || "Fan";
   const ready = !!b && !!token && !!id;
 
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
@@ -55,30 +54,24 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <WidgetHeader
-        icon={FanIcon}
-        title={title}
+        icon={<FanSpin on={on} />}
+        title={config?.title?.trim() || friendly(e, id)}
         right={<span className="text-[11px] font-mono text-text-muted">{level === 0 ? "off" : `speed ${level}`}</span>}
       />
-      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col justify-center gap-2">
-        <div className="flex items-center gap-2">
-          <FanSpin on={on} />
-          <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
-        </div>
-        <div>
-          <input
-            type="range"
-            min={0}
-            max={3}
-            step={1}
-            value={level}
-            onChange={(ev) => setLevel(Number((ev.target as HTMLInputElement).value))}
-            className="w-full accent-accent h-1.5 cursor-pointer"
-          />
-          <div className="flex justify-between text-[9.5px] text-text-muted mt-1 px-0.5">
-            {LABELS.map((l, i) => (
-              <span key={i} className={i === level ? "text-accent" : ""}>{l}</span>
-            ))}
-          </div>
+      <div className="flex-1 min-h-0 overflow-hidden px-3 py-2 flex flex-col justify-center">
+        <input
+          type="range"
+          min={0}
+          max={3}
+          step={1}
+          value={level}
+          onChange={(ev) => setLevel(Number((ev.target as HTMLInputElement).value))}
+          className="w-full accent-accent h-1.5 cursor-pointer"
+        />
+        <div className="flex justify-between text-[9.5px] text-text-muted mt-1 px-0.5">
+          {LABELS.map((l, i) => (
+            <span key={i} className={i === level ? "text-accent" : ""}>{l}</span>
+          ))}
         </div>
       </div>
     </div>
