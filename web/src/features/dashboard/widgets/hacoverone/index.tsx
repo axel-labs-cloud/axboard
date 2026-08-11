@@ -85,6 +85,8 @@ const definition: WidgetDefinition<HassOneConfig> = {
   title: "HA Cover",
   icon: CoverIcon,
   category: "homeassistant",
+  group: "Covers",
+  variant: "Single",
   description: "Home Assistant — one cover: open / stop / close a blind, garage door or curtain.",
   minW: 2,
   minH: 1,

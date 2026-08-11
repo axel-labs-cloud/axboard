@@ -32,6 +32,7 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
   const cached = qc.getQueryData<Config>(["config"]);
   const [cat, setCat] = useState<string>("all");
   const [q, setQ] = useState("");
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
 
   const add = useMutation({
     mutationFn: async (type: WidgetType) => {
@@ -137,37 +138,100 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
           {sections.length === 0 && (
             <div className="text-center text-[12px] text-text-muted py-8">No widgets match.</div>
           )}
-          {sections.map((section) => (
-            <div key={section.cat}>
-              <div className="flex items-center gap-2 mb-2 px-0.5">
-                <span className="text-[10px] uppercase tracking-[0.1em] text-text-muted font-semibold">
-                  {CATEGORY_LABELS[section.cat] ?? section.cat}
-                </span>
-                <span className="text-[10px] text-text-muted/60 tabular-nums">{section.items.length}</span>
-                <div className="flex-1 h-px bg-border-subtle" />
+          {sections.map((section) => {
+            // Collapse grouped variants (e.g. Lights single/multi) into one
+            // expandable card; a group with a single matching variant shows plain.
+            type Def = (typeof section.items)[number];
+            const entries: ({ kind: "single"; def: Def } | { kind: "group"; name: string; defs: Def[] })[] = [];
+            const seen = new Set<string>();
+            for (const def of section.items) {
+              if (!def.group) {
+                entries.push({ kind: "single", def });
+                continue;
+              }
+              if (seen.has(def.group)) continue;
+              seen.add(def.group);
+              const gdefs = section.items.filter((d) => d.group === def.group);
+              if (gdefs.length === 1) entries.push({ kind: "single", def: gdefs[0] });
+              else entries.push({ kind: "group", name: def.group, defs: gdefs });
+            }
+            const addCard = (def: Def) => (
+              <button
+                key={def.type}
+                onClick={() => add.mutate(def.type)}
+                disabled={add.isPending || !dashboardId}
+                className="text-left flex items-start gap-3 p-3 rounded-lg border border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">{def.icon}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[12.5px] text-text font-medium">{def.title}</div>
+                  <div className="text-[11px] text-text-muted leading-snug mt-0.5 line-clamp-2">{def.description}</div>
+                </div>
+              </button>
+            );
+            return (
+              <div key={section.cat}>
+                <div className="flex items-center gap-2 mb-2 px-0.5">
+                  <span className="text-[10px] uppercase tracking-[0.1em] text-text-muted font-semibold">
+                    {CATEGORY_LABELS[section.cat] ?? section.cat}
+                  </span>
+                  <span className="text-[10px] text-text-muted/60 tabular-nums">{section.items.length}</span>
+                  <div className="flex-1 h-px bg-border-subtle" />
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 items-start">
+                  {entries.map((entry) => {
+                    if (entry.kind === "single") return addCard(entry.def);
+                    const key = `${section.cat}:${entry.name}`;
+                    const open = openGroup === key;
+                    const first = entry.defs[0];
+                    if (open) {
+                      return (
+                        <div key={key} className="rounded-lg border border-accent/40 bg-bg-card p-3 flex flex-col gap-2">
+                          <button onClick={() => setOpenGroup(null)} className="flex items-center gap-3 text-left">
+                            <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">{first.icon}</div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-[12.5px] text-text font-medium">{entry.name}</div>
+                              <div className="text-[10px] text-text-muted">Choose one</div>
+                            </div>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3.5 h-3.5 text-text-muted"><path d="m18 15-6-6-6 6" /></svg>
+                          </button>
+                          <div className="space-y-1">
+                            {entry.defs.map((d) => (
+                              <button
+                                key={d.type}
+                                onClick={() => add.mutate(d.type)}
+                                disabled={add.isPending || !dashboardId}
+                                className="w-full text-left px-2.5 py-1.5 rounded border border-border-subtle hover:border-accent/50 hover:bg-bg-elevated transition-colors disabled:opacity-40"
+                              >
+                                <div className="text-[11.5px] text-text font-medium">{d.variant}</div>
+                                <div className="text-[10px] text-text-muted leading-snug line-clamp-1">{d.description}</div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setOpenGroup(key)}
+                        className="text-left flex items-start gap-3 p-3 rounded-lg border border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card transition-colors"
+                      >
+                        <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">{first.icon}</div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-[12.5px] text-text font-medium flex items-center gap-1">
+                            {entry.name}
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-3 h-3 text-text-muted"><path d="m6 9 6 6 6-6" /></svg>
+                          </div>
+                          <div className="text-[11px] text-text-muted leading-snug mt-0.5">{entry.defs.map((d) => d.variant).join(" · ")}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5">
-                {section.items.map((def) => (
-                  <button
-                    key={def.type}
-                    onClick={() => add.mutate(def.type)}
-                    disabled={add.isPending || !dashboardId}
-                    className="text-left flex items-start gap-3 p-3 rounded-lg border border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">
-                      {def.icon}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[12.5px] text-text font-medium">{def.title}</div>
-                      <div className="text-[11px] text-text-muted leading-snug mt-0.5 line-clamp-2">
-                        {def.description}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {add.isError && (

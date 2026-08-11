@@ -97,6 +97,8 @@ const definition: WidgetDefinition<HassSensorsConfig> = {
   title: "HA Sensors",
   icon: GaugeIcon,
   category: "homeassistant",
+  group: "Sensors",
+  variant: "Multiple",
   description: "Home Assistant sensors — live values for temperature, humidity, doors, motion and any entity.",
   minW: 2,
   minH: 1,

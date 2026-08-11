@@ -73,6 +73,8 @@ const definition: WidgetDefinition<HassOneConfig> = {
   title: "HA Sensor",
   icon: GaugeIcon,
   category: "homeassistant",
+  group: "Sensors",
+  variant: "Single",
   description: "Home Assistant — one sensor shown as a big value tile (temperature, humidity, a door, …).",
   minW: 2,
   minH: 1,

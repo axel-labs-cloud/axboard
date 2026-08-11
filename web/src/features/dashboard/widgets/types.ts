@@ -797,6 +797,11 @@ export interface WidgetDefinition<T = AnyWidgetConfig> {
   icon: ReactNode;
   category: WidgetCategory;
   description: string;
+  // Optional picker grouping: definitions that share a `group` collapse into one
+  // card in the Add-widget drawer that expands to the variants (labelled by
+  // `variant`, e.g. single vs multi).
+  group?: string;
+  variant?: string;
 
   minW: number;
   minH: number;

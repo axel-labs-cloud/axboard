@@ -116,6 +116,8 @@ const definition: WidgetDefinition<HassCoverConfig> = {
   title: "HA Fans",
   icon: FanIcon,
   category: "homeassistant",
+  group: "Fans",
+  variant: "Multiple",
   description: "Home Assistant — several fans, each a compact Off / 1 / 2 / 3 speed slider.",
   minW: 3,
   minH: 1,

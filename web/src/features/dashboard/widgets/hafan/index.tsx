@@ -118,6 +118,8 @@ const definition: WidgetDefinition<HassFanConfig> = {
   title: "HA Fan",
   icon: FanIcon,
   category: "homeassistant",
+  group: "Fans",
+  variant: "Single",
   description: "Home Assistant fan — a stepped Off / 1 / 2 / 3 speed slider.",
   minW: 2,
   minH: 1,

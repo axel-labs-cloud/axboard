@@ -117,6 +117,8 @@ const definition: WidgetDefinition<HassOneConfig> = {
   title: "HA Light",
   icon: BulbIcon,
   category: "homeassistant",
+  group: "Lights",
+  variant: "Single",
   description: "Home Assistant — one light: toggle in the header, brightness slider in the body.",
   minW: 2,
   minH: 1,

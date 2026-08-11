@@ -158,6 +158,8 @@ const definition: WidgetDefinition<HassLightsConfig> = {
   title: "HA Lights",
   icon: BulbIcon,
   category: "homeassistant",
+  group: "Lights",
+  variant: "Multiple",
   description: "Home Assistant lights — toggle on/off and dim brightness for the entities you pick.",
   minW: 2,
   minH: 1,
