@@ -43,7 +43,19 @@ export type WidgetType =
   | "proxmox"
   | "transmission"
   | "dns"
-  | "media";
+  | "media"
+  | "qbittorrent"
+  | "homeassistant"
+  | "portainer"
+  | "scrutiny"
+  | "immich"
+  | "nextcloud"
+  | "seerr"
+  | "paperless"
+  | "pbs"
+  | "traefik"
+  | "tailscale"
+  | "notify";
 
 export type WidgetCategory = "productivity" | "system" | "services" | "network" | "external";
 
@@ -459,6 +471,99 @@ export interface MediaConfig {
   title?: string;
 }
 
+/** qBittorrent widget — torrent list + rates over the WebUI API (cookie login). */
+export interface QbittorrentConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:8080
+  username?: string;
+  password?: string;
+  title?: string;
+  max?: number; // rows (default 8)
+}
+
+/** Home Assistant widget — entity roll-up (people home, lights/switches on) + custom entities. */
+export interface HomeAssistantConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:8123
+  token?: string; // long-lived access token
+  entities?: string[]; // extra entity_ids to show verbatim
+  title?: string;
+}
+
+/** Portainer widget — container counts from an endpoint snapshot. */
+export interface PortainerConfig {
+  baseUrl?: string; // e.g. https://172.24.2.100:9443
+  apiKey?: string; // X-API-Key
+  env?: number; // endpoint id (defaults to the first)
+  title?: string;
+}
+
+/** Scrutiny widget — disk SMART health summary (no auth). */
+export interface ScrutinyConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:8080
+  title?: string;
+}
+
+/** Immich widget — photo/video library statistics. */
+export interface ImmichConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:2283
+  apiKey?: string; // x-api-key (needs server.statistics permission)
+  title?: string;
+}
+
+/** Nextcloud widget — serverinfo stats (free space, users, files, shares). */
+export interface NextcloudConfig {
+  baseUrl?: string; // e.g. https://cloud.example.com
+  token?: string; // NC-Token (Settings → System) — or use username/password
+  username?: string;
+  password?: string;
+  title?: string;
+}
+
+/** Overseerr / Jellyseerr widget — media request counts. */
+export interface SeerrConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:5055
+  apiKey?: string; // X-Api-Key
+  title?: string;
+}
+
+/** Paperless-ngx widget — document statistics. */
+export interface PaperlessConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:8000
+  token?: string; // Authorization: Token …
+  title?: string;
+}
+
+/** Proxmox Backup Server widget — datastore usage. */
+export interface PbsConfig {
+  baseUrl?: string; // e.g. https://172.24.2.100:8007
+  tokenId?: string; // user@realm!tokenid
+  tokenSecret?: string;
+  title?: string;
+}
+
+/** Traefik widget — router / service / middleware counts. */
+export interface TraefikConfig {
+  baseUrl?: string; // e.g. http://172.24.2.100:8080 (api/dashboard)
+  username?: string; // optional basic auth
+  password?: string;
+  title?: string;
+}
+
+/** Tailscale widget — tailnet device status (Tailscale cloud API). */
+export interface TailscaleConfig {
+  tailnet?: string; // e.g. example.com or "-" for default
+  apiKey?: string; // Tailscale API access token (tskey-api-…)
+  title?: string;
+}
+
+/** Notifications widget — Gotify or ntfy server message/app counts. */
+export interface NotifyConfig {
+  kind?: "gotify" | "ntfy";
+  baseUrl?: string; // e.g. http://172.24.2.100:8080 (gotify) / :80 (ntfy)
+  token?: string; // gotify client token / ntfy access token
+  topic?: string; // ntfy topic to read
+  title?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -503,6 +608,18 @@ export type WidgetConfigByType = {
   transmission: TransmissionConfig;
   dns: DnsConfig;
   media: MediaConfig;
+  qbittorrent: QbittorrentConfig;
+  homeassistant: HomeAssistantConfig;
+  portainer: PortainerConfig;
+  scrutiny: ScrutinyConfig;
+  immich: ImmichConfig;
+  nextcloud: NextcloudConfig;
+  seerr: SeerrConfig;
+  paperless: PaperlessConfig;
+  pbs: PbsConfig;
+  traefik: TraefikConfig;
+  tailscale: TailscaleConfig;
+  notify: NotifyConfig;
 };
 
 export type AnyWidgetConfig = Partial<

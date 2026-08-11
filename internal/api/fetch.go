@@ -91,6 +91,13 @@ func (s *Server) handleFetch(w http.ResponseWriter, r *http.Request) {
 	if sid := resp.Header.Get("X-Transmission-Session-Id"); sid != "" {
 		w.Header().Set("X-Transmission-Session-Id", sid)
 	}
+	// Surface an upstream Set-Cookie under a non-forbidden name so cookie-login
+	// widgets (qBittorrent) can read the session cookie and replay it as a
+	// Cookie header on later calls. (Browsers block reading Set-Cookie directly,
+	// and re-emitting it as our own Set-Cookie would wrongly scope it here.)
+	if sc := resp.Header.Get("Set-Cookie"); sc != "" {
+		w.Header().Set("X-Proxy-Set-Cookie", sc)
+	}
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, io.LimitReader(resp.Body, 4<<20)) // 4 MiB cap
 }

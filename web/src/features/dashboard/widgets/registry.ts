@@ -42,6 +42,18 @@ import proxmox from "./proxmox";
 import transmission from "./transmission";
 import dns from "./dns";
 import media from "./media";
+import qbittorrent from "./qbittorrent";
+import homeassistant from "./homeassistant";
+import portainer from "./portainer";
+import scrutiny from "./scrutiny";
+import immich from "./immich";
+import nextcloud from "./nextcloud";
+import seerr from "./seerr";
+import paperless from "./paperless";
+import pbs from "./pbs";
+import traefik from "./traefik";
+import tailscale from "./tailscale";
+import notify from "./notify";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -87,6 +99,18 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   transmission,
   dns,
   media,
+  qbittorrent,
+  homeassistant,
+  portainer,
+  scrutiny,
+  immich,
+  nextcloud,
+  seerr,
+  paperless,
+  pbs,
+  traefik,
+  tailscale,
+  notify,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

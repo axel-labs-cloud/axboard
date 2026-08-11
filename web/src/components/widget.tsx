@@ -111,3 +111,30 @@ export function Meter({ pct, color, tick, className = "" }: { pct: number; color
     </div>
   );
 }
+
+// --- StatTiles ------------------------------------------------------------
+// A responsive grid of big-number tiles (value + label), the shared shape for
+// the many "fetch one endpoint, show a few counts" service widgets. An optional
+// accent colour and sub-line per tile.
+export interface StatTile {
+  label: string;
+  value: string;
+  sub?: string;
+  color?: string;
+}
+export function StatTiles({ tiles, cols }: { tiles: StatTile[]; cols?: number }) {
+  const n = cols ?? Math.min(tiles.length || 1, 3);
+  return (
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}>
+      {tiles.map((t) => (
+        <div key={t.label} className="min-w-0">
+          <div className="text-[16px] font-semibold tabular-nums truncate leading-tight" style={{ color: t.color ?? "var(--color-text)" }}>
+            {t.value}
+          </div>
+          <div className="text-[9.5px] uppercase tracking-wide text-text-muted truncate">{t.label}</div>
+          {t.sub && <div className="text-[9.5px] text-text-muted/70 truncate">{t.sub}</div>}
+        </div>
+      ))}
+    </div>
+  );
+}
