@@ -9,6 +9,27 @@ function hostOf(u: string): string {
   }
 }
 
+const hasParam = (url: string, k: string) => new RegExp(`[?&]${k}([=&]|$)`).test(url);
+const addParam = (url: string, k: string, v = "") => (hasParam(url, k) ? url : `${url}${url.includes("?") ? "&" : "?"}${k}${v ? `=${v}` : ""}`);
+
+// True when the dashboard's background is dark (so the Grafana panel can match).
+function isDarkBg(): boolean {
+  try {
+    const bg = getComputedStyle(document.documentElement).getPropertyValue("--color-bg").trim();
+    const m = bg.match(/\d+/g);
+    let r = 10, g = 10, b = 10;
+    if (bg.startsWith("#")) {
+      const h = bg.length === 4 ? bg.slice(1).replace(/(.)/g, "$1$1") : bg.slice(1);
+      r = parseInt(h.slice(0, 2), 16); g = parseInt(h.slice(2, 4), 16); b = parseInt(h.slice(4, 6), 16);
+    } else if (m && m.length >= 3) {
+      [r, g, b] = m.map(Number);
+    }
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b < 128;
+  } catch {
+    return true;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Grafana panel embed — an iframe pointed at a Grafana panel share/kiosk URL.
 // Grafana must allow embedding (allow_embedding = true, and anonymous access or
@@ -17,17 +38,19 @@ function hostOf(u: string): string {
 
 function GrafanaComponent({ config, editing }: WidgetProps<GrafanaConfig>) {
   const url = config?.url?.trim();
+  const sec = config?.refreshSec ?? 0;
+  const nativeRefresh = sec > 0; // let Grafana refresh itself (no flickery remount)
   const [nonce, setNonce] = useState(0);
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
-    const sec = config?.refreshSec ?? 0;
-    if (!url || sec <= 0) return;
+    // Only remount when NOT using Grafana's built-in refresh param.
+    if (!url || sec <= 0 || nativeRefresh) return;
     timer.current = window.setInterval(() => setNonce((n) => n + 1), sec * 1000);
     return () => {
       if (timer.current) window.clearInterval(timer.current);
     };
-  }, [url, config?.refreshSec]);
+  }, [url, sec, nativeRefresh]);
 
   if (!url) {
     return (
@@ -37,13 +60,21 @@ function GrafanaComponent({ config, editing }: WidgetProps<GrafanaConfig>) {
     );
   }
 
-  const src = `${url}${url.includes("?") ? "&" : "?"}_n=${nonce}`;
+  // Build the embed URL: match the dashboard theme, add kiosk for d-solo panels,
+  // and use Grafana's own refresh param when set.
+  let src = url;
+  if (config?.matchTheme !== false) src = addParam(src, "theme", isDarkBg() ? "dark" : "light");
+  if (url.includes("/d-solo/")) src = addParam(src, "kiosk");
+  if (nativeRefresh) src = addParam(src, "refresh", `${sec}s`);
+  else src = `${src}${src.includes("?") ? "&" : "?"}_n=${nonce}`;
+
   const title = config?.title?.trim();
+  const hideChrome = config?.hideChrome === true;
   return (
     <div className="relative h-full w-full bg-bg flex flex-col">
-      {/* Always show a title bar with an open-in-Grafana fallback: Grafana often
-          refuses embedding, leaving a blank iframe with no way out otherwise. */}
-      <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 border-b border-border-subtle">
+      {/* Title bar with an open-in-Grafana fallback: Grafana often refuses
+          embedding, leaving a blank iframe with no way out otherwise. */}
+      <div className={`shrink-0 items-center gap-2 px-3 py-1.5 border-b border-border-subtle ${hideChrome ? "hidden group-hover/w:flex absolute inset-x-0 top-0 z-10 bg-bg-elevated/90 backdrop-blur-sm" : "flex"}`}>
         <span className="text-[12px] font-medium text-text-secondary truncate flex-1 font-mono">{title || hostOf(url)}</span>
         <a
           href={url}
@@ -100,6 +131,23 @@ function GrafanaConfigPanel({ config, save }: WidgetConfigProps<GrafanaConfig>) 
           onChange={(e) => save({ refreshSec: Math.max(0, parseInt(e.target.value) || 0) })}
           className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent"
         />
+        <p className="text-[10px] text-text-muted">Uses Grafana's own <span className="font-mono">&refresh</span> — no reload flicker.</p>
+      </div>
+      <div className="flex gap-1.5">
+        {(
+          [
+            ["matchTheme", config?.matchTheme !== false, () => save({ matchTheme: config?.matchTheme === false }), "Match theme"],
+            ["hideChrome", config?.hideChrome === true, () => save({ hideChrome: !(config?.hideChrome === true) }), "Hide title bar"],
+          ] as const
+        ).map(([k, on, toggle, label]) => (
+          <button
+            key={k}
+            onClick={toggle}
+            className={`flex-1 px-2 py-1.5 text-[11px] rounded border transition-colors ${on ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"}`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
     </div>
   );

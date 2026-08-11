@@ -417,6 +417,8 @@ export interface GrafanaConfig {
   url?: string;
   refreshSec?: number;
   title?: string;
+  hideChrome?: boolean; // hide the title bar for a clean embed
+  matchTheme?: boolean; // append &theme= to match the dashboard (default true)
 }
 
 /** Wake-on-LAN launcher — a grid of buttons that send magic packets. */
