@@ -9,8 +9,9 @@ import type { ProxmoxConfig, ProxmoxServer, WidgetConfigProps, WidgetDefinition,
 // Proxmox VE widget — one or more PVE endpoints. Each /cluster/resources call
 // returns every node, VM, LXC and storage with live CPU / memory / disk;
 // results merge into one panel. Node names open the PVE UI; guests open their
-// noVNC console. Auth: a PVEAPIToken (created WITHOUT privilege separation, or
-// granted PVEAuditor on /) forwarded via the shared /api/fetch proxy.
+// noVNC console. Optional backup-age lookup walks each backup datastore.
+// Auth: a PVEAPIToken (created WITHOUT privilege separation, or granted
+// PVEAuditor on /) forwarded via the shared /api/fetch proxy.
 // ---------------------------------------------------------------------------
 
 interface Res {
@@ -39,6 +40,7 @@ interface ServerResult {
 
 const CPU_OPTS = { lo: 0, hi: 100, warn: 75, crit: 90 };
 const base = (u?: string) => (u ?? "").trim().replace(/\/+$/, "");
+const authHeader = (s: ProxmoxServer) => ({ Authorization: `PVEAPIToken=${s.tokenId}=${s.tokenSecret}` });
 const clampPct = (used?: number, max?: number) => (max && max > 0 ? Math.min(100, (100 * (used ?? 0)) / max) : 0);
 const gb = (b?: number) => {
   const v = (b ?? 0) / 1e9;
@@ -71,6 +73,46 @@ function serverList(config?: ProxmoxConfig): ProxmoxServer[] {
   return list.filter((s) => s.baseUrl && s.tokenId && s.tokenSecret);
 }
 
+// Best-effort: latest backup ctime (unix seconds) per vmid across a server's
+// backup-capable datastores. Shared stores are queried once.
+async function fetchBackups(s: ProxmoxServer): Promise<Record<number, number>> {
+  const b = base(s.baseUrl);
+  const headers = authHeader(s);
+  const latest: Record<number, number> = {};
+  const nodes = await api.fetchJson<{ data: { node: string; status: string }[] }>({
+    url: `${b}/api2/json/nodes`,
+    headers,
+  });
+  const online = (nodes.data ?? []).filter((n) => n.status === "online");
+  const seen = new Set<string>();
+  for (const n of online) {
+    let stores: { data: { storage: string; shared?: number }[] };
+    try {
+      stores = await api.fetchJson({ url: `${b}/api2/json/nodes/${n.node}/storage?content=backup`, headers });
+    } catch {
+      continue;
+    }
+    for (const st of stores.data ?? []) {
+      const key = st.shared ? st.storage : `${n.node}/${st.storage}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      try {
+        const content = await api.fetchJson<{ data: { vmid?: number; ctime?: number }[] }>({
+          url: `${b}/api2/json/nodes/${n.node}/storage/${st.storage}/content?content=backup`,
+          headers,
+        });
+        for (const it of content.data ?? []) {
+          if (it.vmid == null || it.ctime == null) continue;
+          if ((latest[it.vmid] ?? 0) < it.ctime) latest[it.vmid] = it.ctime;
+        }
+      } catch {
+        /* ignore a store we can't read */
+      }
+    }
+  }
+  return latest;
+}
+
 // A full-width host resource bar (label above, fill below).
 function Bar({ label, value }: { label: string; value: number }) {
   return (
@@ -96,11 +138,39 @@ function Cell({ value }: { value: number }) {
   );
 }
 
+// Backup-age chip: muted when fresh, amber >2d, red >7d or never.
+function BackupChip({ ctime }: { ctime?: number }) {
+  if (!ctime) {
+    return (
+      <span className="w-12 shrink-0 text-right text-[10px] font-mono text-down/70" title="No backup found">
+        no bkp
+      </span>
+    );
+  }
+  const days = (Date.now() / 1000 - ctime) / 86400;
+  const tone = days > 7 ? "text-down" : days > 2 ? "text-degraded" : "text-text-muted";
+  const label = timeAgoShort(ctime);
+  return (
+    <span className={`w-12 shrink-0 text-right text-[10px] font-mono ${tone}`} title={`Last backup ${new Date(ctime * 1000).toLocaleString()}`}>
+      {label}
+    </span>
+  );
+}
+function timeAgoShort(ctime: number): string {
+  const s = Date.now() / 1000 - ctime;
+  if (s < 3600) return `${Math.max(1, Math.floor(s / 60))}m`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h`;
+  return `${Math.floor(s / 86400)}d`;
+}
+
 function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
   const servers = serverList(config);
   const title = config?.title?.trim() || "Proxmox";
-  const showGuests = config?.showGuests !== false;
-  const showStorage = config?.showStorage !== false;
+  const compact = config?.compact === true;
+  const showSummary = config?.showSummary !== false;
+  const showGuests = config?.showGuests !== false && !compact;
+  const showStorage = config?.showStorage !== false && !compact;
+  const showBackups = config?.showBackups === true && showGuests;
 
   const { data, isLoading } = useQuery({
     queryKey: ["pve", servers.map((s) => `${s.baseUrl}|${s.tokenId}`)],
@@ -112,7 +182,7 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
           try {
             const r = await api.fetchJson<{ data: Res[] }>({
               url: `${base(s.baseUrl)}/api2/json/cluster/resources`,
-              headers: { Authorization: `PVEAPIToken=${s.tokenId}=${s.tokenSecret}` },
+              headers: authHeader(s),
             });
             return { server: s, resources: r.data ?? [], error: null };
           } catch (e) {
@@ -120,6 +190,15 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
           }
         }),
       ),
+  });
+
+  // Separate, slower query for backup ages — keyed by server + toggle.
+  const { data: backups } = useQuery({
+    queryKey: ["pve-backups", servers.map((s) => `${s.baseUrl}|${s.tokenId}`)],
+    enabled: showBackups && servers.length > 0,
+    refetchInterval: 300_000,
+    queryFn: async (): Promise<Record<number, number>[]> =>
+      Promise.all(servers.map((s) => fetchBackups(s).catch(() => ({}) as Record<number, number>))),
   });
 
   if (servers.length === 0) {
@@ -164,43 +243,102 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
           }
           const stores = [...storeMap.values()].sort((a, z) => clampPct(z.disk, z.maxdisk) - clampPct(a.disk, a.maxdisk));
           const label = d.server.name?.trim() || hostOf(d.server.baseUrl);
+          const bkp = backups?.[si];
+
+          // Cluster capacity summary (weighted CPU across nodes).
+          const cores = nodes.reduce((n, x) => n + (x.maxcpu ?? 0), 0);
+          const ramUsed = nodes.reduce((n, x) => n + (x.mem ?? 0), 0);
+          const ramTotal = nodes.reduce((n, x) => n + (x.maxmem ?? 0), 0);
+          const cpuPct = cores > 0 ? (100 * nodes.reduce((n, x) => n + (x.cpu ?? 0) * (x.maxcpu ?? 0), 0)) / cores : 0;
+          const gRun = guests.filter((g) => g.status === "running").length;
 
           return (
             <div key={si} className="space-y-2">
-              {multi && (
-                <div className="text-[10px] uppercase tracking-wide text-text-muted/80 px-0.5 pt-1 font-semibold">{label}</div>
+              {showSummary ? (
+                <div className="flex items-center flex-wrap gap-x-1.5 gap-y-0.5 px-0.5 pt-1 text-[10px] text-text-muted">
+                  {multi && <span className="uppercase tracking-wide font-semibold text-text-muted/80">{label}</span>}
+                  <span>{nodes.length} node{nodes.length === 1 ? "" : "s"}</span>
+                  <span className="text-text-muted/40">·</span>
+                  <span>{cores}c</span>
+                  <span className="text-text-muted/40">·</span>
+                  <span>CPU {cpuPct.toFixed(0)}%</span>
+                  <span className="text-text-muted/40">·</span>
+                  <span>RAM {gb(ramUsed)}/{gb(ramTotal)}</span>
+                  <span className="text-text-muted/40">·</span>
+                  <span>{gRun}/{guests.length} up</span>
+                </div>
+              ) : (
+                multi && <div className="text-[10px] uppercase tracking-wide text-text-muted/80 px-0.5 pt-1 font-semibold">{label}</div>
               )}
               {d.error && <div className="text-[11px] text-down px-1 py-1.5">{label}: {d.error}</div>}
 
-              {nodes.map((n) => (
-                <div key={n.id} className="rounded-lg bg-bg-card/40 border border-border-subtle/50 p-2">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <StatusDot status={n.status === "online" ? "up" : "down"} size="md" title={n.status} />
-                    <a
-                      href={base(d.server.baseUrl)}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                      className="text-[12px] text-text font-medium truncate flex-1 hover:text-accent focus-visible:outline-none focus-visible:underline"
-                      title="Open PVE web UI"
-                    >
-                      {n.node}
-                    </a>
-                    <span className="text-[10px] font-mono text-text-muted shrink-0">
-                      {n.maxcpu ?? 0}c{uptime(n.uptime) ? ` · ${uptime(n.uptime)}` : ""}
-                    </span>
+              {compact ? (
+                <div>
+                  <div className="flex items-center text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">
+                    <span className="flex-1">Nodes</span>
+                    <span className="w-[74px] text-right pr-8">CPU</span>
+                    <span className="w-[74px] text-right pr-8">RAM</span>
+                    <span className="w-[74px] text-right pr-8">Disk</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    <Bar label="CPU" value={(n.cpu ?? 0) * 100} />
-                    <Bar label={`RAM ${gb(n.mem)}/${gb(n.maxmem)}`} value={clampPct(n.mem, n.maxmem)} />
-                    <Bar label="Disk" value={clampPct(n.disk, n.maxdisk)} />
+                  <div className="divide-y divide-border-subtle">
+                    {nodes.map((n) => (
+                      <a
+                        key={n.id}
+                        href={base(d.server.baseUrl)}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                        className="flex items-center gap-2 py-1 hover:bg-bg-hover/60 rounded -mx-1 px-1"
+                        title="Open PVE web UI"
+                      >
+                        <StatusDot status={n.status === "online" ? "up" : "down"} size="sm" title={n.status} />
+                        <span className="text-[11.5px] text-text truncate flex-1">{n.node}</span>
+                        <Cell value={(n.cpu ?? 0) * 100} />
+                        <Cell value={clampPct(n.mem, n.maxmem)} />
+                        <Cell value={clampPct(n.disk, n.maxdisk)} />
+                      </a>
+                    ))}
                   </div>
                 </div>
-              ))}
+              ) : (
+                nodes.map((n) => {
+                  const worst = Math.max((n.cpu ?? 0) * 100, clampPct(n.mem, n.maxmem), clampPct(n.disk, n.maxdisk));
+                  const alert = n.status !== "online" || worst >= 90 ? "var(--color-down)" : worst >= 75 ? "var(--color-degraded)" : undefined;
+                  return (
+                    <div
+                      key={n.id}
+                      className="rounded-lg bg-bg-card/40 border p-2"
+                      style={{ borderColor: alert ?? "var(--color-border-subtle)" }}
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <StatusDot status={n.status === "online" ? "up" : "down"} size="md" title={n.status} />
+                        <a
+                          href={base(d.server.baseUrl)}
+                          target="_blank"
+                          rel="noreferrer noopener"
+                          className="text-[12px] text-text font-medium truncate flex-1 hover:text-accent focus-visible:outline-none focus-visible:underline"
+                          title="Open PVE web UI"
+                        >
+                          {n.node}
+                        </a>
+                        <span className="text-[10px] font-mono text-text-muted shrink-0">
+                          {n.maxcpu ?? 0}c{uptime(n.uptime) ? ` · ${uptime(n.uptime)}` : ""}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2.5">
+                        <Bar label="CPU" value={(n.cpu ?? 0) * 100} />
+                        <Bar label={`RAM ${gb(n.mem)}/${gb(n.maxmem)}`} value={clampPct(n.mem, n.maxmem)} />
+                        <Bar label="Disk" value={clampPct(n.disk, n.maxdisk)} />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
 
               {showGuests && guests.length > 0 && (
                 <div>
                   <div className="flex items-center text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">
                     <span className="flex-1">Guests · {guests.length}</span>
+                    {showBackups && <span className="w-12 text-right">Bkp</span>}
                     <span className="w-[74px] text-right pr-8">CPU</span>
                     <span className="w-[74px] text-right pr-8">RAM</span>
                   </div>
@@ -221,6 +359,7 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                             {g.type === "lxc" ? "CT" : "VM"}
                           </span>
                           <span className="text-[11.5px] text-text-secondary truncate flex-1">{g.name ?? g.vmid}</span>
+                          {showBackups && <BackupChip ctime={g.vmid != null ? bkp?.[g.vmid] : undefined} />}
                           {run ? (
                             <>
                               <Cell value={(g.cpu ?? 0) * 100} />
@@ -295,7 +434,7 @@ function ProxmoxConfigPanel({ config, save }: WidgetConfigProps<ProxmoxConfig>) 
   const toggle = (on: boolean, set: (v: boolean) => void, label: string) => (
     <button
       onClick={() => set(!on)}
-      className={`flex-1 px-2 py-1.5 text-[11px] rounded border transition-colors ${
+      className={`px-2 py-1.5 text-[11px] rounded border transition-colors ${
         on ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"
       }`}
     >
@@ -337,16 +476,19 @@ function ProxmoxConfigPanel({ config, save }: WidgetConfigProps<ProxmoxConfig>) 
       </button>
 
       <div className="space-y-1.5">
-        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Sections</label>
-        <div className="flex gap-1">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Display</label>
+        <div className="grid grid-cols-3 gap-1">
+          {toggle(config?.showSummary !== false, (v) => save({ showSummary: v }), "Summary")}
           {toggle(config?.showGuests !== false, (v) => save({ showGuests: v }), "Guests")}
           {toggle(config?.showStorage !== false, (v) => save({ showStorage: v }), "Storage")}
+          {toggle(config?.showBackups === true, (v) => save({ showBackups: v }), "Backups")}
+          {toggle(config?.compact === true, (v) => save({ compact: v }), "Compact")}
         </div>
       </div>
 
       <p className="text-[11px] text-text-muted leading-snug">
         Create the API token WITHOUT privilege separation (or grant the token <span className="font-mono">PVEAuditor</span> on{" "}
-        <span className="font-mono">/</span>). Secrets stay in your config.yaml.
+        <span className="font-mono">/</span>). Backups adds per-datastore lookups. Secrets stay in your config.yaml.
       </p>
     </div>
   );

@@ -408,8 +408,11 @@ export interface ProxmoxServer {
 export interface ProxmoxConfig {
   servers?: ProxmoxServer[];
   title?: string;
+  showSummary?: boolean; // cluster capacity line — default true
   showGuests?: boolean; // default true
   showStorage?: boolean; // default true
+  showBackups?: boolean; // last-backup age per guest (extra API calls) — default false
+  compact?: boolean; // node-only slim overview — default false
   // Legacy single-server fields (pre-multi); still honoured as one server.
   baseUrl?: string;
   tokenId?: string;
