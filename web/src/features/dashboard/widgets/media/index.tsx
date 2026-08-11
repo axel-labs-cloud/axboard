@@ -19,6 +19,7 @@ interface NowPlaying {
   pct: number;
   paused: boolean;
   device?: string;
+  transcode?: boolean; // true = transcoding, false = direct play/stream
 }
 interface Count {
   label: string;
@@ -41,7 +42,7 @@ async function jellyfin(b: string, token: string): Promise<MediaData> {
         DeviceName?: string;
         Client?: string;
         NowPlayingItem?: { Name?: string; SeriesName?: string; Type?: string; RunTimeTicks?: number };
-        PlayState?: { PositionTicks?: number; IsPaused?: boolean };
+        PlayState?: { PositionTicks?: number; IsPaused?: boolean; PlayMethod?: string };
       }[]
     >({ url: `${b}/Sessions`, headers }),
     api
@@ -61,6 +62,7 @@ async function jellyfin(b: string, token: string): Promise<MediaData> {
         pct: run ? (100 * (s.PlayState?.PositionTicks ?? 0)) / run : 0,
         paused: s.PlayState?.IsPaused ?? false,
         device: s.DeviceName || s.Client,
+        transcode: s.PlayState?.PlayMethod ? s.PlayState.PlayMethod === "Transcode" : undefined,
       };
     });
   const cd: Count[] = [];
@@ -84,19 +86,30 @@ async function plex(b: string, token: string): Promise<MediaData> {
         duration?: number;
         User?: { title?: string };
         Player?: { state?: string; title?: string; product?: string };
+        TranscodeSession?: { videoDecision?: string; audioDecision?: string };
+        Media?: { Part?: { decision?: string }[] }[];
       }[];
     };
   }>({ url: `${b}/status/sessions`, headers });
   const md = r.MediaContainer?.Metadata ?? [];
-  const playing: NowPlaying[] = md.map((m, i) => ({
-    key: m.ratingKey ?? String(i),
-    user: m.User?.title,
-    title: m.title ?? "Unknown",
-    subtitle: m.grandparentTitle ?? m.type,
-    pct: m.duration ? (100 * (m.viewOffset ?? 0)) / m.duration : 0,
-    paused: m.Player?.state === "paused",
-    device: m.Player?.title || m.Player?.product,
-  }));
+  const playing: NowPlaying[] = md.map((m, i) => {
+    const decision = m.Media?.[0]?.Part?.[0]?.decision;
+    const transcode = m.TranscodeSession
+      ? m.TranscodeSession.videoDecision === "transcode" || m.TranscodeSession.audioDecision === "transcode"
+      : decision
+        ? decision === "transcode"
+        : undefined;
+    return {
+      key: m.ratingKey ?? String(i),
+      user: m.User?.title,
+      title: m.title ?? "Unknown",
+      subtitle: m.grandparentTitle ?? m.type,
+      pct: m.duration ? (100 * (m.viewOffset ?? 0)) / m.duration : 0,
+      paused: m.Player?.state === "paused",
+      device: m.Player?.title || m.Player?.product,
+      transcode,
+    };
+  });
   return { playing, counts: [] };
 }
 
@@ -121,6 +134,8 @@ function MediaComponent({ config }: WidgetProps<MediaConfig>) {
   if (isLoading || !data) return <SkeletonLines rows={3} />;
 
   const { playing, counts } = data;
+  const users = new Set(playing.map((p) => p.user).filter(Boolean)).size;
+  const transcodes = playing.filter((p) => p.transcode).length;
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -130,10 +145,23 @@ function MediaComponent({ config }: WidgetProps<MediaConfig>) {
         right={
           <span className="flex items-center gap-1 text-[11px] text-text-muted">
             <StatusDot status={playing.length > 0 ? "up" : "unknown"} size="sm" />
-            {playing.length} playing
+            {playing.length} {playing.length === 1 ? "stream" : "streams"}
           </span>
         }
       />
+      {playing.length > 0 && (
+        <div className="flex items-center gap-3 px-2.5 py-1 text-[11px] font-mono border-b border-border-subtle text-text-muted">
+          <span>{users || 1} {users === 1 ? "user" : "users"}</span>
+          {transcodes > 0 && (
+            <span className="flex items-center gap-1 text-degraded" title="Transcoding streams">
+              <TranscodeIcon /> {transcodes} transcoding
+            </span>
+          )}
+          {transcodes === 0 && playing.some((p) => p.transcode === false) && (
+            <span className="text-up">all direct</span>
+          )}
+        </div>
+      )}
       <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5">
         {playing.length === 0 ? (
           <div className="text-[11px] text-text-muted px-1 py-2">Nothing playing.</div>
@@ -143,6 +171,16 @@ function MediaComponent({ config }: WidgetProps<MediaConfig>) {
               <div key={p.key} className="min-w-0">
                 <div className="flex items-baseline gap-2">
                   <span className="text-[12px] text-text truncate flex-1" title={p.title}>{p.title}</span>
+                  {p.transcode !== undefined && (
+                    <span
+                      className={`text-[8.5px] font-mono uppercase tracking-wide px-1 py-px rounded shrink-0 ${
+                        p.transcode ? "bg-degraded/15 text-degraded" : "bg-up/15 text-up"
+                      }`}
+                      title={p.transcode ? "Transcoding" : "Direct play"}
+                    >
+                      {p.transcode ? "transcode" : "direct"}
+                    </span>
+                  )}
                   <span className={`text-[9.5px] font-mono shrink-0 ${p.paused ? "text-text-muted/60" : "text-up"}`}>
                     {p.paused ? "paused" : "playing"}
                   </span>
@@ -226,6 +264,14 @@ const PlayIcon = (
     <polygon points="6 4 20 12 6 20 6 4" />
   </svg>
 );
+
+function TranscodeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="w-2.5 h-2.5">
+      <path d="M4 8h13l-3-3M20 16H7l3 3" />
+    </svg>
+  );
+}
 
 const definition: WidgetDefinition<MediaConfig> = {
   type: "media",
