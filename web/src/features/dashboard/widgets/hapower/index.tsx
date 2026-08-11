@@ -103,7 +103,7 @@ const definition: WidgetDefinition<HassPowerConfig> = {
   category: "services",
   description: "Home Assistant power — live draw for the sensors you pick, with total consumption.",
   minW: 2,
-  minH: 2,
+  minH: 1,
   maxW: 6,
   maxH: 8,
   defaultW: 3,

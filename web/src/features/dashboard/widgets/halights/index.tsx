@@ -136,7 +136,7 @@ const definition: WidgetDefinition<HassLightsConfig> = {
   category: "services",
   description: "Home Assistant lights — toggle on/off and dim brightness for the entities you pick.",
   minW: 2,
-  minH: 2,
+  minH: 1,
   maxW: 6,
   maxH: 8,
   defaultW: 3,

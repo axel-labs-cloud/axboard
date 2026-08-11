@@ -34,7 +34,12 @@ export function useHassStates(base: string, token: string, enabled: boolean, ref
   });
 }
 
-// A mutation that calls an HA service and refreshes the shared states query.
+// A mutation that calls an HA service. Reconciliation is DELAYED: HA applies
+// state changes asynchronously, so an immediate /api/states refetch returns the
+// pre-change state and would clobber the optimistic update (making toggles look
+// inverted / fans flip-flop). We wait ~1.5s before invalidating so the refetch
+// confirms the new state instead of reverting it; the regular poll also catches
+// external changes.
 export function useHassService(base: string, token: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -45,7 +50,9 @@ export function useHassService(base: string, token: string) {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify(a.data),
       }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: statesKey(base, token) }),
+    onSuccess: () => {
+      setTimeout(() => qc.invalidateQueries({ queryKey: statesKey(base, token) }), 1500);
+    },
   });
 }
 

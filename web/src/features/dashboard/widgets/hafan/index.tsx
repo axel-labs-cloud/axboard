@@ -46,7 +46,7 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
         title={title}
         right={<span className="text-[11px] font-mono text-text-muted">{on ? (pct != null ? `${pct}%` : "on") : "off"}</span>}
       />
-      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col gap-3 justify-center">
+      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col gap-2.5">
         <div className="flex items-center gap-2">
           <FanSpin on={on} />
           <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
@@ -134,7 +134,7 @@ const definition: WidgetDefinition<HassFanConfig> = {
   category: "services",
   description: "Home Assistant fan — on/off plus low/medium/high presets and a speed slider.",
   minW: 2,
-  minH: 2,
+  minH: 1,
   maxW: 4,
   maxH: 4,
   defaultW: 2,
