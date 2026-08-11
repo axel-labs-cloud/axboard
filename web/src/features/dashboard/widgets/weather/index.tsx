@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { SkeletonBlock } from "../../../../components/Skeleton";
+import { ErrorState } from "../../../../components/widget";
 import type {
   WeatherConfig,
   WidgetConfigProps,
@@ -118,19 +120,11 @@ function WeatherWidget({ config, w, h }: WidgetProps<WeatherConfig>) {
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-full text-down text-[11px] p-3 text-center">
-        Weather fetch failed: {(error as Error).message}
-      </div>
-    );
+    return <ErrorState message={`Weather fetch failed: ${(error as Error).message}`} />;
   }
 
   if (isLoading || !data?.current) {
-    return (
-      <div className="flex items-center justify-center h-full text-text-muted text-[11px] animate-pulse">
-        Loading weather…
-      </div>
-    );
+    return <SkeletonBlock />;
   }
 
   const current = data.current;
