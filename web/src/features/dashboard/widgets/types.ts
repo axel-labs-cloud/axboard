@@ -58,7 +58,11 @@ export type WidgetType =
   | "notify"
   | "halights"
   | "hafan"
-  | "hapower";
+  | "hapower"
+  | "haclimate"
+  | "hacover"
+  | "hascenes"
+  | "hasensors";
 
 export type WidgetCategory = "productivity" | "system" | "services" | "network" | "external";
 
@@ -592,6 +596,38 @@ export interface HassPowerConfig {
   title?: string;
 }
 
+/** Home Assistant climate — thermostat control for one climate entity. */
+export interface HassClimateConfig {
+  baseUrl?: string;
+  token?: string;
+  entity?: string; // climate.* entity id
+  title?: string;
+}
+
+/** Home Assistant covers — open/close/stop + position for the chosen covers. */
+export interface HassCoverConfig {
+  baseUrl?: string;
+  token?: string;
+  entities?: string[]; // cover.* entity ids
+  title?: string;
+}
+
+/** Home Assistant scenes — one-tap buttons for scenes / scripts / automations. */
+export interface HassScenesConfig {
+  baseUrl?: string;
+  token?: string;
+  entities?: string[]; // scene.* / script.* / button.* / automation.*
+  title?: string;
+}
+
+/** Home Assistant sensors — read-only value tiles for any sensors. */
+export interface HassSensorsConfig {
+  baseUrl?: string;
+  token?: string;
+  entities?: string[]; // sensor.* / binary_sensor.*
+  title?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -651,6 +687,10 @@ export type WidgetConfigByType = {
   halights: HassLightsConfig;
   hafan: HassFanConfig;
   hapower: HassPowerConfig;
+  haclimate: HassClimateConfig;
+  hacover: HassCoverConfig;
+  hascenes: HassScenesConfig;
+  hasensors: HassSensorsConfig;
 };
 
 export type AnyWidgetConfig = Partial<

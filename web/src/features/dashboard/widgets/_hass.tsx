@@ -185,6 +185,11 @@ export const isPowerSensor = (e: HassEntity) => {
   const u = e.attributes?.unit_of_measurement;
   return dc === "power" || dc === "energy" || ["W", "kW", "Wh", "kWh"].includes(u ?? "");
 };
+export const isClimate = (e: HassEntity) => e.entity_id.startsWith("climate.");
+export const isCover = (e: HassEntity) => e.entity_id.startsWith("cover.");
+export const isScene = (e: HassEntity) =>
+  ["scene.", "script.", "button.", "automation.", "input_button."].some((p) => e.entity_id.startsWith(p));
+export const isSensor = (e: HassEntity) => e.entity_id.startsWith("sensor.") || e.entity_id.startsWith("binary_sensor.");
 
 // A small on/off pill toggle.
 export function Toggle({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {

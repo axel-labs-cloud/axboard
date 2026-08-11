@@ -107,7 +107,7 @@ const definition: WidgetDefinition<HomeAssistantConfig> = {
   category: "services",
   description: "Home Assistant — people home, lights and switches on, plus any entities you pin.",
   minW: 2,
-  minH: 2,
+  minH: 1,
   maxW: 6,
   maxH: 8,
   defaultW: 3,

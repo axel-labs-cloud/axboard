@@ -57,6 +57,10 @@ import notify from "./notify";
 import halights from "./halights";
 import hafan from "./hafan";
 import hapower from "./hapower";
+import haclimate from "./haclimate";
+import hacover from "./hacover";
+import hascenes from "./hascenes";
+import hasensors from "./hasensors";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -117,6 +121,10 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   halights,
   hafan,
   hapower,
+  haclimate,
+  hacover,
+  hascenes,
+  hasensors,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {
