@@ -15,7 +15,7 @@ const PRESETS = [
   { label: "High", pct: 100 },
 ];
 
-function FanComponent({ config }: WidgetProps<HassFanConfig>) {
+function FanComponent({ config, h }: WidgetProps<HassFanConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const id = config?.entity?.trim();
@@ -38,6 +38,36 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
   const e = data.find((x) => x.entity_id === id);
   const on = isOn(e?.state);
   const pct = (e?.attributes?.percentage as number | undefined) ?? null;
+  const toggle = () => {
+    opt(id, on ? "off" : "on");
+    svc.mutate({ domain: "fan", service: "toggle", data: { entity_id: id } });
+  };
+
+  // Compact single-row layout for short (1-row) tiles.
+  if (h <= 1) {
+    return (
+      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+        <FanSpin on={on} />
+        <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
+        <div className="flex gap-1 shrink-0">
+          {PRESETS.map((p) => {
+            const active = on && pct != null && Math.abs(pct - p.pct) <= 16;
+            return (
+              <button
+                key={p.label}
+                onClick={() => setPct(p.pct)}
+                title={p.label}
+                className={`w-6 h-6 text-[10px] rounded border transition-colors ${active ? "border-accent/60 bg-accent/15 text-accent" : "border-border text-text-muted hover:text-text"}`}
+              >
+                {p.label[0]}
+              </button>
+            );
+          })}
+        </div>
+        <Toggle on={on} disabled={!e} onClick={toggle} />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -50,14 +80,7 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
         <div className="flex items-center gap-2">
           <FanSpin on={on} />
           <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
-          <Toggle
-            on={on}
-            disabled={!e}
-            onClick={() => {
-              opt(id, on ? "off" : "on");
-              svc.mutate({ domain: "fan", service: "toggle", data: { entity_id: id } });
-            }}
-          />
+          <Toggle on={on} disabled={!e} onClick={toggle} />
         </div>
         <div className="grid grid-cols-3 gap-1.5">
           {PRESETS.map((p) => {
@@ -138,7 +161,7 @@ const definition: WidgetDefinition<HassFanConfig> = {
   maxW: 4,
   maxH: 4,
   defaultW: 2,
-  defaultH: 2,
+  defaultH: 1,
   defaultConfig: {},
   Component: FanComponent,
   ConfigPanel: FanConfigPanel,

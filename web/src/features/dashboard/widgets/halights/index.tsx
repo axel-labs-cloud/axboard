@@ -9,7 +9,7 @@ import type { HassLightsConfig, WidgetConfigProps, WidgetDefinition, WidgetProps
 // entities via /api/services. Shares the deduped /api/states query.
 // ---------------------------------------------------------------------------
 
-function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
+function LightsComponent({ config, h }: WidgetProps<HassLightsConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const title = config?.title?.trim() || "Lights";
@@ -27,7 +27,28 @@ function LightsComponent({ config }: WidgetProps<HassLightsConfig>) {
 
   const byId = new Map(data.map((e) => [e.entity_id, e]));
   const anyOn = ids.some((id) => isOn(byId.get(id)?.state));
+  const onCount = ids.filter((id) => isOn(byId.get(id)?.state)).length;
   const domainOf = (id: string) => id.split(".")[0];
+  const toggleAll = () =>
+    ids.forEach((id) => {
+      const on = isOn(byId.get(id)?.state);
+      const target = ids.length === 1 ? !on : !anyOn;
+      opt(id, target ? "on" : "off");
+      svc.mutate({ domain: domainOf(id), service: target ? "turn_on" : "turn_off", data: { entity_id: id } });
+    });
+
+  // Compact single-row layout for short (1-row) tiles.
+  if (h <= 1) {
+    return (
+      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+        <BulbIcon2 on={anyOn} />
+        <span className="text-[12px] text-text-secondary truncate flex-1" title={ids.join(", ")}>
+          {ids.length === 1 ? friendly(byId.get(ids[0]), ids[0]) : `${onCount}/${ids.length} on`}
+        </span>
+        <Toggle on={anyOn} onClick={toggleAll} />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -140,7 +161,7 @@ const definition: WidgetDefinition<HassLightsConfig> = {
   maxW: 6,
   maxH: 8,
   defaultW: 3,
-  defaultH: 3,
+  defaultH: 1,
   defaultConfig: {},
   Component: LightsComponent,
   ConfigPanel: LightsConfigPanel,

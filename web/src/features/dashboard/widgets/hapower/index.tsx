@@ -24,7 +24,7 @@ function fmtW(w: number): string {
   return w >= 1000 ? `${(w / 1000).toFixed(2)} kW` : `${w.toFixed(0)} W`;
 }
 
-function PowerComponent({ config }: WidgetProps<HassPowerConfig>) {
+function PowerComponent({ config, h }: WidgetProps<HassPowerConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const title = config?.title?.trim() || "Power";
@@ -47,6 +47,17 @@ function PowerComponent({ config }: WidgetProps<HassPowerConfig>) {
     return { id, e, unit, w };
   });
   const totalW = rows.reduce((n, r) => n + (r.w ?? 0), 0);
+
+  // Compact single-row layout for short (1-row) tiles.
+  if (h <= 1) {
+    return (
+      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+        <span className="shrink-0 text-degraded">{BoltIcon}</span>
+        <span className="text-[12px] text-text-secondary truncate flex-1">{title}</span>
+        <span className="text-[14px] font-semibold font-mono tabular-nums text-degraded shrink-0">{fmtW(totalW)}</span>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -107,7 +118,7 @@ const definition: WidgetDefinition<HassPowerConfig> = {
   maxW: 6,
   maxH: 8,
   defaultW: 3,
-  defaultH: 3,
+  defaultH: 1,
   defaultConfig: {},
   Component: PowerComponent,
   ConfigPanel: PowerConfigPanel,

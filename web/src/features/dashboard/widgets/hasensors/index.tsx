@@ -9,7 +9,7 @@ import type { HassSensorsConfig, WidgetConfigProps, WidgetDefinition, WidgetProp
 // (temperature, humidity, doors, motion, …). Binary sensors show a state dot.
 // ---------------------------------------------------------------------------
 
-function SensorsComponent({ config }: WidgetProps<HassSensorsConfig>) {
+function SensorsComponent({ config, h }: WidgetProps<HassSensorsConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const title = config?.title?.trim() || "Sensors";
@@ -24,6 +24,24 @@ function SensorsComponent({ config }: WidgetProps<HassSensorsConfig>) {
   if (isLoading || !data) return <SkeletonLines rows={3} />;
 
   const byId = new Map(data.map((e) => [e.entity_id, e]));
+
+  // Compact single-row layout for short (1-row) tiles: show the first sensor.
+  if (h <= 1) {
+    const first = ids[0];
+    const e = byId.get(first);
+    const unit = e?.attributes?.unit_of_measurement;
+    const binary = first.startsWith("binary_sensor.");
+    return (
+      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+        {binary && <StatusDot status={isOn(e?.state) ? "up" : "unknown"} size="sm" />}
+        <span className="text-[12px] text-text-secondary truncate flex-1" title={first}>{friendly(e, first)}</span>
+        <span className="text-[12.5px] font-mono tabular-nums text-text shrink-0">
+          {e ? `${e.state}${unit ? ` ${unit}` : ""}` : "—"}
+          {ids.length > 1 && <span className="text-text-muted/60"> +{ids.length - 1}</span>}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -84,7 +102,7 @@ const definition: WidgetDefinition<HassSensorsConfig> = {
   maxW: 6,
   maxH: 8,
   defaultW: 3,
-  defaultH: 2,
+  defaultH: 1,
   defaultConfig: {},
   Component: SensorsComponent,
   ConfigPanel: SensorsConfigPanel,

@@ -19,7 +19,7 @@ const MODE_TONE: Record<string, string> = {
   off: "text-text-muted",
 };
 
-function ClimateComponent({ config }: WidgetProps<HassClimateConfig>) {
+function ClimateComponent({ config, h }: WidgetProps<HassClimateConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const id = config?.entity?.trim();
@@ -53,6 +53,27 @@ function ClimateComponent({ config }: WidgetProps<HassClimateConfig>) {
     opt(id, m);
     svc.mutate({ domain: "climate", service: "set_hvac_mode", data: { entity_id: id, hvac_mode: m } });
   };
+
+  const stepBtn = (delta: number, label: string) =>
+    target != null && (
+      <button onClick={() => setTarget(target + delta)} className="w-6 h-6 rounded-full border border-border text-text hover:border-accent hover:text-accent text-[14px] leading-none shrink-0">
+        {label}
+      </button>
+    );
+
+  // Compact single-row layout for short (1-row) tiles.
+  if (h <= 1) {
+    return (
+      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+        <span className={`shrink-0 ${MODE_TONE[mode] ?? "text-text-muted"}`}>{ThermoIcon}</span>
+        <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
+        {cur != null && <span className="text-[11px] font-mono text-text-muted tabular-nums shrink-0">{cur.toFixed(1)}{unit}</span>}
+        {stepBtn(-step, "−")}
+        {target != null && <span className="text-[13px] font-semibold tabular-nums w-12 text-center shrink-0">{target.toFixed(1)}{unit}</span>}
+        {stepBtn(step, "+")}
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -125,7 +146,7 @@ const definition: WidgetDefinition<HassClimateConfig> = {
   maxW: 5,
   maxH: 4,
   defaultW: 3,
-  defaultH: 2,
+  defaultH: 1,
   defaultConfig: {},
   Component: ClimateComponent,
   ConfigPanel: ClimateConfigPanel,

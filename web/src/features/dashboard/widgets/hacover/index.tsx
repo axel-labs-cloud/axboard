@@ -9,7 +9,7 @@ import type { HassCoverConfig, WidgetConfigProps, WidgetDefinition, WidgetProps 
 // blinds, garage doors, curtains. Uses cover.open_cover/close_cover/stop_cover.
 // ---------------------------------------------------------------------------
 
-function CoverComponent({ config }: WidgetProps<HassCoverConfig>) {
+function CoverComponent({ config, h }: WidgetProps<HassCoverConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const title = config?.title?.trim() || "Covers";
@@ -30,6 +30,25 @@ function CoverComponent({ config }: WidgetProps<HassCoverConfig>) {
     opt(id, next);
     svc.mutate({ domain: "cover", service, data: { entity_id: id } });
   };
+
+  // Compact single-row layout for short (1-row) tiles: first cover's controls.
+  if (h <= 1) {
+    const id = ids[0];
+    const e = byId.get(id);
+    const st = e?.state ?? "";
+    return (
+      <div className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
+        <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>
+          {friendly(e, id)}{ids.length > 1 ? ` +${ids.length - 1}` : ""}
+        </span>
+        <div className="flex items-center gap-1 shrink-0">
+          <CoverBtn label="▲" title="Open" onClick={() => act(id, "open_cover", "opening")} />
+          <CoverBtn label="■" title="Stop" onClick={() => act(id, "stop_cover", st)} />
+          <CoverBtn label="▼" title="Close" onClick={() => act(id, "close_cover", "closing")} />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -101,7 +120,7 @@ const definition: WidgetDefinition<HassCoverConfig> = {
   maxW: 6,
   maxH: 8,
   defaultW: 3,
-  defaultH: 2,
+  defaultH: 1,
   defaultConfig: {},
   Component: CoverComponent,
   ConfigPanel: CoverConfigPanel,

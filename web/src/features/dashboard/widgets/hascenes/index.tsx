@@ -17,7 +17,7 @@ const serviceFor = (id: string): { domain: string; service: string } => {
   return { domain, service: "turn_on" };
 };
 
-function ScenesComponent({ config }: WidgetProps<HassScenesConfig>) {
+function ScenesComponent({ config, h }: WidgetProps<HassScenesConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const title = config?.title?.trim() || "Scenes";
@@ -33,6 +33,28 @@ function ScenesComponent({ config }: WidgetProps<HassScenesConfig>) {
   if (isLoading || !data) return <SkeletonLines rows={2} />;
 
   const byId = new Map(data.map((e) => [e.entity_id, e]));
+  const fire = (id: string) => {
+    const s = serviceFor(id);
+    svc.mutate({ domain: s.domain, service: s.service, data: { entity_id: id } });
+  };
+
+  // Compact single-row layout for short (1-row) tiles: horizontal button strip.
+  if (h <= 1) {
+    return (
+      <div className="h-full flex items-center gap-1.5 px-2.5 overflow-x-auto">
+        {ids.map((id) => (
+          <button
+            key={id}
+            onClick={() => fire(id)}
+            className="px-2 py-1 text-[11px] rounded border border-border text-text-secondary hover:border-accent/60 hover:bg-accent/10 hover:text-accent transition-colors shrink-0 whitespace-nowrap"
+            title={id}
+          >
+            {friendly(byId.get(id), id)}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -93,7 +115,7 @@ const definition: WidgetDefinition<HassScenesConfig> = {
   maxW: 6,
   maxH: 8,
   defaultW: 3,
-  defaultH: 2,
+  defaultH: 1,
   defaultConfig: {},
   Component: ScenesComponent,
   ConfigPanel: ScenesConfigPanel,

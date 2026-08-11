@@ -21,7 +21,7 @@ interface Entity {
 const base = (u?: string) => (u ?? "").trim().replace(/\/+$/, "");
 const onState = (s: string) => s === "on" || s === "home" || s === "open" || s === "playing";
 
-function HomeAssistantComponent({ config }: WidgetProps<HomeAssistantConfig>) {
+function HomeAssistantComponent({ config, h }: WidgetProps<HomeAssistantConfig>) {
   const b = base(config?.baseUrl);
   const title = config?.title?.trim() || "Home Assistant";
   const token = config?.token?.trim();
@@ -42,6 +42,20 @@ function HomeAssistantComponent({ config }: WidgetProps<HomeAssistantConfig>) {
   const byId = new Map(data.map((e) => [e.entity_id, e]));
   const count = (prefix: string) => data.filter((e) => e.entity_id.startsWith(prefix) && onState(e.state)).length;
   const peopleHome = data.filter((e) => e.entity_id.startsWith("person.") && e.state === "home").length;
+
+  // Compact single-row summary for short (1-row) tiles.
+  if (h <= 1) {
+    return (
+      <div className="h-full flex items-center gap-2.5 px-2.5 overflow-hidden text-[12px]">
+        <span className="shrink-0 text-text-muted">{HomeIcon}</span>
+        <span className="text-text-secondary">{peopleHome} home</span>
+        <span className="text-text-muted/40">·</span>
+        <span className="text-text-secondary">{count("light.")} lights</span>
+        <span className="text-text-muted/40">·</span>
+        <span className="text-text-secondary">{count("switch.")} sw</span>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -111,7 +125,7 @@ const definition: WidgetDefinition<HomeAssistantConfig> = {
   maxW: 6,
   maxH: 8,
   defaultW: 3,
-  defaultH: 2,
+  defaultH: 1,
   defaultConfig: {},
   Component: HomeAssistantComponent,
   ConfigPanel: HomeAssistantConfigPanel,
