@@ -7,10 +7,10 @@ import type { ProxmoxConfig, ProxmoxServer, WidgetConfigProps, WidgetDefinition,
 
 // ---------------------------------------------------------------------------
 // Proxmox VE widget — one or more PVE endpoints. Each /cluster/resources call
-// returns every node, VM and LXC with live CPU / memory / disk; results merge
-// into one panel. Node names open the PVE UI; guests open their noVNC console.
-// Auth: a PVEAPIToken (create it WITHOUT privilege separation, or give the
-// token PVEAuditor on /) forwarded via the shared /api/fetch proxy.
+// returns every node, VM, LXC and storage with live CPU / memory / disk;
+// results merge into one panel. Node names open the PVE UI; guests open their
+// noVNC console. Auth: a PVEAPIToken (created WITHOUT privilege separation, or
+// granted PVEAuditor on /) forwarded via the shared /api/fetch proxy.
 // ---------------------------------------------------------------------------
 
 interface Res {
@@ -28,6 +28,8 @@ interface Res {
   disk?: number;
   maxdisk?: number;
   uptime?: number;
+  storage?: string; // storage entries: datastore name
+  shared?: number;
 }
 interface ServerResult {
   server: ProxmoxServer;
@@ -37,9 +39,10 @@ interface ServerResult {
 
 const CPU_OPTS = { lo: 0, hi: 100, warn: 75, crit: 90 };
 const base = (u?: string) => (u ?? "").trim().replace(/\/+$/, "");
-const pct = (used?: number, max?: number) => (max && max > 0 ? (100 * (used ?? 0)) / max : 0);
+const clampPct = (used?: number, max?: number) => (max && max > 0 ? Math.min(100, (100 * (used ?? 0)) / max) : 0);
 const gb = (b?: number) => {
   const v = (b ?? 0) / 1e9;
+  if (v >= 1000) return `${(v / 1000).toFixed(1)}T`;
   return v >= 100 ? `${v.toFixed(0)}G` : `${v.toFixed(1)}G`;
 };
 const uptime = (s?: number) => {
@@ -68,6 +71,7 @@ function serverList(config?: ProxmoxConfig): ProxmoxServer[] {
   return list.filter((s) => s.baseUrl && s.tokenId && s.tokenSecret);
 }
 
+// A full-width host resource bar (label above, fill below).
 function Bar({ label, value }: { label: string; value: number }) {
   return (
     <div className="min-w-0">
@@ -80,9 +84,23 @@ function Bar({ label, value }: { label: string; value: number }) {
   );
 }
 
+// A compact right-column metric cell: a mini bar + % that lines up row-to-row.
+function Cell({ value }: { value: number }) {
+  return (
+    <div className="w-[74px] shrink-0 flex items-center gap-1.5">
+      <div className="flex-1 min-w-0">
+        <Meter pct={value} color={scaleColor(value, undefined, CPU_OPTS)} />
+      </div>
+      <span className="w-7 text-right font-mono tabular-nums text-[10px] text-text-secondary">{value.toFixed(0)}%</span>
+    </div>
+  );
+}
+
 function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
   const servers = serverList(config);
   const title = config?.title?.trim() || "Proxmox";
+  const showGuests = config?.showGuests !== false;
+  const showStorage = config?.showStorage !== false;
 
   const { data, isLoading } = useQuery({
     queryKey: ["pve", servers.map((s) => `${s.baseUrl}|${s.tokenId}`)],
@@ -129,19 +147,31 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
       />
       <div className="flex-1 min-h-0 overflow-auto px-2.5 pb-2 space-y-2">
         {data.map((d, si) => {
-          const nodes = d.resources.filter((r) => r.type === "node").sort((a, z) => (a.node ?? "").localeCompare(z.node ?? ""));
+          const nodes = d.resources
+            .filter((r) => r.type === "node")
+            .sort((a, z) => (a.node ?? "").localeCompare(z.node ?? ""));
           const guests = guestsOf(d.resources).sort(
-            (a, z) => (z.status === "running" ? 1 : 0) - (a.status === "running" ? 1 : 0) || (a.name ?? "").localeCompare(z.name ?? ""),
+            (a, z) =>
+              (z.status === "running" ? 1 : 0) - (a.status === "running" ? 1 : 0) ||
+              (a.name ?? "").localeCompare(z.name ?? ""),
           );
+          // Storage: dedupe shared datastores (they repeat per node); keep any with capacity.
+          const storeMap = new Map<string, Res>();
+          for (const r of d.resources) {
+            if (r.type !== "storage" || !(r.maxdisk && r.maxdisk > 0)) continue;
+            const key = r.shared ? (r.storage ?? r.id) : r.id;
+            if (!storeMap.has(key)) storeMap.set(key, r);
+          }
+          const stores = [...storeMap.values()].sort((a, z) => clampPct(z.disk, z.maxdisk) - clampPct(a.disk, a.maxdisk));
           const label = d.server.name?.trim() || hostOf(d.server.baseUrl);
+
           return (
             <div key={si} className="space-y-2">
               {multi && (
                 <div className="text-[10px] uppercase tracking-wide text-text-muted/80 px-0.5 pt-1 font-semibold">{label}</div>
               )}
-              {d.error && (
-                <div className="text-[11px] text-down px-1 py-1.5">{label}: {d.error}</div>
-              )}
+              {d.error && <div className="text-[11px] text-down px-1 py-1.5">{label}: {d.error}</div>}
+
               {nodes.map((n) => (
                 <div key={n.id} className="rounded-lg bg-bg-card/40 border border-border-subtle/50 p-2">
                   <div className="flex items-center gap-2 mb-1.5">
@@ -161,15 +191,19 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                   </div>
                   <div className="grid grid-cols-3 gap-2.5">
                     <Bar label="CPU" value={(n.cpu ?? 0) * 100} />
-                    <Bar label={`RAM ${gb(n.mem)}/${gb(n.maxmem)}`} value={pct(n.mem, n.maxmem)} />
-                    <Bar label="Disk" value={pct(n.disk, n.maxdisk)} />
+                    <Bar label={`RAM ${gb(n.mem)}/${gb(n.maxmem)}`} value={clampPct(n.mem, n.maxmem)} />
+                    <Bar label="Disk" value={clampPct(n.disk, n.maxdisk)} />
                   </div>
                 </div>
               ))}
 
-              {guests.length > 0 && (
+              {showGuests && guests.length > 0 && (
                 <div>
-                  <div className="text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">Guests · {guests.length}</div>
+                  <div className="flex items-center text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">
+                    <span className="flex-1">Guests · {guests.length}</span>
+                    <span className="w-[74px] text-right pr-8">CPU</span>
+                    <span className="w-[74px] text-right pr-8">RAM</span>
+                  </div>
                   <div className="divide-y divide-border-subtle">
                     {guests.map((g) => {
                       const run = g.status === "running";
@@ -188,15 +222,38 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                           </span>
                           <span className="text-[11.5px] text-text-secondary truncate flex-1">{g.name ?? g.vmid}</span>
                           {run ? (
-                            <span className="text-[10px] font-mono tabular-nums text-text-muted shrink-0">
-                              <span className="text-text-secondary">{((g.cpu ?? 0) * 100).toFixed(0)}%</span> cpu
-                              <span className="mx-1 text-text-muted/50">·</span>
-                              <span className="text-text-secondary">{pct(g.mem, g.maxmem).toFixed(0)}%</span> ram
-                            </span>
+                            <>
+                              <Cell value={(g.cpu ?? 0) * 100} />
+                              <Cell value={clampPct(g.mem, g.maxmem)} />
+                            </>
                           ) : (
-                            <span className="text-[10px] text-text-muted/60 shrink-0">stopped</span>
+                            <span className="w-[164px] text-right text-[10px] text-text-muted/60 shrink-0">stopped</span>
                           )}
                         </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {showStorage && stores.length > 0 && (
+                <div>
+                  <div className="text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">Storage · {stores.length}</div>
+                  <div className="space-y-1">
+                    {stores.map((s) => {
+                      const v = clampPct(s.disk, s.maxdisk);
+                      return (
+                        <div key={s.id} className="flex items-center gap-2">
+                          <span className="text-[11px] text-text-secondary truncate flex-1" title={s.storage}>
+                            {s.storage}
+                          </span>
+                          <div className="w-[74px] shrink-0">
+                            <Meter pct={v} color={scaleColor(v, undefined, CPU_OPTS)} />
+                          </div>
+                          <span className="w-[84px] text-right font-mono tabular-nums text-[10px] text-text-muted shrink-0">
+                            {gb(s.disk)}/{gb(s.maxdisk)}
+                          </span>
+                        </div>
                       );
                     })}
                   </div>
@@ -213,10 +270,16 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
 function ProxmoxConfigPanel({ config, save }: WidgetConfigProps<ProxmoxConfig>) {
   // Seed from legacy single-server fields the first time.
   const servers: ProxmoxServer[] =
-    config?.servers ?? (config?.baseUrl ? [{ baseUrl: config.baseUrl, tokenId: config.tokenId, tokenSecret: config.tokenSecret }] : [{}]);
+    config?.servers ??
+    (config?.baseUrl ? [{ baseUrl: config.baseUrl, tokenId: config.tokenId, tokenSecret: config.tokenSecret }] : [{}]);
 
   const setServer = (i: number, patch: Partial<ProxmoxServer>) =>
-    save({ servers: servers.map((s, j) => (j === i ? { ...s, ...patch } : s)), baseUrl: undefined, tokenId: undefined, tokenSecret: undefined });
+    save({
+      servers: servers.map((s, j) => (j === i ? { ...s, ...patch } : s)),
+      baseUrl: undefined,
+      tokenId: undefined,
+      tokenSecret: undefined,
+    });
   const addServer = () => save({ servers: [...servers, {}] });
   const removeServer = (i: number) => save({ servers: servers.filter((_, j) => j !== i) });
 
@@ -227,6 +290,17 @@ function ProxmoxConfigPanel({ config, save }: WidgetConfigProps<ProxmoxConfig>) 
       placeholder={ph}
       className={`w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent ${mono ? "font-mono" : ""}`}
     />
+  );
+
+  const toggle = (on: boolean, set: (v: boolean) => void, label: string) => (
+    <button
+      onClick={() => set(!on)}
+      className={`flex-1 px-2 py-1.5 text-[11px] rounded border transition-colors ${
+        on ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"
+      }`}
+    >
+      {label}
+    </button>
   );
 
   return (
@@ -242,7 +316,9 @@ function ProxmoxConfigPanel({ config, save }: WidgetConfigProps<ProxmoxConfig>) 
             <span className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Server {i + 1}</span>
             {servers.length > 1 && (
               <button onClick={() => removeServer(i)} aria-label="Remove server" className="text-text-muted hover:text-down inline-flex">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="w-3.5 h-3.5"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" className="w-3.5 h-3.5">
+                  <path d="M18 6 6 18M6 6l12 12" />
+                </svg>
               </button>
             )}
           </div>
@@ -259,9 +335,18 @@ function ProxmoxConfigPanel({ config, save }: WidgetConfigProps<ProxmoxConfig>) 
       >
         + Add server
       </button>
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Sections</label>
+        <div className="flex gap-1">
+          {toggle(config?.showGuests !== false, (v) => save({ showGuests: v }), "Guests")}
+          {toggle(config?.showStorage !== false, (v) => save({ showStorage: v }), "Storage")}
+        </div>
+      </div>
+
       <p className="text-[11px] text-text-muted leading-snug">
-        Create the API token WITHOUT privilege separation (or grant the token <span className="font-mono">PVEAuditor</span> on <span className="font-mono">/</span>).
-        Secrets stay in your config.yaml.
+        Create the API token WITHOUT privilege separation (or grant the token <span className="font-mono">PVEAuditor</span> on{" "}
+        <span className="font-mono">/</span>). Secrets stay in your config.yaml.
       </p>
     </div>
   );
@@ -281,7 +366,7 @@ const definition: WidgetDefinition<ProxmoxConfig> = {
   title: "Proxmox",
   icon: PveIcon,
   category: "infrastructure",
-  description: "Proxmox VE — nodes + VMs/LXC with live CPU / RAM / disk. Multiple servers; click to open the console.",
+  description: "Proxmox VE — nodes, VMs/LXC and storage with live CPU / RAM / disk. Multiple servers; click to open the console.",
   minW: 2,
   minH: 2,
   maxW: 8,

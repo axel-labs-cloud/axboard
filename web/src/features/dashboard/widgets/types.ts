@@ -408,6 +408,8 @@ export interface ProxmoxServer {
 export interface ProxmoxConfig {
   servers?: ProxmoxServer[];
   title?: string;
+  showGuests?: boolean; // default true
+  showStorage?: boolean; // default true
   // Legacy single-server fields (pre-multi); still honoured as one server.
   baseUrl?: string;
   tokenId?: string;
