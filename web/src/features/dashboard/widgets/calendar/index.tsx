@@ -58,7 +58,7 @@ function parseICS(text: string): CalEvent[] {
   return events;
 }
 
-const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 function MonthView({
   events,
@@ -206,7 +206,7 @@ function CalendarComponent({ config, w, h }: WidgetProps<CalendarConfig>) {
         <div className="text-[11px] text-text-muted px-1 py-2">No upcoming events.</div>
       )}
       {upcoming.map((e, i) => (
-        <div key={i} className="flex items-center gap-2.5 px-1.5 py-1.5">
+        <div key={i} className="flex items-start gap-2.5 px-1.5 py-1.5">
           <div className="flex flex-col items-center justify-center w-9 shrink-0 rounded bg-bg-elevated py-0.5">
             <span className="text-[10px] uppercase text-text-muted leading-none">
               {e.start.toLocaleDateString(undefined, { month: "short" })}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { useSize } from "../useSize";
+import { timeAgo, isRecent } from "../../../../lib/time";
 import type {
   ReleasesConfig,
   WidgetConfigProps,
@@ -81,13 +82,13 @@ function ReleasesComponent({ config, editing }: WidgetProps<ReleasesConfig>) {
               <div className="text-[12px] text-text-secondary truncate">{rel.repo}</div>
               {showDate && rel.date && (
                 <div className="text-[10px] text-text-muted">
-                  {new Date(rel.date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                  {timeAgo(rel.date)}
                 </div>
               )}
             </div>
             <span
               className={`text-[11px] font-mono px-1.5 py-0.5 rounded shrink-0 ${
-                rel.error ? "text-text-muted" : "bg-accent/10 text-accent"
+                rel.error ? "text-text-muted" : isRecent(rel.date, 7) ? "bg-accent text-white" : "bg-accent/10 text-accent"
               }`}
             >
               {rel.error ? "—" : rel.tag}

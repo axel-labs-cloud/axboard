@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ErrorState } from "../../../../components/widget";
+import { timeAgo } from "../../../../lib/time";
 import type {
   FeedConfig,
   WidgetConfigProps,
@@ -80,12 +81,7 @@ function FeedComponent({ config }: WidgetProps<FeedConfig>) {
         >
           <div className="text-[12px] text-text-secondary leading-snug line-clamp-2">{it.title}</div>
           {it.date && (
-            <div className="text-[10px] text-text-muted mt-0.5">
-              {new Date(it.date).toLocaleDateString(undefined, {
-                month: "short",
-                day: "numeric",
-              })}
-            </div>
+            <div className="text-[10px] text-text-muted mt-0.5">{timeAgo(it.date)}</div>
           )}
         </a>
       ))}
