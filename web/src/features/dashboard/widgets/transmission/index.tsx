@@ -135,7 +135,8 @@ function TransmissionComponent({ config }: WidgetProps<TransmissionConfig>) {
         </span>
         {stats.pausedTorrentCount > 0 && <span className="text-text-muted/60 ml-auto">{stats.pausedTorrentCount} paused</span>}
       </div>
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1 flex flex-col">
+       <div className="my-auto w-full">
         {shown.length === 0 && <div className="text-[11px] text-text-muted px-1 py-2">No torrents.</div>}
         {shown.map((t) => {
           const pct = t.percentDone * 100;
@@ -175,6 +176,7 @@ function TransmissionComponent({ config }: WidgetProps<TransmissionConfig>) {
           );
         })}
         {torrents.length > max && <div className="text-[10px] text-text-muted/60 px-1 py-1">+{torrents.length - max} more</div>}
+       </div>
       </div>
     </div>
   );
