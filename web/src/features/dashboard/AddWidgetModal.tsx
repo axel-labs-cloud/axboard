@@ -10,10 +10,11 @@ const CATEGORY_LABELS: Record<string, string> = {
   productivity: "Productivity",
   system: "System",
   services: "Services",
+  homeassistant: "Home Assistant",
   network: "Network",
   external: "External",
 };
-const CATEGORY_ORDER = ["services", "system", "network", "productivity", "external"];
+const CATEGORY_ORDER = ["services", "homeassistant", "system", "network", "productivity", "external"];
 const catRank = (c: string) => {
   const i = CATEGORY_ORDER.indexOf(c);
   return i === -1 ? CATEGORY_ORDER.length : i;

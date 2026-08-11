@@ -109,7 +109,7 @@ const definition: WidgetDefinition<HassScenesConfig> = {
   type: "hascenes",
   title: "HA Scenes",
   icon: SceneIcon,
-  category: "services",
+  category: "homeassistant",
   description: "Home Assistant scenes — one-tap buttons for scenes, scripts, automations and buttons.",
   minW: 2,
   minH: 1,

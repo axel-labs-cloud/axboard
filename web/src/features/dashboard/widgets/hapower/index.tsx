@@ -112,7 +112,7 @@ const definition: WidgetDefinition<HassPowerConfig> = {
   type: "hapower",
   title: "HA Power",
   icon: BoltIcon,
-  category: "services",
+  category: "homeassistant",
   description: "Home Assistant power — live draw for the sensors you pick, with total consumption.",
   minW: 2,
   minH: 1,

@@ -23,7 +23,6 @@ function ClimateComponent({ config }: WidgetProps<HassClimateConfig>) {
   const b = hbase(config?.baseUrl);
   const token = config?.token?.trim();
   const id = config?.entity?.trim();
-  const title = config?.title?.trim() || "Thermostat";
   const ready = !!b && !!token && !!id;
 
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
@@ -78,12 +77,15 @@ function ClimateComponent({ config }: WidgetProps<HassClimateConfig>) {
 
   return (
     <div ref={ref} className="h-full flex flex-col overflow-hidden">
-      <WidgetHeader icon={ThermoIcon} title={title} right={<span className={`text-[11px] font-mono capitalize ${MODE_TONE[mode] ?? "text-text-muted"}`}>{mode.replace("_", " ")}</span>} />
+      <WidgetHeader
+        icon={<span className={MODE_TONE[mode] ?? "text-text-muted"}>{ThermoIcon}</span>}
+        title={config?.title?.trim() || friendly(e, id)}
+        right={<span className={`text-[11px] font-mono capitalize ${MODE_TONE[mode] ?? "text-text-muted"}`}>{mode.replace("_", " ")}</span>}
+      />
       <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col justify-center gap-2.5">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <div className="text-[11px] text-text-muted truncate">{friendly(e, id)}</div>
-            {cur != null && <div className="text-[12px] text-text-secondary tabular-nums">now {cur.toFixed(1)}{unit}</div>}
+            {cur != null && <div className="text-[13px] text-text-secondary tabular-nums">now {cur.toFixed(1)}{unit}</div>}
           </div>
           {target != null && (
             <div className="flex items-center gap-2 shrink-0">
@@ -140,7 +142,7 @@ const definition: WidgetDefinition<HassClimateConfig> = {
   type: "haclimate",
   title: "HA Thermostat",
   icon: ThermoIcon,
-  category: "services",
+  category: "homeassistant",
   description: "Home Assistant climate — current temperature, target +/- and HVAC mode for a thermostat.",
   minW: 2,
   minH: 1,

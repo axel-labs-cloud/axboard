@@ -62,9 +62,13 @@ export type WidgetType =
   | "haclimate"
   | "hacover"
   | "hascenes"
-  | "hasensors";
+  | "hasensors"
+  | "halight"
+  | "hafans"
+  | "hacoverone"
+  | "hasensor";
 
-export type WidgetCategory = "productivity" | "system" | "services" | "network" | "external";
+export type WidgetCategory = "productivity" | "system" | "services" | "homeassistant" | "network" | "external";
 
 export interface ClockConfig {
   use24h?: boolean;
@@ -628,6 +632,14 @@ export interface HassSensorsConfig {
   title?: string;
 }
 
+/** A single-source Home Assistant widget (one entity, name shown in the header). */
+export interface HassOneConfig {
+  baseUrl?: string;
+  token?: string;
+  entity?: string;
+  title?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -691,6 +703,10 @@ export type WidgetConfigByType = {
   hacover: HassCoverConfig;
   hascenes: HassScenesConfig;
   hasensors: HassSensorsConfig;
+  halight: HassOneConfig;
+  hafans: HassCoverConfig;
+  hacoverone: HassOneConfig;
+  hasensor: HassOneConfig;
 };
 
 export type AnyWidgetConfig = Partial<

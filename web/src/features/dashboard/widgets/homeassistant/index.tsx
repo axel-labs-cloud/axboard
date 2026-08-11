@@ -119,7 +119,7 @@ const definition: WidgetDefinition<HomeAssistantConfig> = {
   type: "homeassistant",
   title: "Home Assistant",
   icon: HomeIcon,
-  category: "services",
+  category: "homeassistant",
   description: "Home Assistant — people home, lights and switches on, plus any entities you pin.",
   minW: 2,
   minH: 1,

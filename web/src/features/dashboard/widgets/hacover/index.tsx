@@ -114,7 +114,7 @@ const definition: WidgetDefinition<HassCoverConfig> = {
   type: "hacover",
   title: "HA Covers",
   icon: CoverIcon,
-  category: "services",
+  category: "homeassistant",
   description: "Home Assistant covers — open / stop / close blinds, garage doors and curtains, with position.",
   minW: 2,
   minH: 1,
