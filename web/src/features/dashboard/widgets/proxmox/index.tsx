@@ -126,12 +126,27 @@ function Bar({ label, value }: { label: string; value: number }) {
   );
 }
 
-// A compact right-column metric cell: a mini bar + % that lines up row-to-row.
-function Cell({ value }: { value: number }) {
+// Fixed-width metric columns so header labels and rows line up. `style` picks
+// bar-only, percentage-only, or both.
+type MetricStyle = "bar" | "pct" | "both";
+const MW = "w-[72px]"; // one metric column
+const MW2 = "w-[152px]"; // two columns + the gap between them (72 + 8 + 72)
+function Metric({ value, style }: { value: number; style: MetricStyle }) {
+  const color = scaleColor(value, undefined, CPU_OPTS);
+  if (style === "pct") {
+    return <div className={`${MW} shrink-0 text-right font-mono tabular-nums text-[10px] text-text-secondary`}>{value.toFixed(0)}%</div>;
+  }
+  if (style === "bar") {
+    return (
+      <div className={`${MW} shrink-0`}>
+        <Meter pct={value} color={color} />
+      </div>
+    );
+  }
   return (
-    <div className="w-[74px] shrink-0 flex items-center gap-1.5">
+    <div className={`${MW} shrink-0 flex items-center gap-1.5`}>
       <div className="flex-1 min-w-0">
-        <Meter pct={value} color={scaleColor(value, undefined, CPU_OPTS)} />
+        <Meter pct={value} color={color} />
       </div>
       <span className="w-7 text-right font-mono tabular-nums text-[10px] text-text-secondary">{value.toFixed(0)}%</span>
     </div>
@@ -171,6 +186,7 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
   const showGuests = config?.showGuests !== false && !compact;
   const showStorage = config?.showStorage !== false && !compact;
   const showBackups = config?.showBackups === true && showGuests;
+  const mStyle: MetricStyle = config?.metricStyle ?? "both";
 
   const { data, isLoading } = useQuery({
     queryKey: ["pve", servers.map((s) => `${s.baseUrl}|${s.tokenId}`)],
@@ -276,9 +292,9 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                 <div>
                   <div className="flex items-center text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">
                     <span className="flex-1">Nodes</span>
-                    <span className="w-[74px] text-right pr-8">CPU</span>
-                    <span className="w-[74px] text-right pr-8">RAM</span>
-                    <span className="w-[74px] text-right pr-8">Disk</span>
+                    <span className={`${MW} text-right`}>CPU</span>
+                    <span className={`${MW} text-right`}>RAM</span>
+                    <span className={`${MW} text-right`}>Disk</span>
                   </div>
                   <div className="divide-y divide-border-subtle">
                     {nodes.map((n) => (
@@ -292,9 +308,9 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                       >
                         <StatusDot status={n.status === "online" ? "up" : "down"} size="sm" title={n.status} />
                         <span className="text-[11.5px] text-text truncate flex-1">{n.node}</span>
-                        <Cell value={(n.cpu ?? 0) * 100} />
-                        <Cell value={clampPct(n.mem, n.maxmem)} />
-                        <Cell value={clampPct(n.disk, n.maxdisk)} />
+                        <Metric value={(n.cpu ?? 0) * 100} style={mStyle} />
+                        <Metric value={clampPct(n.mem, n.maxmem)} style={mStyle} />
+                        <Metric value={clampPct(n.disk, n.maxdisk)} style={mStyle} />
                       </a>
                     ))}
                   </div>
@@ -339,8 +355,8 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                   <div className="flex items-center text-[10px] uppercase tracking-wide text-text-muted px-0.5 mb-0.5">
                     <span className="flex-1">Guests · {guests.length}</span>
                     {showBackups && <span className="w-12 text-right">Bkp</span>}
-                    <span className="w-[74px] text-right pr-8">CPU</span>
-                    <span className="w-[74px] text-right pr-8">RAM</span>
+                    <span className={`${MW} text-right`}>CPU</span>
+                    <span className={`${MW} text-right`}>RAM</span>
                   </div>
                   <div className="divide-y divide-border-subtle">
                     {guests.map((g) => {
@@ -362,11 +378,11 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                           {showBackups && <BackupChip ctime={g.vmid != null ? bkp?.[g.vmid] : undefined} />}
                           {run ? (
                             <>
-                              <Cell value={(g.cpu ?? 0) * 100} />
-                              <Cell value={clampPct(g.mem, g.maxmem)} />
+                              <Metric value={(g.cpu ?? 0) * 100} style={mStyle} />
+                              <Metric value={clampPct(g.mem, g.maxmem)} style={mStyle} />
                             </>
                           ) : (
-                            <span className="w-[164px] text-right text-[10px] text-text-muted/60 shrink-0">stopped</span>
+                            <span className={`${MW2} text-right text-[10px] text-text-muted/60 shrink-0`}>stopped</span>
                           )}
                         </a>
                       );
@@ -386,7 +402,7 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                           <span className="text-[11px] text-text-secondary truncate flex-1" title={s.storage}>
                             {s.storage}
                           </span>
-                          <div className="w-[74px] shrink-0">
+                          <div className={`${MW} shrink-0`}>
                             <Meter pct={v} color={scaleColor(v, undefined, CPU_OPTS)} />
                           </div>
                           <span className="w-[84px] text-right font-mono tabular-nums text-[10px] text-text-muted shrink-0">
@@ -483,6 +499,26 @@ function ProxmoxConfigPanel({ config, save }: WidgetConfigProps<ProxmoxConfig>) 
           {toggle(config?.showStorage !== false, (v) => save({ showStorage: v }), "Storage")}
           {toggle(config?.showBackups === true, (v) => save({ showBackups: v }), "Backups")}
           {toggle(config?.compact === true, (v) => save({ compact: v }), "Compact")}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Metrics</label>
+        <div className="grid grid-cols-3 gap-1">
+          {(["bar", "pct", "both"] as const).map((m) => {
+            const on = (config?.metricStyle ?? "both") === m;
+            return (
+              <button
+                key={m}
+                onClick={() => save({ metricStyle: m })}
+                className={`px-2 py-1.5 text-[11px] rounded border transition-colors ${
+                  on ? "border-accent/50 bg-accent/10 text-accent" : "border-border text-text-muted hover:text-text"
+                }`}
+              >
+                {m === "bar" ? "Bars" : m === "pct" ? "%" : "Both"}
+              </button>
+            );
+          })}
         </div>
       </div>
 

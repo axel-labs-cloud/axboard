@@ -416,6 +416,7 @@ export interface ProxmoxConfig {
   showStorage?: boolean; // default true
   showBackups?: boolean; // last-backup age per guest (extra API calls) — default false
   compact?: boolean; // node-only slim overview — default false
+  metricStyle?: "bar" | "pct" | "both"; // how CPU/RAM cells render — default "both"
   // Legacy single-server fields (pre-multi); still honoured as one server.
   baseUrl?: string;
   tokenId?: string;
