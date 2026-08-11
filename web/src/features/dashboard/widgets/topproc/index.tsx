@@ -55,10 +55,11 @@ function TopProcComponent({ config }: WidgetProps<TopProcConfig>) {
       <div className="flex-1 min-h-0 px-2 divide-y divide-border-subtle">
         {rows.length === 0 && <div className="text-[11px] text-text-muted px-1 py-2">No data (needs pid: host).</div>}
         {rows.map((p) => (
-          <div key={p.pid} className="flex items-center gap-2 px-1.5" style={{ height: ROW_H }}>
-            <span className="text-[12px] text-text-secondary truncate flex-1 font-mono" title={`pid ${p.pid}`}>{p.name}</span>
-            <span className="font-mono tabular-nums text-[11px] text-text w-11 text-right">{p.cpu.toFixed(0)}%</span>
-            {showMem && <span className="font-mono tabular-nums text-[11px] text-text-muted w-11 text-right">{fmtMem(p.rss)}</span>}
+          <div key={p.pid} className="relative flex items-center gap-2 px-1.5" style={{ height: ROW_H }}>
+            <span className="absolute inset-y-[3px] left-0 rounded-sm bg-accent/10 pointer-events-none" style={{ width: `${Math.min(100, p.cpu)}%` }} />
+            <span className="relative text-[12px] text-text-secondary truncate flex-1 font-mono" title={`${p.name} · pid ${p.pid}`}>{p.name}</span>
+            <span className={`relative font-mono tabular-nums text-[11px] w-11 text-right ${sortBy === "cpu" ? "text-text" : "text-text-muted"}`}>{p.cpu.toFixed(0)}%</span>
+            {showMem && <span className={`relative font-mono tabular-nums text-[11px] w-11 text-right ${sortBy === "mem" ? "text-text" : "text-text-muted"}`}>{fmtMem(p.rss)}</span>}
           </div>
         ))}
       </div>

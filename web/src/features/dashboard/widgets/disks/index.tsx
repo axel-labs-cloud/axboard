@@ -19,7 +19,7 @@ function fmtBytes(n: number): string {
   if (n <= 0) return "0";
   const u = ["B", "KB", "MB", "GB", "TB"];
   const i = Math.min(u.length - 1, Math.floor(Math.log(n) / Math.log(1024)));
-  return `${(n / 1024 ** i).toFixed(i >= 3 ? 1 : 0)}${u[i]}`;
+  return `${(n / 1024 ** i).toFixed(i >= 3 ? 1 : 0)} ${u[i]}`;
 }
 
 const NET_FS = /^(nfs|cifs|smb|fuse\.sshfs)/;
@@ -73,9 +73,9 @@ function DisksComponent({ config }: WidgetProps<DisksConfig>) {
                   {tag && <span className="px-1 py-px rounded bg-accent/15 text-accent text-[10px] font-sans font-semibold not-italic shrink-0">{tag}</span>}
                   <span className="truncate">{d.path}</span>
                 </span>
-                <span className="font-mono tabular-nums text-text-muted shrink-0">{fmtBytes(d.used)}/{fmtBytes(d.total)}</span>
+                <span className="font-mono tabular-nums shrink-0"><span className="text-text-secondary">{Math.round(pct)}%</span> <span className="text-text-muted/70">{fmtBytes(d.used)} / {fmtBytes(d.total)}</span></span>
               </div>
-              <Meter pct={Math.min(100, pct)} color={color} />
+              <Meter pct={Math.min(100, pct)} color={color} tick={(config as ColorConfig)?.crit ?? OPTS.crit} />
             </div>
           );
         })}

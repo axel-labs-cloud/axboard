@@ -38,7 +38,7 @@ function PerCpuComponent({ config }: WidgetProps<PerCpuConfig>) {
           <div key={i} title={`core ${i}: ${p.toFixed(0)}%`} className="relative flex-1 min-w-0 h-full rounded-sm bg-bg-elevated overflow-hidden">
             <div
               className="absolute bottom-0 left-0 right-0 rounded-sm"
-              style={{ height: `${Math.max(2, Math.min(100, p))}%`, background: scaleColor(p, config as ColorConfig, OPTS), transition: "height 0.5s ease, background 0.4s ease" }}
+              style={{ height: `${Math.min(100, p)}%`, background: scaleColor(p, config as ColorConfig, OPTS), transition: "height 0.5s ease, background 0.4s ease" }}
             />
           </div>
         ))}

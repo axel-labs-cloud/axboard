@@ -59,7 +59,7 @@ function Metric({ label, value, unit, tone }: { label: string; value: string; un
   return (
     <div className="flex flex-col items-center">
       <span className="text-[10px] uppercase tracking-wide text-text-muted">{label}</span>
-      <span className={`font-mono tabular-nums font-semibold leading-none ${tone}`} style={{ fontSize: 26 }}>
+      <span className={`font-mono tabular-nums font-semibold leading-none text-[22px] ${tone}`}>
         {value}
       </span>
       <span className="text-[10px] text-text-muted">{unit}</span>
@@ -84,10 +84,13 @@ function Sparkline({ vals, color, w }: { vals: number[]; color: string; w: numbe
   if (vals.length < 2) return null;
   const max = Math.max(...vals, 1);
   const step = width / (vals.length - 1);
-  const pts = vals.map((v, i) => `${(i * step).toFixed(1)},${(height - (v / max) * height).toFixed(1)}`);
+  const xy = vals.map((v, i) => [i * step, height - (v / max) * height] as const);
+  const line = `M ${xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(" L ")}`;
+  const fill = `${line} L ${width},${height} L 0,${height} Z`;
   return (
     <svg width={width} height={height} className="w-full" preserveAspectRatio="none" viewBox={`0 0 ${width} ${height}`}>
-      <path d={`M ${pts.join(" L ")}`} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d={fill} fill={color} fillOpacity="0.12" stroke="none" />
+      <path d={line} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -153,7 +156,7 @@ function SpeedTestComponent({ config }: WidgetProps<SpeedTestConfig>) {
   return (
     <div ref={box.ref} className="h-full flex flex-col items-center justify-center gap-3 px-3 py-3">
       {result && (
-        <div className={`flex items-center ${compact ? "gap-4" : "gap-6"}`}>
+        <div className={`grid grid-cols-3 w-full max-w-[300px] ${compact ? "gap-3" : "gap-5"}`}>
           <Metric label="Down" value={result.down.toFixed(result.down >= 100 ? 0 : 1)} unit="Mbps" tone="text-up" />
           <Metric label="Up" value={result.up.toFixed(result.up >= 100 ? 0 : 1)} unit="Mbps" tone="text-accent" />
           <Metric label="Ping" value={result.ping.toFixed(0)} unit="ms" tone="text-text" />

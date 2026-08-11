@@ -126,7 +126,7 @@ function HostComponent({ config }: WidgetProps<HostConfig>) {
   const twoCol = box.w >= 340;
 
   const rows: React.ReactNode[] = [
-    <BarRow key="cpu" icon={ICON.cpu} label={`CPU · ${data.cpus}c`} pct={data.cpu_pct} detail="" />,
+    <BarRow key="cpu" icon={ICON.cpu} label={`CPU · ${data.cpus}c`} pct={data.cpu_pct} detail={`${data.cpu_pct.toFixed(0)}%`} />,
     <BarRow key="mem" icon={ICON.ram} label="RAM" pct={memPct} detail={`${fmtBytes(data.mem_used)} / ${fmtBytes(data.mem_total)}`} />,
   ];
   if (data.disk_total > 0)

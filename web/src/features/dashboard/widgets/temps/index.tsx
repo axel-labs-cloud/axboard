@@ -78,7 +78,7 @@ function TempsComponent({ config }: WidgetProps<TempsConfig>) {
                 <span className="text-text-secondary truncate">{t.display}</span>
                 <span className="font-mono tabular-nums" style={{ color }}>{t.celsius.toFixed(0)}°C</span>
               </div>
-              <Meter pct={w} color={color} />
+              <Meter pct={w} color={color} tick={(((((config as ColorConfig)?.crit ?? OPTS.crit)) - BAR_LO) / (BAR_HI - BAR_LO)) * 100} />
             </div>
           );
         })}
