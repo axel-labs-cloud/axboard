@@ -43,8 +43,8 @@ function CountdownComponent({ config, h }: WidgetProps<CountdownConfig>) {
   const past = diff < 0;
   const p = parts(diff);
   const cell = (n: number, unit: string) => (
-    <div className="flex flex-col items-center">
-      <span className="text-2xl font-mono tabular-nums text-text leading-none">
+    <div className="flex flex-col items-center w-11">
+      <span className="text-3xl font-mono tabular-nums text-text leading-none">
         {String(n).padStart(2, "0")}
       </span>
       <span className="text-[10px] uppercase tracking-wider text-text-muted mt-1">{unit}</span>

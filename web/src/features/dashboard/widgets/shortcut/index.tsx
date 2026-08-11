@@ -48,7 +48,7 @@ function ShortcutComponent({ config }: WidgetProps<ShortcutConfig>) {
         href={s.url || undefined}
         target="_blank"
         rel="noreferrer noopener"
-        className="flex flex-col items-center justify-center w-full h-full hover:bg-bg-hover transition-colors p-2 gap-1.5"
+        className="flex flex-col items-center justify-center w-full h-full hover:bg-bg-hover transition-colors p-2 gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60"
         title={s.label}
       >
         <div className="flex-1 min-h-0 w-full flex items-center justify-center">
@@ -73,7 +73,7 @@ function ShortcutComponent({ config }: WidgetProps<ShortcutConfig>) {
           href={s.url || undefined}
           target="_blank"
           rel="noreferrer noopener"
-          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-bg-hover transition-colors min-w-0 shrink-0"
+          className="flex items-center gap-2 px-2 py-1 rounded hover:bg-bg-hover transition-colors min-w-0 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
           title={s.label}
         >
           <div className="w-4 h-4 shrink-0 flex items-center justify-center">

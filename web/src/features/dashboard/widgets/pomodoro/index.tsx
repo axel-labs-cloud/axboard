@@ -67,13 +67,13 @@ function PomodoroComponent({ config }: WidgetProps<PomodoroConfig>) {
       <div className="flex items-center gap-2 mt-0.5">
         <button
           onClick={() => setRunning((r) => !r)}
-          className="px-3 py-1 text-[11px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20"
+          className="px-3 py-1 text-[11px] rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           {running ? "Pause" : "Start"}
         </button>
         <button
           onClick={reset}
-          className="px-3 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text"
+          className="px-3 py-1 text-[11px] rounded border border-border text-text-secondary hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         >
           Reset
         </button>

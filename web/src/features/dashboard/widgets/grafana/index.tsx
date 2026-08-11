@@ -1,6 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { GrafanaConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
+function hostOf(u: string): string {
+  try {
+    return new URL(u).host;
+  } catch {
+    return u;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Grafana panel embed — an iframe pointed at a Grafana panel share/kiosk URL.
 // Grafana must allow embedding (allow_embedding = true, and anonymous access or
@@ -33,11 +41,21 @@ function GrafanaComponent({ config, editing }: WidgetProps<GrafanaConfig>) {
   const title = config?.title?.trim();
   return (
     <div className="relative h-full w-full bg-bg flex flex-col">
-      {title && (
-        <div className="shrink-0 px-3 py-1.5 text-[12px] font-medium text-text-secondary border-b border-border-subtle truncate">
-          {title}
-        </div>
-      )}
+      {/* Always show a title bar with an open-in-Grafana fallback: Grafana often
+          refuses embedding, leaving a blank iframe with no way out otherwise. */}
+      <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 border-b border-border-subtle">
+        <span className="text-[12px] font-medium text-text-secondary truncate flex-1 font-mono">{title || hostOf(url)}</span>
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer noopener"
+          title="Open in Grafana"
+          aria-label="Open in Grafana"
+          className="w-6 h-6 shrink-0 flex items-center justify-center rounded text-text-muted hover:text-accent hover:bg-bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><path d="M15 3h6v6M10 14 21 3" /></svg>
+        </a>
+      </div>
       <iframe
         key={nonce}
         src={src}
