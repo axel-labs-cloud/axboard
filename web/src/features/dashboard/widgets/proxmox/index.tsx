@@ -189,7 +189,9 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
                           <span className="text-[11.5px] text-text-secondary truncate flex-1">{g.name ?? g.vmid}</span>
                           {run ? (
                             <span className="text-[10px] font-mono tabular-nums text-text-muted shrink-0">
-                              {((g.cpu ?? 0) * 100).toFixed(0)}% · {pct(g.mem, g.maxmem).toFixed(0)}%
+                              <span className="text-text-secondary">{((g.cpu ?? 0) * 100).toFixed(0)}%</span> cpu
+                              <span className="mx-1 text-text-muted/50">·</span>
+                              <span className="text-text-secondary">{pct(g.mem, g.maxmem).toFixed(0)}%</span> ram
                             </span>
                           ) : (
                             <span className="text-[10px] text-text-muted/60 shrink-0">stopped</span>
