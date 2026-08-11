@@ -1,19 +1,45 @@
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { ConfigField } from "../_fields";
-import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, useTileFit, EntityPicker, isFan, friendly, isOn, Toggle } from "../_hass";
+import { hbase, useHassStates, useHassService, useHassOptimistic, useSharedHassCreds, useTileFit, EntityPicker, isFan, friendly, isOn } from "../_hass";
 import type { HassFanConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
-// Home Assistant fan — on/off + speed for one fan entity. Speed presets map to
-// fan.set_percentage; the toggle uses fan.toggle.
+// Home Assistant fan — a 4-level speed control (Off / Low / Med / High) shown
+// as tappable bars, so it fits any tile height without a slider or scrollbar.
+// Level 0 = fan.turn_off; 1-3 = fan.set_percentage(33/66/100).
 // ---------------------------------------------------------------------------
 
-const PRESETS = [
-  { label: "Low", pct: 33 },
-  { label: "Med", pct: 66 },
-  { label: "High", pct: 100 },
-];
+const LEVELS = [0, 33, 66, 100]; // off, low, med, high
+const LABELS = ["Off", "Low", "Med", "High"];
+
+function levelOf(on: boolean, pct: number | null): number {
+  if (!on) return 0;
+  if (pct == null) return 3;
+  if (pct <= 16) return 0;
+  if (pct <= 49) return 1;
+  if (pct <= 83) return 2;
+  return 3;
+}
+
+function SpeedBars({ level, onSet, tall }: { level: number; onSet: (l: number) => void; tall?: boolean }) {
+  const heights = tall ? [10, 18, 26, 34] : [8, 13, 18, 23];
+  return (
+    <div className="flex items-end gap-1.5 shrink-0">
+      {heights.map((hpx, i) => {
+        const active = i === level;
+        return (
+          <button key={i} onClick={() => onSet(i)} title={LABELS[i]} className="flex items-end group/bar py-0.5" aria-label={LABELS[i]}>
+            <span
+              style={{ height: hpx }}
+              className={`w-3.5 rounded-sm transition-colors ${active ? "bg-accent" : "bg-border group-hover/bar:bg-text-muted"}`}
+            />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 function FanComponent({ config }: WidgetProps<HassFanConfig>) {
   const b = hbase(config?.baseUrl);
@@ -25,12 +51,7 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
   const { data, isLoading, isError, error, refetch } = useHassStates(b, token ?? "", ready);
   const svc = useHassService(b, token ?? "");
   const opt = useHassOptimistic(b, token ?? "");
-  const { ref, compact } = useTileFit();
-  const setPct = (p: number) => {
-    if (!id) return;
-    opt(id, "on", { percentage: p });
-    svc.mutate({ domain: "fan", service: "set_percentage", data: { entity_id: id, percentage: p } });
-  };
+  const { ref, compact } = useTileFit(72);
 
   if (!b || !token || !id) return <EmptyState icon={FanIcon} title="Connect Fan" hint="Set the base URL, a long-lived token and a fan.* entity id." />;
   if (isError) return <ErrorState message={(error as Error)?.message ?? "Could not reach Home Assistant."} onRetry={() => refetch()} />;
@@ -39,33 +60,25 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
   const e = data.find((x) => x.entity_id === id);
   const on = isOn(e?.state);
   const pct = (e?.attributes?.percentage as number | undefined) ?? null;
-  const toggle = () => {
-    opt(id, on ? "off" : "on");
-    svc.mutate({ domain: "fan", service: "toggle", data: { entity_id: id } });
+  const level = levelOf(on, pct);
+  const setLevel = (lvl: number) => {
+    if (!id) return;
+    if (lvl === 0) {
+      opt(id, "off");
+      svc.mutate({ domain: "fan", service: "turn_off", data: { entity_id: id } });
+    } else {
+      const p = LEVELS[lvl];
+      opt(id, "on", { percentage: p });
+      svc.mutate({ domain: "fan", service: "set_percentage", data: { entity_id: id, percentage: p } });
+    }
   };
 
-  // Compact single-row layout only when the tile is genuinely too short.
   if (compact) {
     return (
       <div ref={ref} className="h-full flex items-center gap-2 px-2.5 overflow-hidden">
         <FanSpin on={on} />
         <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
-        <div className="flex gap-1 shrink-0">
-          {PRESETS.map((p) => {
-            const active = on && pct != null && Math.abs(pct - p.pct) <= 16;
-            return (
-              <button
-                key={p.label}
-                onClick={() => setPct(p.pct)}
-                title={p.label}
-                className={`w-6 h-6 text-[10px] rounded border transition-colors ${active ? "border-accent/60 bg-accent/15 text-accent" : "border-border text-text-muted hover:text-text"}`}
-              >
-                {p.label[0]}
-              </button>
-            );
-          })}
-        </div>
-        <Toggle on={on} disabled={!e} onClick={toggle} />
+        <SpeedBars level={level} onSet={setLevel} />
       </div>
     );
   }
@@ -75,42 +88,32 @@ function FanComponent({ config }: WidgetProps<HassFanConfig>) {
       <WidgetHeader
         icon={FanIcon}
         title={title}
-        right={<span className="text-[11px] font-mono text-text-muted">{on ? (pct != null ? `${pct}%` : "on") : "off"}</span>}
+        right={<span className="text-[11px] font-mono text-text-muted">{LABELS[level].toLowerCase()}</span>}
       />
-      <div className="flex-1 min-h-0 overflow-auto px-3 py-2 flex flex-col justify-center gap-2.5">
+      <div className="flex-1 min-h-0 overflow-hidden px-3 flex flex-col justify-center gap-3">
         <div className="flex items-center gap-2">
           <FanSpin on={on} />
           <span className="text-[12px] text-text-secondary truncate flex-1" title={id}>{friendly(e, id)}</span>
-          <Toggle on={on} disabled={!e} onClick={toggle} />
         </div>
-        <div className="grid grid-cols-3 gap-1.5">
-          {PRESETS.map((p) => {
-            const active = on && pct != null && Math.abs(pct - p.pct) <= 16;
+        <div className="flex items-end justify-between">
+          {[0, 1, 2, 3].map((lvl) => {
+            const active = lvl === level;
             return (
               <button
-                key={p.label}
-                onClick={() => setPct(p.pct)}
-                className={`px-2 py-2 text-[11px] rounded border transition-colors ${
-                  active ? "border-accent/60 bg-accent/15 text-accent" : "border-border text-text-muted hover:text-text"
-                }`}
+                key={lvl}
+                onClick={() => setLevel(lvl)}
+                className="flex flex-col items-center gap-1 group/lvl"
+                aria-label={LABELS[lvl]}
               >
-                {p.label}
+                <span
+                  style={{ height: [12, 20, 28, 36][lvl] }}
+                  className={`w-6 rounded-sm transition-colors ${active ? "bg-accent" : "bg-border group-hover/lvl:bg-text-muted"}`}
+                />
+                <span className={`text-[9.5px] ${active ? "text-accent" : "text-text-muted"}`}>{LABELS[lvl]}</span>
               </button>
             );
           })}
         </div>
-        {on && (
-          <input
-            type="range"
-            min={1}
-            max={100}
-            defaultValue={pct ?? 100}
-            key={pct ?? "x"}
-            onMouseUp={(ev) => setPct(Number((ev.target as HTMLInputElement).value))}
-            onTouchEnd={(ev) => setPct(Number((ev.target as HTMLInputElement).value))}
-            className="w-full accent-accent h-1 cursor-pointer"
-          />
-        )}
       </div>
     </div>
   );
@@ -128,7 +131,7 @@ function FanConfigPanel({ config, save }: WidgetConfigProps<HassFanConfig>) {
         <EntityPicker base={b} token={config?.token?.trim() ?? ""} filter={isFan} multiple={false} value={config?.entity ? [config.entity] : []} onChange={(ids) => save({ entity: ids[0] })} />
       </div>
       <ConfigField label="Title" value={config?.title} onChange={(title) => save({ title })} placeholder="Fan" mono={false} />
-      <p className="text-[11px] text-text-muted leading-snug">URL + token are shared across HA widgets — set them once. Presets/slider call fan.set_percentage.</p>
+      <p className="text-[11px] text-text-muted leading-snug">URL + token are shared across HA widgets — set them once. Off / Low / Med / High map to fan.set_percentage.</p>
     </div>
   );
 }
@@ -156,7 +159,7 @@ const definition: WidgetDefinition<HassFanConfig> = {
   title: "HA Fan",
   icon: FanIcon,
   category: "services",
-  description: "Home Assistant fan — on/off plus low/medium/high presets and a speed slider.",
+  description: "Home Assistant fan — a 4-level speed control (Off / Low / Med / High) that fits any tile height.",
   minW: 2,
   minH: 1,
   maxW: 4,
