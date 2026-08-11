@@ -94,7 +94,8 @@ function NotifyComponent({ config }: WidgetProps<NotifyConfig>) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={BellIcon} title={title} right={<span className="text-[11px] font-mono text-text-muted">{data.messages.length} recent</span>} />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 space-y-2.5">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 flex flex-col">
+       <div className="my-auto w-full space-y-2.5">
         <StatTiles tiles={data.tiles} cols={data.tiles.length} />
         <div className="divide-y divide-border-subtle">
           {data.messages.length === 0 && <div className="text-[11px] text-text-muted py-1">No recent messages.</div>}
@@ -112,6 +113,7 @@ function NotifyComponent({ config }: WidgetProps<NotifyConfig>) {
             </div>
           ))}
         </div>
+       </div>
       </div>
     </div>
   );
