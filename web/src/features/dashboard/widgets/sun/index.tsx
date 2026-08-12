@@ -1,6 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { wmoIcon } from "../weather/icons";
 import type {
   SunConfig,
   WidgetConfigProps,
@@ -9,9 +8,9 @@ import type {
 } from "../types";
 
 // ---------------------------------------------------------------------------
-// Sun widget — sunrise/sunset + daylight arc, via Open-Meteo (no auth). The
-// marker on the arc is the live weather icon (sun/cloud/rain/…) so it reflects
-// current conditions, and a soft gradient sky sits under the arc.
+// Sun widget — sunrise/sunset + a smooth daylight arc, via Open-Meteo (no auth).
+// iOS-style: a glowing sun rides the arc through the day and a pale moon sits
+// below the horizon at night, over a soft warm/cool day-night wash.
 // ---------------------------------------------------------------------------
 
 interface SunResponse {
@@ -126,9 +125,9 @@ function SunComponent({ config }: WidgetProps<SunConfig>) {
         ? { label: "until sunset", value: fmtDur(set - now) }
         : { label: "daylight", value: fmtDur(set - rise) };
 
-  const wi = wmoIcon(data.current?.weather_code ?? 0, data.current?.is_day !== 0);
-  const MarkerIcon = wi.Icon;
   const m = arcPoint(frac);
+  // Moon rests just below the horizon on the side of the next event.
+  const moon = now < rise ? { x: 13, y: 43.8 } : { x: 87, y: 43.8 };
 
   const uv = data.current?.uv_index;
   const uvMax = data.daily?.uv_index_max?.[0];
@@ -136,60 +135,83 @@ function SunComponent({ config }: WidgetProps<SunConfig>) {
   const uvInfo = uvNow != null ? uvBand(uvNow) : null;
 
   return (
-    <div className="h-full flex flex-col p-3 gap-1.5">
-      {/* arc — height-driven so a short/wide widget never clips the footer.
-          The inner box is aspect-locked to the viewBox so the % overlays for
-          the sun marker and hero map linearly onto it. */}
-      <div className="flex-1 min-h-0 flex justify-center">
+    <div className="relative h-full flex flex-col p-3 gap-1.5 overflow-hidden">
+      {/* soft day / night wash */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: isDay
+            ? "radial-gradient(130% 90% at 50% 118%, rgba(251,191,36,0.16), rgba(249,115,22,0.05) 45%, transparent 72%)"
+            : "radial-gradient(130% 90% at 50% 118%, rgba(129,140,248,0.14), rgba(99,102,241,0.04) 45%, transparent 72%)",
+        }}
+      />
+      <div className="relative flex-1 min-h-0 flex justify-center">
         <div className="relative h-full max-w-full" style={{ aspectRatio: "100 / 48" }}>
-          <svg viewBox="0 0 100 48" preserveAspectRatio="xMidYMid meet" className="w-full h-full block">
+          <svg viewBox="0 0 100 48" preserveAspectRatio="xMidYMid meet" className="w-full h-full block" style={{ overflow: "visible" }}>
             <defs>
               <linearGradient id="sun-sky" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#fbbf24" stopOpacity="0.14" />
+                <stop offset="0" stopColor="#fbbf24" stopOpacity="0.16" />
                 <stop offset="1" stopColor="#fbbf24" stopOpacity="0" />
               </linearGradient>
               <linearGradient id="sun-arc" x1="0" y1="0" x2="1" y2="0">
                 <stop offset="0" stopColor="#f59e0b" />
-                <stop offset="1" stopColor="#fbbf24" />
+                <stop offset="0.55" stopColor="#fbbf24" />
+                <stop offset="1" stopColor="#fcd34d" />
               </linearGradient>
+              <radialGradient id="sun-dot" cx="0.5" cy="0.5" r="0.5">
+                <stop offset="0" stopColor="#fffbeb" />
+                <stop offset="0.5" stopColor="#fcd34d" />
+                <stop offset="1" stopColor="#f59e0b" />
+              </radialGradient>
+              <radialGradient id="moon-dot" cx="0.5" cy="0.5" r="0.5">
+                <stop offset="0" stopColor="#f1f5f9" />
+                <stop offset="1" stopColor="#94a3b8" />
+              </radialGradient>
+              <filter id="sun-glow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="1.7" />
+              </filter>
             </defs>
-            {/* sky fill under the full arc */}
-            <path d={`${arcPath(0, 1)} L8 40 Z`} fill="url(#sun-sky)" />
-            {/* remaining (faint) full arc */}
-            <path d={arcPath(0, 1)} fill="none" stroke="var(--color-border)" strokeWidth="1.5" strokeDasharray="2 2.5" strokeLinecap="round" />
-            {/* elapsed (bright) arc up to the sun */}
-            {isDay && frac > 0.001 && (
-              <path d={arcPath(0, frac)} fill="none" stroke="url(#sun-arc)" strokeWidth="2" strokeLinecap="round" />
+
+            {/* sky fill under the arc */}
+            <path d={`${arcPath(0, 1)} L${arcPoint(0).x.toFixed(2)} 40 Z`} fill="url(#sun-sky)" />
+            {/* faint full arc */}
+            <path d={arcPath(0, 1)} fill="none" stroke="var(--color-border)" strokeWidth="1.4" strokeLinecap="round" opacity="0.9" />
+            {/* bright elapsed arc + soft glow underlay */}
+            {isDay && frac > 0.004 && (
+              <>
+                <path d={arcPath(0, frac)} fill="none" stroke="url(#sun-arc)" strokeWidth="2.6" strokeLinecap="round" opacity="0.5" filter="url(#sun-glow)" />
+                <path d={arcPath(0, frac)} fill="none" stroke="url(#sun-arc)" strokeWidth="1.8" strokeLinecap="round" />
+              </>
             )}
             {/* horizon */}
-            <line x1="4" y1="40" x2="96" y2="40" stroke="var(--color-border-subtle)" strokeWidth="1" />
-            <circle cx="8" cy="40" r="1.5" fill="var(--color-text-muted)" />
-            <circle cx="92" cy="40" r="1.5" fill="var(--color-text-muted)" />
+            <line x1="6" y1="40" x2="94" y2="40" stroke="var(--color-border-subtle)" strokeWidth="0.9" />
+            <circle cx={arcPoint(0).x.toFixed(2)} cy="40" r="1.1" fill="var(--color-text-muted)" opacity="0.7" />
+            <circle cx={arcPoint(1).x.toFixed(2)} cy="40" r="1.1" fill="var(--color-text-muted)" opacity="0.7" />
+
+            {/* sun on the arc (day) */}
+            {isDay && (
+              <>
+                <circle cx={m.x.toFixed(2)} cy={m.y.toFixed(2)} r="4.6" fill="#fbbf24" opacity="0.4" filter="url(#sun-glow)" />
+                <circle cx={m.x.toFixed(2)} cy={m.y.toFixed(2)} r="2.7" fill="url(#sun-dot)" />
+              </>
+            )}
+            {/* moon below the horizon (night) */}
+            {!isDay && (
+              <>
+                <circle cx={moon.x} cy={moon.y} r="3.4" fill="#94a3b8" opacity="0.22" filter="url(#sun-glow)" />
+                <circle cx={moon.x} cy={moon.y} r="2" fill="url(#moon-dot)" />
+              </>
+            )}
           </svg>
-          {/* live weather icon on the arc */}
-          <div
-            className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-            style={{
-              left: `${m.x}%`,
-              top: `${(m.y / 48) * 100}%`,
-              filter: isDay ? "drop-shadow(0 0 6px rgba(251,191,36,0.6))" : "none",
-              opacity: isDay ? 1 : 0.6,
-            }}
-          >
-            <MarkerIcon className="w-full h-full" />
-          </div>
           {/* countdown hero, floated in the arc's open mouth (above the horizon) */}
-          <div
-            className="absolute inset-x-0 flex flex-col items-center pointer-events-none"
-            style={{ top: "54%" }}
-          >
-            <span className="font-mono tabular-nums text-text text-[15px] leading-none">{hero.value}</span>
-            <span className="text-text-muted text-[10px] uppercase tracking-[0.12em] mt-0.5">{hero.label}</span>
+          <div className="absolute inset-x-0 flex flex-col items-center pointer-events-none" style={{ top: "52%" }}>
+            <span className="tabular-nums text-text text-[16px] font-semibold leading-none tracking-tight">{hero.value}</span>
+            <span className="text-text-muted text-[9.5px] uppercase tracking-[0.14em] mt-1">{hero.label}</span>
           </div>
         </div>
       </div>
       {/* footer: rise · UV · set */}
-      <div className="shrink-0 flex items-end justify-between">
+      <div className="relative shrink-0 flex items-end justify-between">
         <div className="flex items-center gap-1.5">
           <RiseIcon className="w-3.5 h-3.5 shrink-0" style={{ color: "#fbbf24" }} />
           <div className="flex flex-col leading-tight">
