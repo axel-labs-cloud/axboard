@@ -78,6 +78,7 @@ import hackernews from "./hackernews";
 import lobsters from "./lobsters";
 import youtube from "./youtube";
 import xkcd from "./xkcd";
+import tabgroup from "./tabgroup";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -159,6 +160,7 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   lobsters,
   youtube,
   xkcd,
+  tabgroup,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

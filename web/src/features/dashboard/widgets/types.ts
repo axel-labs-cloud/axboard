@@ -79,7 +79,8 @@ export type WidgetType =
   | "hackernews"
   | "lobsters"
   | "youtube"
-  | "xkcd";
+  | "xkcd"
+  | "tabgroup";
 
 export type WidgetCategory = "productivity" | "system" | "services" | "homeassistant" | "network" | "external";
 
@@ -719,6 +720,17 @@ export interface XkcdConfig {
   title?: string;
 }
 
+/** Tabbed group — several widgets stacked in one card, switched by tabs. */
+export interface TabGroupTab {
+  type: WidgetType;
+  title?: string;
+  config?: AnyWidgetConfig;
+}
+export interface TabGroupConfig {
+  tabs?: TabGroupTab[];
+  title?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -799,6 +811,7 @@ export type WidgetConfigByType = {
   lobsters: LobstersConfig;
   youtube: YouTubeConfig;
   xkcd: XkcdConfig;
+  tabgroup: TabGroupConfig;
 };
 
 export type AnyWidgetConfig = Partial<
