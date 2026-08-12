@@ -313,7 +313,13 @@ func (s *Server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	// The watcher will re-load and reconcile; respond with what we just wrote.
+	// Apply in-memory immediately so a GET right after this PUT is consistent.
+	// Without this, GET serves the pre-PUT config until the fsnotify watcher
+	// debounces + reloads (~250ms+), so the UI's post-write refetch reverts the
+	// change and rapid add/remove operations clobber each other. The watcher
+	// still fires shortly after and re-applies this (idempotent) plus reconciles
+	// the health pool / alert channels.
+	s.SetConfig(&next)
 	writeJSON(w, http.StatusOK, next)
 }
 
