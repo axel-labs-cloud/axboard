@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { WidgetHeader, EmptyState, ErrorState } from "../../../../components/widget";
@@ -8,28 +9,61 @@ import { FeedList, type FeedItem } from "../_feed";
 import type { RedditConfig, WidgetConfigProps, WidgetDefinition, WidgetProps } from "../types";
 
 // ---------------------------------------------------------------------------
-// Reddit widget — top posts from a subreddit via the public JSON endpoint.
+// Reddit widget — top posts from a subreddit. Reddit now blocks anonymous
+// .json access from most networks, so this uses OAuth (app-only / client
+// credentials) when a Reddit app's client id + secret are provided, and falls
+// back to the anonymous endpoint otherwise (which may 403).
 // ---------------------------------------------------------------------------
 
 interface Post {
-  data: { title: string; score: number; num_comments: number; permalink: string; url: string; subreddit_name_prefixed?: string; created_utc: number; stickied?: boolean };
+  data: { title: string; score: number; num_comments: number; permalink: string; url: string; created_utc: number; stickied?: boolean };
 }
+
+const UA = "axboard/1.0 (self-hosted dashboard)";
 
 function RedditComponent({ config }: WidgetProps<RedditConfig>) {
   const sub = (config?.subreddit ?? "").replace(/^r\//i, "").trim();
   const sort = config?.sort ?? "hot";
   const max = config?.max ?? 12;
   const title = config?.title?.trim() || (sub ? `r/${sub}` : "Reddit");
+  const cid = config?.clientId?.trim();
+  const secret = config?.clientSecret?.trim();
+  const oauth = !!cid && !!secret;
+  const tok = useRef<{ token: string; exp: number } | undefined>(undefined);
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ["reddit", sub, sort, max],
+    queryKey: ["reddit", sub, sort, max, oauth],
     enabled: !!sub,
     refetchInterval: 600_000,
-    queryFn: () => api.fetchJson<{ data: { children: Post[] } }>({ url: `https://www.reddit.com/r/${encodeURIComponent(sub)}/${sort}.json?limit=${max}&raw_json=1`, headers: { "User-Agent": "axboard/1.0 (self-hosted dashboard)" } }),
+    queryFn: async (): Promise<{ data: { children: Post[] } }> => {
+      if (oauth) {
+        if (!tok.current || tok.current.exp < Date.now()) {
+          const t = await api.fetchJson<{ access_token: string; expires_in: number }>({
+            url: "https://www.reddit.com/api/v1/access_token",
+            method: "POST",
+            headers: { Authorization: `Basic ${btoa(`${cid}:${secret}`)}`, "Content-Type": "application/x-www-form-urlencoded", "User-Agent": UA },
+            body: "grant_type=client_credentials",
+          });
+          tok.current = { token: t.access_token, exp: Date.now() + (t.expires_in - 60) * 1000 };
+        }
+        return api.fetchJson({ url: `https://oauth.reddit.com/r/${encodeURIComponent(sub)}/${sort}?limit=${max}&raw_json=1`, headers: { Authorization: `Bearer ${tok.current.token}`, "User-Agent": UA } });
+      }
+      return api.fetchJson({ url: `https://www.reddit.com/r/${encodeURIComponent(sub)}/${sort}.json?limit=${max}&raw_json=1`, headers: { "User-Agent": UA } });
+    },
   });
 
   if (!sub) return <EmptyState icon={RedditIcon} title="Pick a subreddit" hint="Set a subreddit (e.g. selfhosted) in this widget's config." />;
-  if (isError) return <ErrorState message={(error as Error)?.message ?? "Could not reach Reddit (it may be rate-limiting)."} onRetry={() => refetch()} />;
+  if (isError)
+    return (
+      <ErrorState
+        message={
+          oauth
+            ? (error as Error)?.message ?? "Reddit request failed — check the app id/secret."
+            : "Reddit blocked anonymous access (403). Add a Reddit app id + secret in config."
+        }
+        onRetry={() => refetch()}
+      />
+    );
   if (isLoading || !data) return <SkeletonLines rows={5} />;
 
   const items: FeedItem[] = (data.data.children ?? [])
@@ -56,7 +90,13 @@ function RedditConfigPanel({ config, save }: WidgetConfigProps<RedditConfig>) {
     <div className="space-y-3">
       <ConfigField label="Subreddit" value={config?.subreddit} onChange={(subreddit) => save({ subreddit })} placeholder="selfhosted" />
       <KindPicker label="Sort" value={(config?.sort ?? "hot") as "hot" | "new" | "top" | "rising"} onChange={(sort) => save({ sort })} options={[{ value: "hot", label: "Hot" }, { value: "new", label: "New" }, { value: "top", label: "Top" }, { value: "rising", label: "Rising" }]} />
+      <ConfigField label="App client id" value={config?.clientId} onChange={(clientId) => save({ clientId })} placeholder="from reddit.com/prefs/apps" hint="OAuth" />
+      <ConfigField label="App secret" value={config?.clientSecret} onChange={(clientSecret) => save({ clientSecret })} placeholder="••••••••" />
       <ConfigField label="Title" value={config?.title} onChange={(title) => save({ title })} placeholder="(auto)" mono={false} />
+      <p className="text-[11px] text-text-muted leading-snug">
+        Reddit blocks anonymous access from most networks. Create a <span className="font-mono">script</span> app at{" "}
+        <span className="font-mono">reddit.com/prefs/apps</span> and paste its id + secret — read-only, no account link. Credentials stay in your config.yaml.
+      </p>
     </div>
   );
 }

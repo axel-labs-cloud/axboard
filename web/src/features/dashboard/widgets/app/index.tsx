@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import type { AppDef, GroupDef, HistoryMap } from "../../../../api/types";
@@ -20,7 +21,21 @@ import { WakeButton, canWake } from "../WakeButton";
 // ---------------------------------------------------------------------------
 
 function Icon({ app, className = "" }: { app: AppDef; className?: string }) {
+  const [failed, setFailed] = useState(false);
+  let host: string | null = null;
+  try {
+    host = app.url ? new URL(app.url).host || null : null;
+  } catch {
+    host = null;
+  }
   if (!app.icon) {
+    if (host && !failed) {
+      return (
+        <div className={`rounded-md overflow-hidden flex items-center justify-center bg-bg-elevated ${className}`}>
+          <img src={`https://icons.duckduckgo.com/ip3/${host}.ico`} alt="" onError={() => setFailed(true)} style={{ width: "72%", height: "72%", objectFit: "contain" }} loading="lazy" />
+        </div>
+      );
+    }
     return (
       <div
         className={`rounded-md flex items-center justify-center text-text font-semibold leading-none ${className}`}

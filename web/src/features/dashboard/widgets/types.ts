@@ -693,6 +693,8 @@ export interface RedditConfig {
   sort?: string; // hot | new | top | rising
   max?: number;
   title?: string;
+  clientId?: string; // Reddit app (script) client id — for OAuth (anonymous is blocked)
+  clientSecret?: string;
 }
 
 /** Hacker News widget — front page / ask / show. */

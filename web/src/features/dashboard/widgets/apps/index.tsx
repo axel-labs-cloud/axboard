@@ -19,21 +19,47 @@ import { StatusDot } from "../../../../components/widget";
 // User adds multiple instances (one per category, or however they want).
 // ---------------------------------------------------------------------------
 
-function Icon({ app, sizePortion }: { app: AppDef; sizePortion?: string }) {
-  if (!app.icon) {
+function faviconHost(url?: string): string | null {
+  if (!url) return null;
+  try {
+    return new URL(url).host || null;
+  } catch {
+    return null;
+  }
+}
+
+// No explicit icon: try the site's favicon (DuckDuckGo's icon service), and
+// fall back to name initials if it can't be fetched.
+function AutoIcon({ app, sizePortion }: { app: AppDef; sizePortion?: string }) {
+  const host = faviconHost(app.url);
+  const [failed, setFailed] = useState(false);
+  const box: React.CSSProperties = { width: sizePortion ?? "100%", height: sizePortion ?? "100%" };
+  if (host && !failed) {
     return (
-      <div
-        className="rounded-md flex items-center justify-center text-text font-semibold leading-none"
-        style={{
-          width: sizePortion ?? "100%",
-          height: sizePortion ?? "100%",
-          background: hashColor(app.name),
-          fontSize: "clamp(8px, 28%, 16px)",
-        }}
-      >
-        {initials(app.name)}
+      <div className="rounded-md overflow-hidden flex items-center justify-center bg-bg-elevated" style={box}>
+        <img
+          src={`https://icons.duckduckgo.com/ip3/${host}.ico`}
+          alt=""
+          onError={() => setFailed(true)}
+          style={{ width: "72%", height: "72%", objectFit: "contain" }}
+          loading="lazy"
+        />
       </div>
     );
+  }
+  return (
+    <div
+      className="rounded-md flex items-center justify-center text-text font-semibold leading-none"
+      style={{ ...box, background: hashColor(app.name), fontSize: "clamp(8px, 28%, 16px)" }}
+    >
+      {initials(app.name)}
+    </div>
+  );
+}
+
+function Icon({ app, sizePortion }: { app: AppDef; sizePortion?: string }) {
+  if (!app.icon) {
+    return <AutoIcon app={app} sizePortion={sizePortion} />;
   }
   return (
     <div
