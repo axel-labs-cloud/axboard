@@ -219,6 +219,37 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
   const dashRadius = activeDashAppearance?.radius;
   // setDensity / setRadius are defined after patchActiveDashboard (below).
 
+  // Per-dashboard colour theme — browser-local, keyed by dashboard id, so each
+  // tab remembers its own theme. Saved when the theme changes on a dashboard,
+  // re-applied when switching back to that tab.
+  const setDashTheme = useCallback(
+    (t: string) => {
+      setTheme(t);
+      if (!activeDashboardId) return;
+      try {
+        const map = JSON.parse(window.localStorage.getItem("axboard-dash-theme") || "{}");
+        map[activeDashboardId] = t;
+        window.localStorage.setItem("axboard-dash-theme", JSON.stringify(map));
+      } catch {
+        // ignore quota / private mode
+      }
+    },
+    [setTheme, activeDashboardId],
+  );
+  // Apply the active dashboard's own saved theme on tab switch.
+  useEffect(() => {
+    if (!activeDashboardId) return;
+    try {
+      const map = JSON.parse(window.localStorage.getItem("axboard-dash-theme") || "{}");
+      const t = map[activeDashboardId];
+      if (t && t !== theme) setTheme(t);
+    } catch {
+      // ignore
+    }
+    // Only react to the tab changing — not to `theme` (would loop / fight edits).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeDashboardId]);
+
   const toggleAlerts = useCallback(async () => {
     if (!alertsEnabled) {
       if (typeof Notification !== "undefined" && Notification.permission !== "granted") {
@@ -1204,14 +1235,14 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
       { label: "Back up everything", run: () => handleBackup() },
     ];
     for (const t of THEMES) {
-      acts.push({ label: `Theme: ${t.label}`, subtitle: "Switch color theme", run: () => setTheme(t.id) });
+      acts.push({ label: `Theme: ${t.label}`, subtitle: "Switch color theme", run: () => setDashTheme(t.id) });
     }
     for (const d of dashboards) {
       acts.push({ label: `Go to ${d.name}`, subtitle: "Dashboard", run: () => setActiveDashboardId(d.id) });
     }
     return acts;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, dashboards, setTheme, handleBackup]);
+  }, [editing, dashboards, setDashTheme, handleBackup]);
 
   const bgBase = backgroundLayerStyle(activeBackground, "base");
   const bgDim = backgroundLayerStyle(activeBackground, "dim");
@@ -1291,7 +1322,7 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
         onDeleteDashboard={handleDeleteDashboard}
         onOpenSpotlight={() => setSpotlightOpen(true)}
         theme={theme}
-        setTheme={setTheme}
+        setTheme={setDashTheme}
       />
       </div>
       )}
