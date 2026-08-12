@@ -192,6 +192,7 @@ export interface StatusSummaryConfig {
   byGroup?: boolean;
   bars?: boolean; // per-service Uptime-Kuma-style history bars
   groups?: string[]; // filter: only these group ids (empty = all)
+  appIds?: string[]; // filter: only these individual service ids (overrides groups)
 }
 
 /** Notes / scratchpad widget — free text persisted in config.yaml. */

@@ -200,14 +200,18 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
   const cfg = qc.getQueryData<{ apps?: AppDef[]; groups?: GroupDef[] }>(["config"]);
   const groups = cfg?.groups ?? [];
   const healthApps = useMemo(() => {
+    const selApps = config?.appIds;
     const sel = config?.groups;
     return (cfg?.apps ?? []).filter(
       (a) =>
         a.health &&
         a.health.type !== "none" &&
-        (!sel || sel.length === 0 || sel.includes(a.group || "__ungrouped")),
+        // Individual-service selection wins over the group filter when set.
+        (selApps && selApps.length > 0
+          ? selApps.includes(a.id)
+          : !sel || sel.length === 0 || sel.includes(a.group || "__ungrouped")),
     );
-  }, [cfg?.apps, config?.groups]);
+  }, [cfg?.apps, config?.groups, config?.appIds]);
 
   const { data: statuses = {} } = useQuery({
     queryKey: ["apps-status"],
@@ -434,10 +438,15 @@ function StatusSummaryComponent({ config, h }: WidgetProps<StatusSummaryConfig>)
 
 function StatusSummaryConfigPanel({ config, save }: WidgetConfigProps<StatusSummaryConfig>) {
   const qc = useQueryClient();
-  const groups = qc.getQueryData<{ groups?: GroupDef[] }>(["config"])?.groups ?? [];
+  const cfgData = qc.getQueryData<{ groups?: GroupDef[]; apps?: AppDef[] }>(["config"]);
+  const groups = cfgData?.groups ?? [];
+  const apps = (cfgData?.apps ?? []).filter((a) => a.health && a.health.type !== "none");
   const sel = config?.groups ?? [];
+  const selApps = config?.appIds ?? [];
   const toggleGroup = (id: string) =>
     save({ groups: sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id] });
+  const toggleApp = (id: string) =>
+    save({ appIds: selApps.includes(id) ? selApps.filter((x) => x !== id) : [...selApps, id] });
   return (
     <div className="space-y-3">
       <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
@@ -491,9 +500,32 @@ function StatusSummaryConfigPanel({ config, save }: WidgetConfigProps<StatusSumm
           </div>
         </div>
       )}
+      {apps.length > 0 && (
+        <div className="space-y-1.5">
+          <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">
+            Or pick individual services {selApps.length > 0 && <span className="text-accent normal-case tracking-normal">· overrides groups</span>}
+          </label>
+          <div className="flex flex-wrap gap-1.5 max-h-40 overflow-auto">
+            {apps.map((a) => {
+              const on = selApps.includes(a.id);
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => toggleApp(a.id)}
+                  className={`px-2.5 py-1 rounded text-[11px] border transition-colors ${
+                    on ? "bg-accent/15 border-accent text-accent" : "bg-bg-card border-border text-text-muted hover:text-text"
+                  }`}
+                >
+                  {a.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <p className="text-[11px] text-text-muted leading-snug">
         Counts every service that has a health check (type http or tcp). Liveness only; bars show
-        recent per-service uptime.
+        recent per-service uptime. Leave both filters empty for all services.
       </p>
     </div>
   );
