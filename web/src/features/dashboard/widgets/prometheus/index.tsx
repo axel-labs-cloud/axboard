@@ -51,8 +51,8 @@ function PrometheusComponent({ config }: WidgetProps<PrometheusConfig>) {
         title={title}
         right={<span className={`text-[11px] font-mono ${firing > 0 ? "text-down" : "text-up"}`}>{firing > 0 ? `${firing} firing` : "all clear"}</span>}
       />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 flex flex-col">
-        <div className="divide-y divide-border-subtle my-auto w-full">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5">
+        <div className="divide-y divide-border-subtle w-full">
           {alerts.length === 0 && <div className="text-[11px] text-text-muted py-2 text-center">No active alerts.</div>}
           {alerts.map((a, i) => (
             <div key={i} className="py-1">

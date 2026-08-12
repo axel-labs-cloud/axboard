@@ -51,8 +51,8 @@ function YouTubeComponent({ config }: WidgetProps<YouTubeConfig>) {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={PlayIcon} title={title || data.channel} />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 flex flex-col">
-        <div className="space-y-1.5 my-auto w-full">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5">
+        <div className="space-y-1.5 w-full">
           {videos.map((v) => (
             <a key={v.id} href={`https://www.youtube.com/watch?v=${v.id}`} target="_blank" rel="noreferrer noopener" className="flex gap-2 -mx-1 px-1 py-1 rounded hover:bg-bg-hover/50">
               {v.thumb && <img src={v.thumb} alt="" className="w-20 h-11 rounded object-cover shrink-0 bg-bg-elevated" loading="lazy" />}
@@ -72,6 +72,7 @@ function YouTubeConfigPanel({ config, save }: WidgetConfigProps<YouTubeConfig>) 
   return (
     <div className="space-y-3">
       <ConfigField label="Channel id" value={config?.channelId} onChange={(channelId) => save({ channelId })} placeholder="UCXuqSBlHAE6Xw-yeJA0Tunw" hint="from the channel URL" />
+      <ConfigField label="Videos" value={config?.max != null ? String(config.max) : ""} onChange={(v) => save({ max: v ? Math.max(1, Math.min(15, Number(v))) : undefined })} placeholder="6" hint="1–15" />
       <ConfigField label="Title" value={config?.title} onChange={(title) => save({ title })} placeholder="(channel name)" mono={false} />
       <p className="text-[11px] text-text-muted leading-snug">Use the channel's UC… id (View source of the channel page → "channelId", or a tool like ChannelID finder). No API key needed.</p>
     </div>
