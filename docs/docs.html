@@ -346,7 +346,7 @@
       <p class="eyebrow">Getting started</p>
       <h2>Quick start</h2>
       <h3>Podman / Docker Compose</h3>
-<pre><code>git clone &lt;repo&gt; axboard &amp;&amp; cd axboard
+<pre><code>git clone https://github.com/axel-labs-cloud/axboard.git &amp;&amp; cd axboard
 mkdir -p config &amp;&amp; cp config.example.yaml config/config.yaml
 podman compose up -d      <span class="cmt"># or: docker compose up -d</span></code></pre>
       <p>Open <code>http://localhost:8080</code>. Edit <code>config/config.yaml</code> in your editor — the server hot-reloads on save. The bundled <code>config.example.yaml</code> is a full, working starter with services, groups, a top bar, and two themed dashboards.</p>
@@ -360,7 +360,7 @@ cp config.example.yaml config.yaml
     <section class="doc" id="configuration">
       <p class="eyebrow">Getting started</p>
       <h2>Configuration</h2>
-      <p>Two files, one clear split — this is the most important design decision in the project.</p>
+      <p>Your setup lives in two files, split on purpose: one is yours to edit, the other axboard manages — so dragging widgets around never rewrites the file you hand-edit.</p>
       <div class="tw"><table>
         <tr><th>File</th><th>Owner</th><th>Holds</th></tr>
         <tr><td><code>config.yaml</code></td><td>You — the UI <em>or</em> your editor</td><td>Apps, groups, dashboards, widgets, the global top bar. Written by the UI's edit panels <em>and</em> hand-editable; hot-reloads on change.</td></tr>
@@ -501,14 +501,14 @@ cp config.example.yaml config.yaml
         <p>Upcoming events from an iCal URL (via the server proxy), as an agenda list or a month grid with event dots.</p>
         <div class="ui"><b>UI</b><span>iCal URL · count · view (agenda / month) · refresh minutes.</span></div>
 <pre><code>- { id: cal-1, type: calendar, title: Calendar,
-    config: { url: "https://…/basic.ics", view: agenda, count: 6 } }</code></pre></div>
+    config: { url: "https://example.com/calendar.ics", view: agenda, count: 6 } }</code></pre></div>
       </details>
       <details class="w" id="w-image"><summary><span class="nm">Image</span><span class="ty">image</span><span class="oneline">A static image / banner</span></summary>
         <div class="body"><figure class="wshot" data-shot="image" hidden><img alt="image widget example" loading="lazy"><figcaption>Example</figcaption></figure>
         <div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 1×1 – 12×12 · cols×rows</span></div>
         <p>A static image or banner by URL, optionally clickable.</p>
         <div class="ui"><b>UI</b><span>Image URL · fit (cover / contain) · link.</span></div>
-<pre><code>- { id: img-1, type: image, config: { url: https://…/logo.png, fit: contain } }</code></pre></div>
+<pre><code>- { id: img-1, type: image, config: { url: https://example.com/logo.png, fit: contain } }</code></pre></div>
       </details>
       <details class="w" id="w-section"><summary><span class="nm">Section label</span><span class="ty">section</span><span class="oneline">Heading / divider to organize the board</span></summary>
         <div class="body"><figure class="wshot" data-shot="section" hidden><img alt="section widget example" loading="lazy"><figcaption>Example</figcaption></figure>
@@ -1011,7 +1011,7 @@ cp config.example.yaml config.yaml
         <div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 8×12 · cols×rows</span></div>
         <p>Recent items from an RSS or Atom feed.</p>
         <div class="ui"><b>UI</b><span>Feed URL · item count · refresh minutes.</span></div>
-<pre><code>- { id: rss-1, type: rss, title: News, config: { url: https://…/feed.xml, count: 8 } }</code></pre></div>
+<pre><code>- { id: rss-1, type: rss, title: News, config: { url: https://example.com/feed.xml, count: 8 } }</code></pre></div>
       </details>
       <details class="w" id="w-reddit"><summary><span class="nm">Reddit</span><span class="ty">reddit</span><span class="oneline">Top posts from a subreddit</span></summary>
         <div class="body"><figure class="wshot" data-shot="reddit" hidden><img alt="reddit widget example" loading="lazy"><figcaption>Example</figcaption></figure>
@@ -1201,11 +1201,11 @@ echo -n <span class="s">'your-password'</span> | ./axboard passwd axel</code></p
 
 <span class="k">volumes:</span>
   <span class="k">axboard-state:</span></code></pre>
-      <div class="note"><span class="ic">i</span><div><b>Minimal setup?</b> Keep only <code>image</code>, the two <code>volumes</code>, and a port mapping. Add each grant above only when you want the widget it unlocks — none are needed to run.</div></div>
 
       <h3>3 · Your config</h3>
 <pre><code>mkdir -p config
-curl -o config/config.yaml https://…/config.example.yaml   <span class="cmt"># or write your own</span>
+curl -o config/config.yaml \
+  https://raw.githubusercontent.com/axel-labs-cloud/axboard/main/config.example.yaml   <span class="cmt"># or write your own</span>
 docker compose up -d</code></pre>
       <p>Open <code>http://&lt;host&gt;:8080</code> and edit <code>config/config.yaml</code> — the server hot-reloads on save. State (layouts, uptime history, uploaded icons, the auth session key) lives in the <code>axboard-state</code> volume.</p>
 
