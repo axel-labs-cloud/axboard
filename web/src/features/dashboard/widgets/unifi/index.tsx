@@ -52,10 +52,11 @@ function UnifiComponent({ config }: WidgetProps<UnifiConfig>) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username: user, password: pass, remember: true }),
         });
+        if (res.status === 429) throw new Error("UniFi is rate-limiting logins — wait a few minutes.");
+        if (!res.ok) throw new Error(`login failed (${res.status}) — check the local account / 2FA`);
+        // Replay every cookie the console set (TOKEN may not be the first one).
         const sc = res.headers.get("X-Proxy-Set-Cookie");
-        const m = sc?.match(/TOKEN=[^;]+/);
-        if (m) cookie.current = m[0];
-        if (!res.ok && res.status !== 200) throw new Error(`login ${res.status}`);
+        if (sc) cookie.current = sc;
       };
       const get = async () => {
         const call = () =>

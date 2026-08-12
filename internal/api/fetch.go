@@ -91,12 +91,22 @@ func (s *Server) handleFetch(w http.ResponseWriter, r *http.Request) {
 	if sid := resp.Header.Get("X-Transmission-Session-Id"); sid != "" {
 		w.Header().Set("X-Transmission-Session-Id", sid)
 	}
-	// Surface an upstream Set-Cookie under a non-forbidden name so cookie-login
-	// widgets (qBittorrent) can read the session cookie and replay it as a
-	// Cookie header on later calls. (Browsers block reading Set-Cookie directly,
-	// and re-emitting it as our own Set-Cookie would wrongly scope it here.)
-	if sc := resp.Header.Get("Set-Cookie"); sc != "" {
-		w.Header().Set("X-Proxy-Set-Cookie", sc)
+	// Surface upstream Set-Cookie(s) under a non-forbidden name so cookie-login
+	// widgets (qBittorrent, UniFi) can read the session cookie(s) and replay them
+	// as a Cookie header on later calls. (Browsers block reading Set-Cookie
+	// directly, and re-emitting it as our own Set-Cookie would wrongly scope it
+	// here.) We surface ALL cookies as "name=value; name=value" — some consoles
+	// set several and the session token isn't always the first one.
+	if cookies := resp.Header.Values("Set-Cookie"); len(cookies) > 0 {
+		pairs := make([]string, 0, len(cookies))
+		for _, c := range cookies {
+			if nv := strings.SplitN(c, ";", 2)[0]; strings.TrimSpace(nv) != "" {
+				pairs = append(pairs, strings.TrimSpace(nv))
+			}
+		}
+		if len(pairs) > 0 {
+			w.Header().Set("X-Proxy-Set-Cookie", strings.Join(pairs, "; "))
+		}
 	}
 	w.WriteHeader(resp.StatusCode)
 	_, _ = io.Copy(w, io.LimitReader(resp.Body, 4<<20)) // 4 MiB cap
