@@ -1213,6 +1213,23 @@ docker compose up -d</code></pre>
       <h3>Updating</h3>
 <pre><code>docker compose pull &amp;&amp; docker compose up -d</code></pre>
 
+      <h3>Backup &amp; restore</h3>
+      <p>Everything that defines your instance lives in two places — back up both:</p>
+      <ul>
+        <li><code>config.yaml</code> — your apps, groups, dashboards, widgets, alerts and status pages (the file you bind-mount). This is the one that really matters; keep it in version control if you like.</li>
+        <li>the <code>axboard-state</code> volume — grid layouts (<code>state.yaml</code>), rolling uptime history, uploaded icons, and the auth session key. Nice to keep, but all of it regenerates except the layouts.</li>
+      </ul>
+<pre><code><span class="cmt"># back up — the config file + the state volume</span>
+cp config/config.yaml config.yaml.bak
+podman volume export axboard-state -o axboard-state.tar
+<span class="cmt"># docker equivalent for the volume:</span>
+<span class="cmt"># docker run --rm -v axboard-state:/v -v "$PWD":/b alpine tar czf /b/state.tar -C /v .</span>
+
+<span class="cmt"># restore — drop config.yaml back, re-import the volume, restart</span>
+podman volume import axboard-state axboard-state.tar
+docker compose up -d</code></pre>
+      <div class="note"><span class="ic">i</span><div>No shell access? Open <b>⋯ → Edit config.yaml</b> to copy your whole config out of the browser (or paste one back in to restore) — it's validated on save with comments preserved. Themes are browser-local, so export any custom theme separately from the theme creator.</div></div>
+
       <div class="note"><span class="ic">!</span><div><b>Exposure.</b> axboard is open by default — bind it to a LAN address. Anyone who can reach the port can read and edit the config unless you enable <a href="#auth">the built-in login</a> or put a forward-auth proxy (Authentik / Authelia / oauth2-proxy) in front.</div></div>
     </section>
 
