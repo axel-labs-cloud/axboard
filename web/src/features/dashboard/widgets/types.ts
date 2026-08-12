@@ -672,6 +672,7 @@ export interface UnifiConfig {
   username?: string;
   password?: string;
   site?: string; // default "default"
+  hideWanIp?: boolean; // hide the WAN IP line (keep latency)
   title?: string;
 }
 

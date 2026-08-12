@@ -53,29 +53,29 @@ function DisksComponent({ config }: WidgetProps<DisksConfig>) {
   }
 
   const cols = box.w >= 440 ? 2 : 1;
-  // Fit to height: show as many mounts as fit and distribute them to fill —
-  // no scroll, no big blank. Each extra row of height shows more mounts.
-  const ROW_H = 34;
-  const perCol = Math.max(1, Math.floor((box.h - 12) / ROW_H));
-  const shown = fs.slice(0, perCol * cols);
 
   return (
-    <div ref={box.ref} className="h-full overflow-hidden px-3 py-2.5">
-      <div className="h-full" style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, columnGap: "14px", rowGap: "8px", alignContent: "space-between" }}>
-        {shown.map((d) => {
+    <div ref={box.ref} className="h-full overflow-auto px-3 py-2.5">
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${cols},minmax(0,1fr))`, columnGap: "12px", rowGap: "9px", alignContent: "start" }}>
+        {fs.map((d) => {
           const pct = d.total > 0 ? (d.used / d.total) * 100 : 0;
           const color = scaleColor(pct, config as ColorConfig, OPTS);
           const tag = netTag(d.type);
+          const free = Math.max(0, d.total - d.used);
           return (
-            <div key={d.path} className="space-y-1">
-              <div className="flex items-baseline justify-between text-[11px] gap-2">
-                <span className="text-text-secondary font-mono truncate flex items-center gap-1.5">
-                  {tag && <span className="px-1 py-px rounded bg-accent/15 text-accent text-[10px] font-sans font-semibold not-italic shrink-0">{tag}</span>}
+            <div key={d.path} className="rounded-lg border border-border-subtle bg-bg-card/30 px-2.5 py-2 space-y-1.5">
+              <div className="flex items-center justify-between gap-2 text-[11.5px]">
+                <span className="text-text-secondary font-mono truncate flex items-center gap-1.5 min-w-0">
+                  {tag && <span className="px-1 py-px rounded bg-accent/15 text-accent text-[9.5px] font-sans font-semibold shrink-0">{tag}</span>}
                   <span className="truncate">{d.path}</span>
                 </span>
-                <span className="font-mono tabular-nums shrink-0"><span className="text-text-secondary">{Math.round(pct)}%</span> <span className="text-text-muted/70">{fmtBytes(d.used)} / {fmtBytes(d.total)}</span></span>
+                <span className="font-mono tabular-nums shrink-0 font-semibold" style={{ color }}>{Math.round(pct)}%</span>
               </div>
               <Meter pct={Math.min(100, pct)} color={color} tick={(config as ColorConfig)?.crit ?? OPTS.crit} />
+              <div className="flex items-center justify-between text-[10px] font-mono text-text-muted/80">
+                <span>{fmtBytes(d.used)} used</span>
+                <span>{fmtBytes(free)} free · {fmtBytes(d.total)}</span>
+              </div>
             </div>
           );
         })}

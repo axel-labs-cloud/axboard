@@ -103,7 +103,12 @@ function UnifiComponent({ config }: WidgetProps<UnifiConfig>) {
             { label: "Up", value: rate(up), color: "var(--color-accent)" },
           ]}
         />
-        {wan?.wan_ip && <div className="text-[10px] font-mono text-text-muted">WAN {wan.wan_ip}{wan.latency != null ? ` · ${wan.latency}ms` : ""}</div>}
+        {(() => {
+          const parts: string[] = [];
+          if (wan?.wan_ip && !config?.hideWanIp) parts.push(wan.wan_ip);
+          if (wan?.latency != null) parts.push(`${wan.latency}ms`);
+          return parts.length ? <div className="text-[10px] font-mono text-text-muted">WAN {parts.join(" · ")}</div> : null;
+        })()}
       </div>
     </div>
   );
@@ -122,6 +127,10 @@ function UnifiConfigPanel({ config, save }: WidgetConfigProps<UnifiConfig>) {
       {f("Username", config?.username, (username) => save({ username }), "local admin", false)}
       {f("Password", config?.password, (password) => save({ password }), "••••••••", false)}
       {f("Site", config?.site, (site) => save({ site }), "default")}
+      <label className="flex items-center gap-2 text-[12px] text-text-secondary select-none cursor-pointer">
+        <input type="checkbox" checked={!!config?.hideWanIp} onChange={(e) => save({ hideWanIp: e.target.checked })} className="h-3.5 w-3.5 accent-[color:var(--color-accent)]" />
+        Hide WAN IP address
+      </label>
       {f("Title", config?.title, (title) => save({ title }), "UniFi", false)}
       <p className="text-[11px] text-text-muted leading-snug">Use a LOCAL UniFi admin account (not your Ubiquiti SSO). Credentials stay in your config.yaml.</p>
     </div>
