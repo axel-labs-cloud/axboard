@@ -13,8 +13,8 @@ export interface FeedItem {
 
 export function FeedList({ items }: { items: FeedItem[] }) {
   return (
-    <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 flex flex-col">
-      <div className="divide-y divide-border-subtle my-auto w-full">
+    <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5">
+      <div className="divide-y divide-border-subtle w-full">
         {items.length === 0 && <div className="text-[11px] text-text-muted py-2 text-center">Nothing to show.</div>}
         {items.map((it, i) => (
           <a

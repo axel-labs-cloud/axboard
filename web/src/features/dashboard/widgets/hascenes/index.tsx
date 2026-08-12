@@ -61,7 +61,7 @@ function ScenesComponent({ config }: WidgetProps<HassScenesConfig>) {
     <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={SceneIcon} title={title} />
       <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 flex flex-col">
-        <div className="grid grid-cols-2 gap-1.5 my-auto w-full">
+        <div className="grid grid-cols-2 gap-1.5 w-full">
           {ids.map((id) => {
             const s = serviceFor(id);
             return (

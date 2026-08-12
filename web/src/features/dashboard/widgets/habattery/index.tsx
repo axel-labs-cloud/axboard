@@ -33,7 +33,7 @@ function BatteryComponent({ config }: WidgetProps<HassConnConfig>) {
     <div className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={BattIcon} title={title} right={<span className={`text-[11px] font-mono ${low > 0 ? "text-down" : "text-text-muted"}`}>{low > 0 ? `${low} low` : `${batteries.length}`}</span>} />
       <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 flex flex-col">
-        <div className="space-y-1.5 my-auto w-full">
+        <div className="space-y-1.5 w-full">
           {batteries.length === 0 && <div className="text-[11px] text-text-muted py-1">No battery sensors found.</div>}
           {batteries.map(({ e, pct }) => (
             <div key={e.entity_id} className="flex items-center gap-2">

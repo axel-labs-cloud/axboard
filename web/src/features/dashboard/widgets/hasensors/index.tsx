@@ -48,7 +48,7 @@ function SensorsComponent({ config }: WidgetProps<HassSensorsConfig>) {
     <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={GaugeIcon} title={title} />
       <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 flex flex-col">
-        <div className="divide-y divide-border-subtle my-auto w-full">
+        <div className="divide-y divide-border-subtle w-full">
           {ids.map((id) => {
             const e = byId.get(id);
             const binary = id.startsWith("binary_sensor.");

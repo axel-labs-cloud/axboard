@@ -63,7 +63,7 @@ function PowerComponent({ config }: WidgetProps<HassPowerConfig>) {
   return (
     <div ref={ref} className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={BoltIcon} title={title} right={totalW > 0 ? <span className="text-[11px] font-mono text-degraded">{fmtW(totalW)}</span> : undefined} />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 flex flex-col justify-center gap-2">
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 space-y-2">
         {rows.map((r) => (
           <div key={r.id}>
             <div className="flex items-baseline gap-2">

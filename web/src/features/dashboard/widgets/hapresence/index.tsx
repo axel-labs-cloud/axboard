@@ -28,7 +28,7 @@ function PresenceComponent({ config }: WidgetProps<HassConnConfig>) {
     <div className="h-full flex flex-col overflow-hidden">
       <WidgetHeader icon={PeopleIcon} title={title} right={<span className="text-[11px] font-mono text-text-muted">{home}/{people.length} home</span>} />
       <div className="flex-1 min-h-0 overflow-auto px-2.5 py-1.5 flex flex-col">
-        <div className="divide-y divide-border-subtle my-auto w-full">
+        <div className="divide-y divide-border-subtle w-full">
           {people.length === 0 && <div className="text-[11px] text-text-muted py-1">No person entities.</div>}
           {people.map((p) => {
             const pic = p.attributes?.entity_picture as string | undefined;
