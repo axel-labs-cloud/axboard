@@ -4,26 +4,26 @@
 
 **The front door to your homelab — a fast, self-hosted dashboard for every service you run.**
 
-Drag-and-drop widgets, health-checked app cards, alerts, public status pages, and deep theming — all from a single Go binary with an embedded React app and a hand-editable YAML config. No database, no accounts, no build step to configure.
+Drag-and-drop widgets, health-checked app cards, alerts, public status pages, and per-dashboard theming — all from a single Go binary with an embedded React app. **Set it all up by clicking** — no database, no accounts, and no config files to write unless you want to (the YAML's there if you do).
 
 **[Website](https://axel-labs-cloud.github.io/axboard/)** · **[Documentation](https://axel-labs-cloud.github.io/axboard/docs.html)** · MIT licensed · multi-arch (amd64/arm64)
 
 </div>
 
 <div align="center">
-  <img src="docs/screenshot.png" alt="An axboard dashboard with an apps grid, weather, resource gauge and a markets chart" width="860">
+  <img src="docs/home.jpg" alt="An axboard dashboard — apps grid, host metrics, Home Assistant controls, weather and feeds" width="860">
 </div>
 
 ---
 
 ## Highlights
 
-- **One binary.** Go server + embedded SPA. Drop it on a box, point it at a YAML file, done.
+- **One binary.** Go server + embedded SPA. Drop it on a box, open it in the browser, done.
 - **80+ widgets, six categories.** Service panels (Proxmox, Sonarr/Radarr, Jellyfin/Plex, Immich, qBittorrent, Portainer, Paperless, Nextcloud…), a full **Home Assistant** suite (lights, fans, covers, climate, scenes, sensors, power, presence, locks, media, vacuum), host metrics, content feeds (Reddit, Hacker News, YouTube, RSS), and a **custom-API / template builder** for anything else. Most re-layout as you resize them.
-- **YAML you own.** Config is a human file the server only reads; layouts live separately, so dragging widgets never touches your comments.
+- **Click, don't config.** Add services, build dashboards, and wire up alerts, status pages and themes from in-app panels — no file needed. Prefer text? Hand-edit the YAML; both stay in sync, and layouts live separately so dragging never touches your comments.
 - **Live monitors.** HTTP / TCP / ping / DNS + push heartbeats, with 24h/7d/30d uptime, retries, and cert-expiry checks.
 - **Alerts & status pages.** Down/recover notifications (ntfy / Telegram / email / webhook) and themeable public status pages with criticality-aware severity.
-- **Genuinely themeable.** 13 themes, a custom-theme creator, per-dashboard backgrounds & appearance (density + corner rounding), glass widget styling, and a custom-CSS box.
+- **Genuinely themeable.** 13 themes plus a custom-theme creator — and **every dashboard keeps its own theme**, accent, background and density, so a cozy home board and a dense ops board live one tab apart. Glass widget styling and a custom-CSS box too.
 - **Keyboard-first & installable.** A ⌘K command palette, a `?` cheat sheet, and a PWA that works offline.
 
 ## Quick start
