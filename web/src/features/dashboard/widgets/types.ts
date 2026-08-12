@@ -80,7 +80,8 @@ export type WidgetType =
   | "lobsters"
   | "youtube"
   | "xkcd"
-  | "tabgroup";
+  | "tabgroup"
+  | "template";
 
 export type WidgetCategory = "productivity" | "system" | "services" | "homeassistant" | "network" | "external";
 
@@ -735,6 +736,21 @@ export interface TabGroupConfig {
   title?: string;
 }
 
+/** Template widget — fetch one or more JSON APIs and render them with a JS template. */
+export interface TemplateRequest {
+  name?: string; // variable name in the template (default req1, req2…)
+  url?: string;
+  method?: string;
+  headers?: string; // "Key: Value" per line
+  body?: string;
+}
+export interface TemplateConfig {
+  requests?: TemplateRequest[];
+  template?: string; // JS body: returns an HTML string from (data, results, h)
+  refreshSec?: number;
+  title?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -816,6 +832,7 @@ export type WidgetConfigByType = {
   youtube: YouTubeConfig;
   xkcd: XkcdConfig;
   tabgroup: TabGroupConfig;
+  template: TemplateConfig;
 };
 
 export type AnyWidgetConfig = Partial<

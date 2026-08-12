@@ -87,6 +87,14 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
     items: filtered.filter((d) => d.category === c),
   })).filter((s) => s.items.length > 0);
   const countFor = (c: string) => (c === "all" ? defs.length : defs.filter((d) => d.category === c).length);
+  // How many of each widget type are already on the current dashboard.
+  const placedByType = (() => {
+    const m: Record<string, number> = {};
+    const dash = cached?.dashboards?.find((d) => d.id === dashboardId);
+    for (const wgt of dash?.widgets ?? []) m[wgt.type] = (m[wgt.type] ?? 0) + 1;
+    return m;
+  })();
+  const onBoard = (type: string) => placedByType[type] ?? 0;
 
   return createPortal(
     <div
@@ -158,13 +166,24 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
             // Uniform card so the grid never reflows; group variants open in an
             // absolute popover (doesn't push other cards around).
             const CARD = "text-left flex items-start gap-3 p-3 h-[74px] rounded-lg border transition-colors";
+            // A small "N on this board" badge when the widget is already placed.
+            const onBadge = (n: number) =>
+              n > 0 ? (
+                <span
+                  className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 rounded-full bg-accent text-[10px] font-mono font-semibold text-white flex items-center justify-center leading-none"
+                  title={`${n} on this dashboard`}
+                >
+                  {n}
+                </span>
+              ) : null;
             const addCard = (def: Def) => (
               <button
                 key={def.type}
                 onClick={() => add.mutate(def.type)}
                 disabled={add.isPending || !dashboardId}
-                className={`${CARD} border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card disabled:opacity-40 disabled:cursor-not-allowed`}
+                className={`${CARD} relative border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card disabled:opacity-40 disabled:cursor-not-allowed`}
               >
+                {onBadge(onBoard(def.type))}
                 <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">{def.icon}</div>
                 <div className="min-w-0 flex-1">
                   <div className="text-[12.5px] text-text font-medium">{def.title}</div>
@@ -193,6 +212,7 @@ export function AddWidgetModal({ open, dashboardId, onClose, onCreated }: Props)
                           onClick={() => setOpenGroup(open ? null : key)}
                           className={`${CARD} w-full ${open ? "border-accent/50 bg-bg-card" : "border-border-subtle bg-bg-card/40 hover:border-accent/40 hover:bg-bg-card"}`}
                         >
+                          {onBadge(entry.defs.reduce((n, d) => n + onBoard(d.type), 0))}
                           <div className="w-8 h-8 rounded-md bg-bg-elevated flex items-center justify-center text-text-secondary shrink-0">{first.icon}</div>
                           <div className="min-w-0 flex-1">
                             <div className="text-[12.5px] text-text font-medium flex items-center gap-1">
