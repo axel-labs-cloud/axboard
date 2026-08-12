@@ -1,3 +1,6 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>axboard — Documentation</title>
 <style>
   :root{
@@ -145,6 +148,13 @@
   .wcat{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--accent);margin:28px 0 10px}
   .wcat .wcat-note{color:var(--tx-dim);text-transform:none;letter-spacing:0}
   .wcat .wcat-note a{color:var(--mut)}
+  .wsize{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 12px}
+  .wsize .szl{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:var(--tx-dim)}
+  .wsize .szpill{font-family:var(--font-mono);font-size:12px;color:var(--accent-ink);background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 8px}
+  .wsize .szr{font-family:var(--font-mono);font-size:11.5px;color:var(--mut)}
+  figure.wshot{margin:0 0 13px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel-2)}
+  figure.wshot img{display:block;width:100%;height:auto}
+  figure.wshot figcaption{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--tx-dim);padding:6px 11px;border-top:1px solid var(--line)}
   details.w{border:1px solid var(--line);border-radius:10px;background:var(--panel);margin:8px 0}
   details.w[open]{border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
   details.w summary{cursor:pointer;list-style:none;padding:12px 15px;display:flex;align-items:center;gap:10px}
@@ -339,61 +349,83 @@ cp config.example.yaml config.yaml
 
       <p class="wcat">Productivity</p>
       <details class="w"><summary><span class="nm">Clock</span><span class="ty">clock</span><span class="oneline">Time &amp; date with extra timezones</span></summary>
-        <div class="body"><p>Local time and date, with any number of extra timezones listed below the main clock.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×2</span><span class="szr">resizes 2×1 – 4×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="clock" hidden><img alt="clock widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Local time and date, with any number of extra timezones listed below the main clock.</p>
         <div class="ui"><b>UI</b><span>24-hour toggle · date format (short / long / ISO / numeric) · add timezones.</span></div>
 <pre><code>- { id: clock-1, type: clock, title: Clock,
     config: { use24h: true, dateFormat: short, timezones: [Europe/Madrid, UTC] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Bookmarks</span><span class="ty">shortcut</span><span class="oneline">Quick-link launcher; a single link becomes a big tile</span></summary>
-        <div class="body"><p>A list of quick links to anything — internal or external — with an icon and label per row. A widget holding a single bookmark renders as one large tile instead.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">1×1</span><span class="szr">resizes 1×1 – 4×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="shortcut" hidden><img alt="shortcut widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A list of quick links to anything — internal or external — with an icon and label per row. A widget holding a single bookmark renders as one large tile instead.</p>
         <div class="ui"><b>UI</b><span>Add shortcuts (label · URL · icon).</span></div>
 <pre><code>- { id: bm-1, type: shortcut, title: Links,
     config: { shortcuts: [ { label: Router, url: https://192.168.1.1, icon: ubiquiti } ] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Search</span><span class="ty">search</span><span class="oneline">Search box for a chosen engine</span></summary>
-        <div class="body"><p>A search box that submits to Google, DuckDuckGo, Bing, or a custom template with <code>{q}</code>.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">4×1</span><span class="szr">resizes 2×1 – 12×2 · cols×rows</span></div>
+        <figure class="wshot" data-shot="search" hidden><img alt="search widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A search box that submits to Google, DuckDuckGo, Bing, or a custom template with <code>{q}</code>.</p>
         <div class="ui"><b>UI</b><span>Engine · custom URL template · placeholder.</span></div>
 <pre><code>- { id: q-1, type: search, config: { engine: duckduckgo, placeholder: "Search…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Checklist</span><span class="ty">checklist</span><span class="oneline">Interactive todo list with a progress bar</span></summary>
-        <div class="body"><p>A persistent checklist you tick off in place, with a progress bar across the top. State is written back to <code>config.yaml</code>.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×3</span><span class="szr">resizes 1×2 – 6×6 · cols×rows</span></div>
+        <figure class="wshot" data-shot="checklist" hidden><img alt="checklist widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A persistent checklist you tick off in place, with a progress bar across the top. State is written back to <code>config.yaml</code>.</p>
         <div class="ui"><b>UI</b><span>Add / edit / check / delete items inline.</span></div>
 <pre><code>- { id: todo-1, type: checklist, title: Todo,
     config: { checklist: [ { text: Renew certs, done: false } ] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Notes</span><span class="ty">notes</span><span class="oneline">Free-text scratchpad, URLs auto-link</span></summary>
-        <div class="body"><p>A free-text scratchpad, optionally rendered as Markdown (click to edit). URLs auto-link. Persists in <code>config.yaml</code>.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×1 – 12×12 · cols×rows</span></div>
+        <figure class="wshot" data-shot="notes" hidden><img alt="notes widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A free-text scratchpad, optionally rendered as Markdown (click to edit). URLs auto-link. Persists in <code>config.yaml</code>.</p>
         <div class="ui"><b>UI</b><span>Title · Markdown toggle · edit in place.</span></div>
 <pre><code>- { id: note-1, type: notes, title: Notes, config: { markdown: true, text: "## TODO" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Countdown</span><span class="ty">countdown</span><span class="oneline">Time until (or since) a date</span></summary>
-        <div class="body"><p>A live countdown to — or count-up since — a target datetime. Good for expiries, launches and events.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×1 – 6×3 · cols×rows</span></div>
+        <figure class="wshot" data-shot="countdown" hidden><img alt="countdown widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A live countdown to — or count-up since — a target datetime. Good for expiries, launches and events.</p>
         <div class="ui"><b>UI</b><span>Target datetime · label.</span></div>
 <pre><code>- { id: cd-1, type: countdown, config: { target: "2026-12-31T23:59:00", label: New Year } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Calendar</span><span class="ty">calendar</span><span class="oneline">iCal (.ics) agenda or month grid</span></summary>
-        <div class="body"><p>Upcoming events from an iCal URL (via the server proxy), as an agenda list or a month grid with event dots.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 8×12 · cols×rows</span></div>
+        <figure class="wshot" data-shot="calendar" hidden><img alt="calendar widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Upcoming events from an iCal URL (via the server proxy), as an agenda list or a month grid with event dots.</p>
         <div class="ui"><b>UI</b><span>iCal URL · count · view (agenda / month) · refresh minutes.</span></div>
 <pre><code>- { id: cal-1, type: calendar, title: Calendar,
     config: { url: "https://…/basic.ics", view: agenda, count: 6 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Image</span><span class="ty">image</span><span class="oneline">A static image / banner</span></summary>
-        <div class="body"><p>A static image or banner by URL, optionally clickable.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 1×1 – 12×12 · cols×rows</span></div>
+        <figure class="wshot" data-shot="image" hidden><img alt="image widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A static image or banner by URL, optionally clickable.</p>
         <div class="ui"><b>UI</b><span>Image URL · fit (cover / contain) · link.</span></div>
 <pre><code>- { id: img-1, type: image, config: { url: https://…/logo.png, fit: contain } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Section label</span><span class="ty">section</span><span class="oneline">Heading / divider to organize the board</span></summary>
-        <div class="body"><p>A heading or divider to group widgets on a busy board.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">4×1</span><span class="szr">resizes 2×1 – 24×2 · cols×rows</span></div>
+        <figure class="wshot" data-shot="section" hidden><img alt="section widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A heading or divider to group widgets on a busy board.</p>
         <div class="ui"><b>UI</b><span>Text · alignment (left / center).</span></div>
 <pre><code>- { id: sec-1, type: section, config: { text: Infrastructure, align: left } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Pomodoro</span><span class="ty">pomodoro</span><span class="oneline">Work / break focus timer</span></summary>
-        <div class="body"><p>A focus/break timer with start, pause and reset, and configurable work and break lengths.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×2</span><span class="szr">resizes 2×2 – 4×3 · cols×rows</span></div>
+        <figure class="wshot" data-shot="pomodoro" hidden><img alt="pomodoro widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A focus/break timer with start, pause and reset, and configurable work and break lengths.</p>
         <div class="ui"><b>UI</b><span>Work minutes · break minutes.</span></div>
 <pre><code>- { id: pom-1, type: pomodoro, config: { work: 25, break: 5 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Tabbed group</span><span class="ty">tabgroup</span><span class="oneline">Stack several widgets in one card, switched by tabs</span></summary>
-        <div class="body"><p>Stacks several widgets into a single card, switched by tabs — a big density win when board space is tight. Each tab is a full widget with its own <code>config</code>, configured inline.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 8×10 · cols×rows</span></div>
+        <figure class="wshot" data-shot="tabgroup" hidden><img alt="tabgroup widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Stacks several widgets into a single card, switched by tabs — a big density win when board space is tight. Each tab is a full widget with its own <code>config</code>, configured inline.</p>
         <div class="ui"><b>UI</b><span>Add / remove / reorder tabs · set each tab's title, type and config.</span></div>
 <pre><code>- { id: tabs-1, type: tabgroup, title: Infra,
     config: { tabs: [ { title: CPU, type: gauge, config: { metric: cpu } },
@@ -402,197 +434,265 @@ cp config.example.yaml config.yaml
 
       <p class="wcat">System <span class="wcat-note">— need host visibility; see the <a href="#deploy">compose grants</a></span></p>
       <details class="w"><summary><span class="nm">Host stats</span><span class="ty">host</span><span class="oneline">CPU / RAM / disk / network / load / uptime</span></summary>
-        <div class="body"><p>At-a-glance CPU, memory, disk, network I/O, load and uptime for the machine axboard runs on. Needs host visibility (see the compose notes).</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 8×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="host" hidden><img alt="host widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>At-a-glance CPU, memory, disk, network I/O, load and uptime for the machine axboard runs on. Needs host visibility (see the compose notes).</p>
         <div class="ui"><b>UI</b><span>Toggle RAM · disk · disk R/W · network · swap · load · uptime.</span></div>
 <pre><code>- { id: host-1, type: host, title: Host, config: { showLoad: true, showNet: true } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Resource gauge</span><span class="ty">gauge</span><span class="oneline">One or two host metrics as ring / bar / spark</span></summary>
-        <div class="body"><p>A single host metric (or two split in the tile) drawn as a ring, bar or sparkline, with threshold / gradient / solid / accent colouring. Adapts to size.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×2</span><span class="szr">resizes 1×1 – 6×6 · cols×rows</span></div>
+        <figure class="wshot" data-shot="gauge" hidden><img alt="gauge widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A single host metric (or two split in the tile) drawn as a ring, bar or sparkline, with threshold / gradient / solid / accent colouring. Adapts to size.</p>
         <div class="ui"><b>UI</b><span>Metric &amp; optional 2nd metric (cpu / ram / disk / swap) · style · colour scale + warn/crit breakpoints · glow · track · sparkline window · compact.</span></div>
 <pre><code>- { id: cpu-1, type: gauge, title: CPU,
     config: { metric: cpu, style: ring, colorScale: threshold, warn: 70, crit: 90 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Per-core CPU</span><span class="ty">percpu</span><span class="oneline">One bar per logical core</span></summary>
-        <div class="body"><p>Live utilisation of every logical CPU core as a bar strip, coloured by load.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">4×2</span><span class="szr">resizes 2×2 – 12×6 · cols×rows</span></div>
+        <figure class="wshot" data-shot="percpu" hidden><img alt="percpu widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Live utilisation of every logical CPU core as a bar strip, coloured by load.</p>
         <div class="ui"><b>UI</b><span>Colour scale + warn / crit breakpoints.</span></div>
 <pre><code>- { id: cores, type: percpu, title: Cores, config: { colorScale: gradient } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Temperatures</span><span class="ty">temps</span><span class="oneline">Hardware sensors from hwmon</span></summary>
-        <div class="body"><p>Temperature sensors (CPU, NVMe, chipset) read from <code>/sys/class/hwmon</code>, with custom labels — pick which to show.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 8×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="temps" hidden><img alt="temps widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Temperature sensors (CPU, NVMe, chipset) read from <code>/sys/class/hwmon</code>, with custom labels — pick which to show.</p>
         <div class="ui"><b>UI</b><span>Pick sensors · rename them · colour scale + warn/crit (°C).</span></div>
 <pre><code>- { id: temps-1, type: temps, title: Temps,
     config: { warn: 70, crit: 85, names: { "Package id 0": CPU } } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Top processes</span><span class="ty">topproc</span><span class="oneline">Highest CPU / memory processes</span></summary>
-        <div class="body"><p>The busiest host processes by CPU or memory, live. Seeing host processes needs <code>pid: host</code> on the container.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 8×10 · cols×rows</span></div>
+        <figure class="wshot" data-shot="topproc" hidden><img alt="topproc widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>The busiest host processes by CPU or memory, live. Seeing host processes needs <code>pid: host</code> on the container.</p>
         <div class="ui"><b>UI</b><span>Count · sort by CPU or memory.</span></div>
 <pre><code>- { id: top-1, type: topproc, title: Top, config: { count: 8, sort: cpu } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Filesystems</span><span class="ty">disks</span><span class="oneline">Usage bars per mounted filesystem</span></summary>
-        <div class="body"><p>A usage bar for every real mounted filesystem you pick. Reaching the host's mounts needs the read-only <code>/:/host</code> bind.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 10×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="disks" hidden><img alt="disks widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A usage bar for every real mounted filesystem you pick. Reaching the host's mounts needs the read-only <code>/:/host</code> bind.</p>
         <div class="ui"><b>UI</b><span>Pick mounts · colour scale + warn / crit.</span></div>
 <pre><code>- { id: fs-1, type: disks, title: Disks, config: { mounts: [/, /mnt/tank] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Network graph</span><span class="ty">netgraph</span><span class="oneline">Live rx / tx throughput area chart</span></summary>
-        <div class="body"><p>Live download / upload throughput as an area chart with a legend. Needs host networking to read real host traffic.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">4×2</span><span class="szr">resizes 3×1 – 12×6 · cols×rows</span></div>
+        <figure class="wshot" data-shot="netgraph" hidden><img alt="netgraph widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Live download / upload throughput as an area chart with a legend. Needs host networking to read real host traffic.</p>
         <div class="ui"><b>UI</b><span>Fixed or auto scale (Mbit/s) · mirror or stack style · in/out colours · window.</span></div>
 <pre><code>- { id: net-1, type: netgraph, title: Network, config: { style: mirror, window: 5m } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Containers</span><span class="ty">containers</span><span class="oneline">Docker / Podman container states</span></summary>
-        <div class="body"><p>Live container states from the mounted container socket, optionally with per-container CPU / memory. Restart a container from the widget.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 6×12 · cols×rows</span></div>
+        <figure class="wshot" data-shot="containers" hidden><img alt="containers widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Live container states from the mounted container socket, optionally with per-container CPU / memory. Restart a container from the widget.</p>
         <div class="ui"><b>UI</b><span>Name filter · running-only · fetch stats.</span></div>
 <pre><code>- { id: ctr-1, type: containers, title: Containers,
     config: { runningOnly: true, stats: true, filter: arr } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Battery / UPS</span><span class="ty">battery</span><span class="oneline">Power supplies from the host</span></summary>
-        <div class="body"><p>Charge and status for batteries and UPS units under <code>/sys/class/power_supply</code>. No configuration.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×1 – 6×5 · cols×rows</span></div>
+        <figure class="wshot" data-shot="battery" hidden><img alt="battery widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Charge and status for batteries and UPS units under <code>/sys/class/power_supply</code>. No configuration.</p>
 <pre><code>- { id: bat-1, type: battery, title: UPS }</code></pre></div>
       </details>
 
       <p class="wcat">Services &amp; self-hosted apps</p>
       <p class="wnote">Panels for the tools you run. Those that talk to an API take a <code>baseUrl</code> plus a token or key; credentials you enter in the UI are stored in <code>state.yaml</code> (never in the human <code>config.yaml</code>).</p>
       <details class="w"><summary><span class="nm">Apps grid</span><span class="ty">apps</span><span class="oneline">Icon grid of picked services with health dots</span></summary>
-        <div class="body"><p>A grid of clickable app tiles for a hand-picked subset of your services (2 icons per grid unit), each with a live status dot. Auto-fetches favicons for services without an icon. Optionally group tiles under collapsible headers.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×2</span><span class="szr">resizes 1×1 – 24×24 · cols×rows</span></div>
+        <figure class="wshot" data-shot="apps" hidden><img alt="apps widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A grid of clickable app tiles for a hand-picked subset of your services (2 icons per grid unit), each with a live status dot. Auto-fetches favicons for services without an icon. Optionally group tiles under collapsible headers.</p>
         <div class="ui"><b>UI</b><span>Pick &amp; reorder services · show names · group by category · open in same tab. Right-click a tile to check it now.</span></div>
 <pre><code>- { id: apps-1, type: apps, title: Media,
     config: { appIds: [jellyfin, sonarr, radarr], showNames: true, grouped: false } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Single app tile</span><span class="ty">app</span><span class="oneline">One prominent service tile, layout adapts by size</span></summary>
-        <div class="body"><p>One service as a prominent tile whose layout adapts from a 1×1 icon to a 2×3 detail card (icon, name, description, response time, last-checked). Shows a <strong>Wake-on-LAN</strong> button while the service is down if it has a <code>wol</code> block.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">1×1</span><span class="szr">resizes 1×1 – 3×2 · cols×rows</span></div>
+        <figure class="wshot" data-shot="app" hidden><img alt="app widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>One service as a prominent tile whose layout adapts from a 1×1 icon to a 2×3 detail card (icon, name, description, response time, last-checked). Shows a <strong>Wake-on-LAN</strong> button while the service is down if it has a <code>wol</code> block.</p>
         <div class="ui"><b>UI</b><span>Choose the service · toggle status / response time / last-checked / description · description override · open in same tab.</span></div>
 <pre><code>- { id: app-nas, type: app, title: NAS,
     config: { appId: nas, showResponseTime: true, showLastChecked: true } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Status summary</span><span class="ty">status</span><span class="oneline">Up / degraded / down / unknown roll-up</span></summary>
-        <div class="body"><p>Rolls every health-checked service into up / degraded / down / unknown counts, optionally split by group, with Uptime-Kuma-style history bars.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">5×4</span><span class="szr">resizes 2×1 – 12×14 · cols×rows</span></div>
+        <figure class="wshot" data-shot="status" hidden><img alt="status widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Rolls every health-checked service into up / degraded / down / unknown counts, optionally split by group, with Uptime-Kuma-style history bars.</p>
         <div class="ui"><b>UI</b><span>Legend toggle · by-group breakdown · history bars · filter to specific groups.</span></div>
 <pre><code>- { id: sum-1, type: status, title: Overview,
     config: { byGroup: true, bars: true, groups: [infra, media] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Proxmox</span><span class="ty">proxmox</span><span class="oneline">PVE nodes, VMs/LXC and storage, live</span></summary>
-        <div class="body"><p>Proxmox VE nodes, VMs/LXC and storage with live CPU / RAM / disk, a cluster summary, alert-coloured borders and backup age. Add several servers; click a guest to open its console.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 8×10 · cols×rows</span></div>
+        <figure class="wshot" data-shot="proxmox" hidden><img alt="proxmox widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Proxmox VE nodes, VMs/LXC and storage with live CPU / RAM / disk, a cluster summary, alert-coloured borders and backup age. Add several servers; click a guest to open its console.</p>
         <div class="ui"><b>UI</b><span>Add servers (base URL · token id · token secret) · toggle CPU / RAM / disk · compact mode · bar / % / both display.</span></div>
 <pre><code>- { id: pve-1, type: proxmox, title: Proxmox,
     config: { servers: [ { baseUrl: https://pve.lan:8006,
                            tokenId: "root@pam!axboard", tokenSecret: "…" } ] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Proxmox Backup Server</span><span class="ty">pbs</span><span class="oneline">Datastore usage bars per store</span></summary>
-        <div class="body"><p>Datastore usage bars (used / total) per store from a Proxmox Backup Server.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="pbs" hidden><img alt="pbs widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Datastore usage bars (used / total) per store from a Proxmox Backup Server.</p>
         <div class="ui"><b>UI</b><span>Base URL · token id · token secret · title.</span></div>
 <pre><code>- { id: pbs-1, type: pbs, title: PBS,
     config: { baseUrl: https://pbs.lan:8007, tokenId: "root@pam!axboard", tokenSecret: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Jellyfin / Plex</span><span class="ty">media</span><span class="oneline">Now-playing sessions + library counts</span></summary>
-        <div class="body"><p>Jellyfin or Plex — now-playing sessions with progress, plus library counts.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="media" hidden><img alt="media widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Jellyfin or Plex — now-playing sessions with progress, plus library counts.</p>
         <div class="ui"><b>UI</b><span>Server (Jellyfin / Plex) · base URL · API key / token · title.</span></div>
 <pre><code>- { id: jf-1, type: media, title: Jellyfin,
     config: { kind: jellyfin, baseUrl: https://jellyfin.lan, apiKey: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Sonarr / Radarr</span><span class="ty">arr</span><span class="oneline">Download queue + upcoming calendar</span></summary>
-        <div class="body"><p>The download queue and an upcoming calendar from Sonarr or Radarr.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 8×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="arr" hidden><img alt="arr widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>The download queue and an upcoming calendar from Sonarr or Radarr.</p>
         <div class="ui"><b>UI</b><span>Base URL · API key · title.</span></div>
 <pre><code>- { id: sonarr-1, type: arr, title: Sonarr,
     config: { baseUrl: https://sonarr.lan, apiKey: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Overseerr / Jellyseerr</span><span class="ty">seerr</span><span class="oneline">Pending / approved / available requests</span></summary>
-        <div class="body"><p>Overseerr / Jellyseerr — pending, approved and available media requests.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 6×6 · cols×rows</span></div>
+        <figure class="wshot" data-shot="seerr" hidden><img alt="seerr widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Overseerr / Jellyseerr — pending, approved and available media requests.</p>
         <div class="ui"><b>UI</b><span>Base URL · API key · title.</span></div>
 <pre><code>- { id: seerr-1, type: seerr, title: Requests,
     config: { baseUrl: https://requests.lan, apiKey: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Transmission</span><span class="ty">transmission</span><span class="oneline">Torrents — progress, rates, ratio, totals</span></summary>
-        <div class="body"><p>Transmission torrents — progress, up/down rates and ratio, with live transfer totals.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 8×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="transmission" hidden><img alt="transmission widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Transmission torrents — progress, up/down rates and ratio, with live transfer totals.</p>
         <div class="ui"><b>UI</b><span>Base URL (rpc) · username · password · title.</span></div>
 <pre><code>- { id: tr-1, type: transmission, title: Transmission,
     config: { baseUrl: http://nas.lan:9091 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">qBittorrent</span><span class="ty">qbittorrent</span><span class="oneline">Torrents — progress, rates, ratio, totals</span></summary>
-        <div class="body"><p>qBittorrent torrents — progress, up/down rates and ratio, with live transfer totals. Logs in with the WebUI cookie and caches it.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 8×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="qbittorrent" hidden><img alt="qbittorrent widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>qBittorrent torrents — progress, up/down rates and ratio, with live transfer totals. Logs in with the WebUI cookie and caches it.</p>
         <div class="ui"><b>UI</b><span>Base URL · username · password · title.</span></div>
 <pre><code>- { id: qb-1, type: qbittorrent, title: qBittorrent,
     config: { baseUrl: http://nas.lan:8080, username: admin } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Immich</span><span class="ty">immich</span><span class="oneline">Photo / video counts + storage used</span></summary>
-        <div class="body"><p>Immich — photo and video counts plus storage used across the library.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 6×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="immich" hidden><img alt="immich widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Immich — photo and video counts plus storage used across the library.</p>
         <div class="ui"><b>UI</b><span>Base URL · API key · title.</span></div>
 <pre><code>- { id: immich-1, type: immich, title: Immich,
     config: { baseUrl: https://photos.lan, apiKey: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Nextcloud</span><span class="ty">nextcloud</span><span class="oneline">Free space, users, files, shares</span></summary>
-        <div class="body"><p>Nextcloud — free space, users, files and shares from the serverinfo API.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 6×6 · cols×rows</span></div>
+        <figure class="wshot" data-shot="nextcloud" hidden><img alt="nextcloud widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Nextcloud — free space, users, files and shares from the serverinfo API.</p>
         <div class="ui"><b>UI</b><span>Base URL · NC-Token (or username + password) · title.</span></div>
 <pre><code>- { id: nc-1, type: nextcloud, title: Nextcloud,
     config: { baseUrl: https://cloud.lan, ncToken: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Paperless-ngx</span><span class="ty">paperless</span><span class="oneline">Total documents + inbox waiting</span></summary>
-        <div class="body"><p>Paperless-ngx — total documents and how many are waiting in the inbox.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×2</span><span class="szr">resizes 2×1 – 6×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="paperless" hidden><img alt="paperless widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Paperless-ngx — total documents and how many are waiting in the inbox.</p>
         <div class="ui"><b>UI</b><span>Base URL · API token · title.</span></div>
 <pre><code>- { id: ppl-1, type: paperless, title: Paperless,
     config: { baseUrl: https://paperless.lan, token: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Portainer</span><span class="ty">portainer</span><span class="oneline">Containers / images / volumes / stacks</span></summary>
-        <div class="body"><p>Portainer — running / stopped / total containers, images, volumes and stacks for an environment.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 6×6 · cols×rows</span></div>
+        <figure class="wshot" data-shot="portainer" hidden><img alt="portainer widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Portainer — running / stopped / total containers, images, volumes and stacks for an environment.</p>
         <div class="ui"><b>UI</b><span>Base URL · access token · environment id · title.</span></div>
 <pre><code>- { id: ptn-1, type: portainer, title: Portainer,
     config: { baseUrl: https://portainer.lan, token: "…", envId: 1 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Scrutiny</span><span class="ty">scrutiny</span><span class="oneline">Disk SMART health — passed / failed / temps</span></summary>
-        <div class="body"><p>Scrutiny disk SMART health — passed / failed / unknown drives, with per-drive temperature.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="scrutiny" hidden><img alt="scrutiny widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Scrutiny disk SMART health — passed / failed / unknown drives, with per-drive temperature.</p>
         <div class="ui"><b>UI</b><span>Base URL · title.</span></div>
 <pre><code>- { id: scr-1, type: scrutiny, title: SMART, config: { baseUrl: http://scrutiny.lan:8080 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">DNS Sinkhole</span><span class="ty">dns</span><span class="oneline">Pi-hole / AdGuard / Technitium stats</span></summary>
-        <div class="body"><p>Pi-hole, AdGuard Home or Technitium — queries, block rate, blocklist size and top blocked domains.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="dns" hidden><img alt="dns widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Pi-hole, AdGuard Home or Technitium — queries, block rate, blocklist size and top blocked domains.</p>
         <div class="ui"><b>UI</b><span>Kind · base URL · token / password · title.</span></div>
 <pre><code>- { id: dns-1, type: dns, title: Pi-hole,
     config: { kind: pihole, baseUrl: http://pi.hole, token: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Traefik</span><span class="ty">traefik</span><span class="oneline">Router / service / middleware counts</span></summary>
-        <div class="body"><p>Traefik — router, service and middleware counts with error / warning flags.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×1 – 6×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="traefik" hidden><img alt="traefik widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Traefik — router, service and middleware counts with error / warning flags.</p>
         <div class="ui"><b>UI</b><span>API URL · username · password · title.</span></div>
 <pre><code>- { id: trf-1, type: traefik, title: Traefik, config: { apiUrl: http://traefik.lan:8080 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Prometheus</span><span class="ty">prometheus</span><span class="oneline">Firing &amp; pending alerts by severity</span></summary>
-        <div class="body"><p>Prometheus — firing and pending alerts, ranked by severity.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×1 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="prometheus" hidden><img alt="prometheus widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Prometheus — firing and pending alerts, ranked by severity.</p>
         <div class="ui"><b>UI</b><span>Base URL · username · password · title.</span></div>
 <pre><code>- { id: prom-1, type: prometheus, title: Alerts, config: { baseUrl: http://prometheus.lan:9090 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Tailscale</span><span class="ty">tailscale</span><span class="oneline">Device count, online, pending updates</span></summary>
-        <div class="body"><p>Tailscale tailnet — device count, how many are online, and pending client updates.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="tailscale" hidden><img alt="tailscale widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Tailscale tailnet — device count, how many are online, and pending client updates.</p>
         <div class="ui"><b>UI</b><span>Tailnet · API key · title.</span></div>
 <pre><code>- { id: ts-1, type: tailscale, title: Tailscale,
     config: { tailnet: "example.com", apiKey: "tskey-api-…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Notifications</span><span class="ty">notify</span><span class="oneline">Gotify or ntfy message feed</span></summary>
-        <div class="body"><p>Gotify or ntfy — recent messages, plus app/client counts (Gotify) or a topic feed (ntfy). Newest first, top-aligned.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="notify" hidden><img alt="notify widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Gotify or ntfy — recent messages, plus app/client counts (Gotify) or a topic feed (ntfy). Newest first, top-aligned.</p>
         <div class="ui"><b>UI</b><span>Server (Gotify / ntfy) · base URL · token / topic · title.</span></div>
 <pre><code>- { id: ntfy-1, type: notify, title: Alerts,
     config: { kind: ntfy, baseUrl: https://ntfy.sh, topic: my-alerts } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Camera</span><span class="ty">camera</span><span class="oneline">Frigate NVR or any MJPEG / JPEG stream</span></summary>
-        <div class="body"><p>A live camera — a Frigate NVR camera by name, or any MJPEG / refreshing-JPEG stream URL.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">4×3</span><span class="szr">resizes 2×2 – 12×10 · cols×rows</span></div>
+        <figure class="wshot" data-shot="camera" hidden><img alt="camera widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A live camera — a Frigate NVR camera by name, or any MJPEG / refreshing-JPEG stream URL.</p>
         <div class="ui"><b>UI</b><span>Source (Frigate / URL) · base URL &amp; camera, or stream URL · live vs snapshot mode + interval · title &amp; colour · fit · click-through link.</span></div>
 <pre><code>- { id: cam-1, type: camera, title: Door,
     config: { source: frigate, baseUrl: http://frigate.lan:5000, camera: door } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Grafana panel</span><span class="ty">grafana</span><span class="oneline">Embed a Grafana kiosk panel</span></summary>
-        <div class="body"><p>An iframe pointed at a Grafana panel's kiosk / d-solo URL, with periodic refresh. Can hide Grafana chrome and match the dashboard theme.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">5×4</span><span class="szr">resizes 3×2 – 12×12 · cols×rows</span></div>
+        <figure class="wshot" data-shot="grafana" hidden><img alt="grafana widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>An iframe pointed at a Grafana panel's kiosk / d-solo URL, with periodic refresh. Can hide Grafana chrome and match the dashboard theme.</p>
         <div class="ui"><b>UI</b><span>Panel URL · refresh interval · hide chrome · match theme · title.</span></div>
 <pre><code>- { id: graf-1, type: grafana, title: Latency,
     config: { url: "https://grafana.lan/d-solo/abc/net?panelId=2&kiosk", refreshSec: 30 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Concentus</span><span class="ty">register</span><span class="oneline">Now-playing from a Concentus music server</span></summary>
-        <div class="body"><p>Now-playing art, title, artist and state from a Concentus music server's active session, with play/pause + skip controls.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×2</span><span class="szr">resizes 2×2 – 6×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="register" hidden><img alt="register widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Now-playing art, title, artist and state from a Concentus music server's active session, with play/pause + skip controls.</p>
         <div class="ui"><b>UI</b><span>Base URL · username · password.</span></div>
 <pre><code>- { id: np-1, type: register, title: Now Playing, config: { baseUrl: https://music.lan } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">axdnsd</span><span class="ty">axdnsd</span><span class="oneline">Zones + health-check status</span></summary>
-        <div class="body"><p>Zones and per-record health-check status from an <code>axdnsd</code> instance.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 6×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="axdnsd" hidden><img alt="axdnsd widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Zones and per-record health-check status from an <code>axdnsd</code> instance.</p>
         <div class="ui"><b>UI</b><span>Base URL · username · password.</span></div>
 <pre><code>- { id: axdns-1, type: axdnsd, title: DNS, config: { baseUrl: https://dns.lan } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">axlbd</span><span class="ty">axlbd</span><span class="oneline">Load balancers + status</span></summary>
-        <div class="body"><p>Load balancers and backend status from an <code>axlbd</code> instance.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 5×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="axlbd" hidden><img alt="axlbd widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Load balancers and backend status from an <code>axlbd</code> instance.</p>
         <div class="ui"><b>UI</b><span>Base URL · username · password.</span></div>
 <pre><code>- { id: axlb-1, type: axlbd, title: LB, config: { baseUrl: https://lb.lan } }</code></pre></div>
       </details>
@@ -600,127 +700,173 @@ cp config.example.yaml config.yaml
       <p class="wcat">Home Assistant</p>
       <p class="wnote">Enter your Home Assistant <b>base URL</b> and a <b>long-lived access token</b> once — every HA widget shares those credentials. Read-only widgets list values top-down; control widgets update optimistically and reconcile with HA a moment later. Most take an <b>entity picker</b> with search.</p>
       <details class="w"><summary><span class="nm">Home Assistant</span><span class="ty">homeassistant</span><span class="oneline">Overview — people home, lights/switches on, pins</span></summary>
-        <div class="body"><p>A Home Assistant overview: how many people are home, lights and switches on, plus any entities you pin.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×1</span><span class="szr">resizes 2×1 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="homeassistant" hidden><img alt="homeassistant widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A Home Assistant overview: how many people are home, lights and switches on, plus any entities you pin.</p>
         <div class="ui"><b>UI</b><span>Base URL · access token · pinned entities · title.</span></div>
 <pre><code>- { id: ha-1, type: homeassistant, title: Home,
     config: { baseUrl: http://homeassistant.lan:8123, token: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Lights</span><span class="ty">halights</span><span class="oneline">Toggle + dim several lights</span></summary>
-        <div class="body"><p>Toggle on/off and dim brightness for the light entities you pick.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×1</span><span class="szr">resizes 2×1 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="halights" hidden><img alt="halights widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Toggle on/off and dim brightness for the light entities you pick.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick lights · title.</span></div>
 <pre><code>- { id: lights-1, type: halights, title: Lights,
     config: { entities: [light.kitchen, light.hall] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Light</span><span class="ty">halight</span><span class="oneline">One light — toggle + brightness slider</span></summary>
-        <div class="body"><p>One light: toggle in the header, brightness slider in the body. The entity name shows in the header.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×1</span><span class="szr">resizes 2×1 – 4×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="halight" hidden><img alt="halight widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>One light: toggle in the header, brightness slider in the body. The entity name shows in the header.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick a light · title.</span></div>
 <pre><code>- { id: light-1, type: halight, config: { entity: light.desk } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Fans</span><span class="ty">hafans</span><span class="oneline">Several fans, each a stepped speed slider</span></summary>
-        <div class="body"><p>Several fans, each a compact Off / 1 / 2 / 3 stepped speed slider.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 3×1 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hafans" hidden><img alt="hafans widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Several fans, each a compact Off / 1 / 2 / 3 stepped speed slider.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick fans · title.</span></div>
 <pre><code>- { id: fans-1, type: hafans, title: Fans, config: { entities: [fan.bedroom, fan.office] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Fan</span><span class="ty">hafan</span><span class="oneline">One fan — stepped Off / 1 / 2 / 3 slider</span></summary>
-        <div class="body"><p>One fan as a stepped Off / 1 / 2 / 3 speed slider that fills the tile, with the entity name in the header.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×2</span><span class="szr">resizes 2×1 – 4×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hafan" hidden><img alt="hafan widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>One fan as a stepped Off / 1 / 2 / 3 speed slider that fills the tile, with the entity name in the header.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick a fan · title.</span></div>
 <pre><code>- { id: fan-1, type: hafan, config: { entity: fan.bedroom } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Thermostat</span><span class="ty">haclimate</span><span class="oneline">Current temp, target +/-, HVAC mode</span></summary>
-        <div class="body"><p>A climate entity — current temperature, target +/- and HVAC mode for a thermostat.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×1</span><span class="szr">resizes 2×1 – 5×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="haclimate" hidden><img alt="haclimate widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A climate entity — current temperature, target +/- and HVAC mode for a thermostat.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick a climate entity · title.</span></div>
 <pre><code>- { id: therm-1, type: haclimate, config: { entity: climate.living_room } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Covers</span><span class="ty">hacover</span><span class="oneline">Open / stop / close several covers, with position</span></summary>
-        <div class="body"><p>Open / stop / close blinds, garage doors and curtains, with position, for several entities.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×1</span><span class="szr">resizes 2×1 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hacover" hidden><img alt="hacover widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Open / stop / close blinds, garage doors and curtains, with position, for several entities.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick covers · title.</span></div>
 <pre><code>- { id: covers-1, type: hacover, title: Blinds, config: { entities: [cover.living, cover.garage] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Cover</span><span class="ty">hacoverone</span><span class="oneline">One cover — open / stop / close</span></summary>
-        <div class="body"><p>One cover: open / stop / close a blind, garage door or curtain.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×1</span><span class="szr">resizes 2×1 – 4×3 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hacoverone" hidden><img alt="hacoverone widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>One cover: open / stop / close a blind, garage door or curtain.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick a cover · title.</span></div>
 <pre><code>- { id: cover-1, type: hacoverone, config: { entity: cover.garage } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Media</span><span class="ty">hamedia</span><span class="oneline">Now-playing + transport + volume</span></summary>
-        <div class="body"><p>A media player — now-playing, prev / play-pause / next and volume.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 5×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hamedia" hidden><img alt="hamedia widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A media player — now-playing, prev / play-pause / next and volume.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick a media player · title.</span></div>
 <pre><code>- { id: hmedia-1, type: hamedia, config: { entity: media_player.living_room } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Lock</span><span class="ty">halock</span><span class="oneline">Lock / unlock a door</span></summary>
-        <div class="body"><p>Lock / unlock a door, with its current state.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×1</span><span class="szr">resizes 2×1 – 4×3 · cols×rows</span></div>
+        <figure class="wshot" data-shot="halock" hidden><img alt="halock widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Lock / unlock a door, with its current state.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick a lock · title.</span></div>
 <pre><code>- { id: lock-1, type: halock, config: { entity: lock.front_door } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Vacuum</span><span class="ty">havacuum</span><span class="oneline">Start / pause / dock, state + battery</span></summary>
-        <div class="body"><p>A vacuum — start / pause / dock, with state and battery.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 4×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="havacuum" hidden><img alt="havacuum widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A vacuum — start / pause / dock, with state and battery.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick a vacuum · title.</span></div>
 <pre><code>- { id: vac-1, type: havacuum, config: { entity: vacuum.roborock } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Scenes</span><span class="ty">hascenes</span><span class="oneline">One-tap scenes / scripts / automations</span></summary>
-        <div class="body"><p>One-tap buttons for scenes, scripts, automations and buttons — the right service is chosen per domain.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×1</span><span class="szr">resizes 2×1 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hascenes" hidden><img alt="hascenes widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>One-tap buttons for scenes, scripts, automations and buttons — the right service is chosen per domain.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick scenes/scripts/buttons · title.</span></div>
 <pre><code>- { id: scenes-1, type: hascenes, title: Scenes,
     config: { entities: [scene.movie, script.goodnight] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Sensors</span><span class="ty">hasensors</span><span class="oneline">Live values for the sensors you pick</span></summary>
-        <div class="body"><p>Read-only value rows for any sensor / binary_sensor — temperature, humidity, doors, motion and any entity. Binary sensors show a state dot.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×1</span><span class="szr">resizes 2×1 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hasensors" hidden><img alt="hasensors widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Read-only value rows for any sensor / binary_sensor — temperature, humidity, doors, motion and any entity. Binary sensors show a state dot.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick sensors · title.</span></div>
 <pre><code>- { id: sensors-1, type: hasensors, title: Sensors,
     config: { entities: [sensor.living_temp, binary_sensor.front_door] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Sensor</span><span class="ty">hasensor</span><span class="oneline">One sensor as a big value tile</span></summary>
-        <div class="body"><p>One sensor shown as a big value tile (temperature, humidity, a door, …).</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">2×1</span><span class="szr">resizes 2×1 – 4×3 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hasensor" hidden><img alt="hasensor widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>One sensor shown as a big value tile (temperature, humidity, a door, …).</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick a sensor · title.</span></div>
 <pre><code>- { id: sensor-1, type: hasensor, config: { entity: sensor.outdoor_temp } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Power</span><span class="ty">hapower</span><span class="oneline">Live draw for power sensors + total</span></summary>
-        <div class="body"><p>Live draw for the power sensors you pick, each with a bar scaled to <code>max</code>, plus total consumption in the header.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×1</span><span class="szr">resizes 2×1 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hapower" hidden><img alt="hapower widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Live draw for the power sensors you pick, each with a bar scaled to <code>max</code>, plus total consumption in the header.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · pick power/energy sensors · bar max (W) · title.</span></div>
 <pre><code>- { id: power-1, type: hapower, title: Power,
     config: { entities: [sensor.house_power], max: 3000 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Presence</span><span class="ty">hapresence</span><span class="oneline">Who's home — avatars + zones</span></summary>
-        <div class="body"><p>Who's home, with avatars and zones — auto-lists every <code>person.*</code> Home Assistant tracks. No entity picker.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×1 – 5×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hapresence" hidden><img alt="hapresence widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Who's home, with avatars and zones — auto-lists every <code>person.*</code> Home Assistant tracks. No entity picker.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · title.</span></div>
 <pre><code>- { id: presence-1, type: hapresence, title: Presence, config: {} }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">HA Batteries</span><span class="ty">habattery</span><span class="oneline">Every device battery, lowest first</span></summary>
-        <div class="body"><p>Every battery sensor across your devices, lowest first, with a coloured meter and low-battery flags. Auto-finds them — no entity picker.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×1 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="habattery" hidden><img alt="habattery widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Every battery sensor across your devices, lowest first, with a coloured meter and low-battery flags. Auto-finds them — no entity picker.</p>
         <div class="ui"><b>UI</b><span>Base URL · token · title.</span></div>
 <pre><code>- { id: batteries-1, type: habattery, title: Batteries, config: {} }</code></pre></div>
       </details>
 
       <p class="wcat">Network</p>
       <details class="w"><summary><span class="nm">Uptime monitor</span><span class="ty">monitor</span><span class="oneline">Ping a list of URLs (independent of services)</span></summary>
-        <div class="body"><p>A standalone up/down + latency monitor for an ad-hoc list of URLs — separate from your configured services.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×1 – 6×12 · cols×rows</span></div>
+        <figure class="wshot" data-shot="monitor" hidden><img alt="monitor widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A standalone up/down + latency monitor for an ad-hoc list of URLs — separate from your configured services.</p>
         <div class="ui"><b>UI</b><span>Add &amp; reorder targets (name · URL) · refresh interval.</span></div>
 <pre><code>- { id: mon-1, type: monitor, title: Endpoints,
     config: { refreshSec: 30, targets: [ { name: Router, url: https://192.168.1.1 } ] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Public IP / VPN</span><span class="ty">publicip</span><span class="oneline">WAN IP + geo/ISP, with a VPN indicator</span></summary>
-        <div class="body"><p>Your current WAN IP and geolocation / ISP; shows a VPN "on" indicator when the detected ISP matches what you expect.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×1 – 6×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="publicip" hidden><img alt="publicip widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Your current WAN IP and geolocation / ISP; shows a VPN "on" indicator when the detected ISP matches what you expect.</p>
         <div class="ui"><b>UI</b><span>Expected ISP / org substring.</span></div>
 <pre><code>- { id: ip-1, type: publicip, title: WAN, config: { expectIsp: Mullvad } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Speed test</span><span class="ty">speedtest</span><span class="oneline">Browser-side download / upload / ping</span></summary>
-        <div class="body"><p>A client-side internet speed test (download, upload, latency) run in the browser against Cloudflare.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 6×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="speedtest" hidden><img alt="speedtest widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>A client-side internet speed test (download, upload, latency) run in the browser against Cloudflare.</p>
         <div class="ui"><b>UI</b><span>Auto-run on load, or leave it as a manual button.</span></div>
 <pre><code>- { id: spd-1, type: speedtest, title: Speed, config: { auto: false } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Speedtest Tracker</span><span class="ty">speedtesttracker</span><span class="oneline">Latest result + history from Speedtest Tracker</span></summary>
-        <div class="body"><p>Speedtest Tracker — latest download / upload / ping plus recent history.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="speedtesttracker" hidden><img alt="speedtesttracker widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Speedtest Tracker — latest download / upload / ping plus recent history.</p>
         <div class="ui"><b>UI</b><span>Base URL · bearer token · title.</span></div>
 <pre><code>- { id: stt-1, type: speedtesttracker, title: Speedtest,
     config: { baseUrl: http://speedtest.lan, token: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">UniFi</span><span class="ty">unifi</span><span class="oneline">Connected clients + live WAN throughput</span></summary>
-        <div class="body"><p>UniFi console — connected clients and live WAN download / upload throughput. Logs in with the console cookie and caches it.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×1 – 6×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="unifi" hidden><img alt="unifi widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>UniFi console — connected clients and live WAN download / upload throughput. Logs in with the console cookie and caches it.</p>
         <div class="ui"><b>UI</b><span>Base URL · username · password · site · title.</span></div>
 <pre><code>- { id: unifi-1, type: unifi, title: UniFi,
     config: { baseUrl: https://192.168.1.1, username: axboard, site: default } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Wake-on-LAN</span><span class="ty">wol</span><span class="oneline">Grid of magic-packet buttons</span></summary>
-        <div class="body"><p>One-click buttons that broadcast Wake-on-LAN magic packets. Needs host networking to reach the LAN broadcast. (For a per-service wake button, put <code>wol</code> on the service itself and use the Single app tile.)</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×1 – 8×6 · cols×rows</span></div>
+        <figure class="wshot" data-shot="wol" hidden><img alt="wol widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>One-click buttons that broadcast Wake-on-LAN magic packets. Needs host networking to reach the LAN broadcast. (For a per-service wake button, put <code>wol</code> on the service itself and use the Single app tile.)</p>
         <div class="ui"><b>UI</b><span>Add devices (name · MAC · optional broadcast) · title.</span></div>
 <pre><code>- { id: wol-1, type: wol, title: Wake,
     config: { targets: [ { name: NAS, mac: "AA:BB:CC:DD:EE:FF", broadcast: 10.10.0.255 } ] } }</code></pre></div>
@@ -728,75 +874,101 @@ cp config.example.yaml config.yaml
 
       <p class="wcat">External &amp; content</p>
       <details class="w"><summary><span class="nm">Weather</span><span class="ty">weather</span><span class="oneline">Current conditions + forecast (Open-Meteo)</span></summary>
-        <div class="body"><p>Current conditions and forecast from Open-Meteo (no API key). Grows from compact → detailed → hourly forecast with size.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">4×4</span><span class="szr">resizes 2×2 – 6×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="weather" hidden><img alt="weather widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Current conditions and forecast from Open-Meteo (no API key). Grows from compact → detailed → hourly forecast with size.</p>
         <div class="ui"><b>UI</b><span>City (geocoded to lat/lon) · units · feels-like / humidity / wind toggles · hourly.</span></div>
 <pre><code>- { id: wx-1, type: weather, title: Weather,
     config: { city: Barcelona, lat: 41.39, lon: 2.16, units: celsius, hourly: true } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Sun</span><span class="ty">sun</span><span class="oneline">Sunrise / sunset / UV / daylight arc</span></summary>
-        <div class="body"><p>Sunrise, sunset, UV index and a daylight arc for a city.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 5×4 · cols×rows</span></div>
+        <figure class="wshot" data-shot="sun" hidden><img alt="sun widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Sunrise, sunset, UV index and a daylight arc for a city.</p>
         <div class="ui"><b>UI</b><span>City (or lat/lon).</span></div>
 <pre><code>- { id: sun-1, type: sun, config: { city: Barcelona } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Markets</span><span class="ty">markets</span><span class="oneline">Crypto + stocks with live charts</span></summary>
-        <div class="body"><p>Prices for crypto (CoinGecko ids) and stocks/ETFs (Yahoo tickers). Grows from a price list into per-symbol line charts.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×3</span><span class="szr">resizes 2×2 – 8×12 · cols×rows</span></div>
+        <figure class="wshot" data-shot="markets" hidden><img alt="markets widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Prices for crypto (CoinGecko ids) and stocks/ETFs (Yahoo tickers). Grows from a price list into per-symbol line charts.</p>
         <div class="ui"><b>UI</b><span>Crypto ids · stock tickers · vs currency · chart period (1d…5y).</span></div>
 <pre><code>- { id: mkt-1, type: markets, title: Markets,
     config: { ids: [bitcoin, ethereum], stocks: [AAPL, VWCE.DE], vs: eur, period: 1m } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Releases</span><span class="ty">releases</span><span class="oneline">Latest GitHub / GitLab releases</span></summary>
-        <div class="body"><p>Latest releases for repositories you watch — GitHub or GitLab.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 6×10 · cols×rows</span></div>
+        <figure class="wshot" data-shot="releases" hidden><img alt="releases widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Latest releases for repositories you watch — GitHub or GitLab.</p>
         <div class="ui"><b>UI</b><span>Repos as <code>gh:owner/repo</code> or <code>gl:group/project</code>.</span></div>
 <pre><code>- { id: rel-1, type: releases, title: Releases,
     config: { repos: [ "gh:go-chi/chi", "gl:gitlab-org/gitlab" ] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">RSS / Atom</span><span class="ty">rss</span><span class="oneline">Feed reader via the server proxy</span></summary>
-        <div class="body"><p>Recent items from an RSS or Atom feed.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 8×12 · cols×rows</span></div>
+        <figure class="wshot" data-shot="rss" hidden><img alt="rss widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Recent items from an RSS or Atom feed.</p>
         <div class="ui"><b>UI</b><span>Feed URL · item count · refresh minutes.</span></div>
 <pre><code>- { id: rss-1, type: rss, title: News, config: { url: https://…/feed.xml, count: 8 } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Reddit</span><span class="ty">reddit</span><span class="oneline">Top posts from a subreddit</span></summary>
-        <div class="body"><p>Top posts from a subreddit — score, comments and age, linking to the thread. Reddit now blocks anonymous JSON, so add a free <b>script-app</b> client id + secret for OAuth.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 6×10 · cols×rows</span></div>
+        <figure class="wshot" data-shot="reddit" hidden><img alt="reddit widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Top posts from a subreddit — score, comments and age, linking to the thread. Reddit now blocks anonymous JSON, so add a free <b>script-app</b> client id + secret for OAuth.</p>
         <div class="ui"><b>UI</b><span>Subreddit · sort (hot / top / new) · app client id · app secret · title.</span></div>
 <pre><code>- { id: rdt-1, type: reddit, title: r/selfhosted,
     config: { subreddit: selfhosted, sort: hot, clientId: "…", clientSecret: "…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Hacker News</span><span class="ty">hackernews</span><span class="oneline">HN front page (or Ask / Show HN)</span></summary>
-        <div class="body"><p>The Hacker News front page (or Ask / Show HN) — points, comments and age.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 6×10 · cols×rows</span></div>
+        <figure class="wshot" data-shot="hackernews" hidden><img alt="hackernews widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>The Hacker News front page (or Ask / Show HN) — points, comments and age.</p>
         <div class="ui"><b>UI</b><span>Feed (top / best / new / ask / show) · title.</span></div>
 <pre><code>- { id: hn-1, type: hackernews, title: HN, config: { feed: top } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Lobsters</span><span class="ty">lobsters</span><span class="oneline">Lobste.rs hottest stories</span></summary>
-        <div class="body"><p>Lobste.rs hottest stories — score, comments, tags and age.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 6×10 · cols×rows</span></div>
+        <figure class="wshot" data-shot="lobsters" hidden><img alt="lobsters widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Lobste.rs hottest stories — score, comments, tags and age.</p>
         <div class="ui"><b>UI</b><span>Title.</span></div>
 <pre><code>- { id: lob-1, type: lobsters, title: Lobsters }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">YouTube channel</span><span class="ty">youtube</span><span class="oneline">Recent uploads with thumbnails</span></summary>
-        <div class="body"><p>Recent uploads from a YouTube channel with thumbnails (via the channel RSS feed — no API key).</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 6×10 · cols×rows</span></div>
+        <figure class="wshot" data-shot="youtube" hidden><img alt="youtube widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Recent uploads from a YouTube channel with thumbnails (via the channel RSS feed — no API key).</p>
         <div class="ui"><b>UI</b><span>Channel id · title.</span></div>
 <pre><code>- { id: yt-1, type: youtube, title: Uploads, config: { channelId: "UC…" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">XKCD</span><span class="ty">xkcd</span><span class="oneline">The latest XKCD comic</span></summary>
-        <div class="body"><p>The latest XKCD comic, with the alt-text on hover.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×3 – 6×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="xkcd" hidden><img alt="xkcd widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>The latest XKCD comic, with the alt-text on hover.</p>
         <div class="ui"><b>UI</b><span>Title.</span></div>
 <pre><code>- { id: xkcd-1, type: xkcd }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Custom API</span><span class="ty">customapi</span><span class="oneline">Map any JSON endpoint to labeled fields</span></summary>
-        <div class="body"><p>Fetch any JSON endpoint (through the server proxy) and surface chosen values as labeled fields via dot-paths.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×2</span><span class="szr">resizes 2×2 – 8×8 · cols×rows</span></div>
+        <figure class="wshot" data-shot="customapi" hidden><img alt="customapi widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Fetch any JSON endpoint (through the server proxy) and surface chosen values as labeled fields via dot-paths.</p>
         <div class="ui"><b>UI</b><span>URL · title · fields (label + JSON path) · refresh interval.</span></div>
 <pre><code>- { id: api-1, type: customapi, title: Pi-hole,
     config: { url: "http://pi.hole/admin/api.php", refreshMin: 5,
               fields: [ { label: Blocked today, path: ads_blocked_today } ] } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Template (advanced)</span><span class="ty">template</span><span class="oneline">Fetch JSON API(s) and render your own HTML</span></summary>
-        <div class="body"><p>Fetch one or more JSON APIs and render them with a small JavaScript template that returns an HTML string — for when Custom API's labeled fields aren't enough. Theme-aware helper classes are provided.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">3×4</span><span class="szr">resizes 2×2 – 8×12 · cols×rows</span></div>
+        <figure class="wshot" data-shot="template" hidden><img alt="template widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Fetch one or more JSON APIs and render them with a small JavaScript template that returns an HTML string — for when Custom API's labeled fields aren't enough. Theme-aware helper classes are provided.</p>
         <div class="ui"><b>UI</b><span>Requests (url + optional headers) · JS template body · refresh interval · title.</span></div>
 <pre><code>- { id: tpl-1, type: template, title: Custom,
     config: { requests: [ { url: "https://api.example.com/x" } ],
               template: "return `&lt;div class='big'&gt;${data.value}&lt;/div&gt;`" } }</code></pre></div>
       </details>
       <details class="w"><summary><span class="nm">Embed</span><span class="ty">iframe</span><span class="oneline">Any URL in an iframe</span></summary>
-        <div class="body"><p>Drops any URL into the board as an iframe. Sites sending <code>X-Frame-Options</code> / frame-ancestors will render blank — the widget offers an open-in-new-tab link.</p>
+        <div class="body"><div class="wsize"><span class="szl">Grid</span><span class="szpill">4×4</span><span class="szr">resizes 2×2 – 24×24 · cols×rows</span></div>
+        <figure class="wshot" data-shot="iframe" hidden><img alt="iframe widget example" loading="lazy"><figcaption>Example</figcaption></figure>
+        <p>Drops any URL into the board as an iframe. Sites sending <code>X-Frame-Options</code> / frame-ancestors will render blank — the widget offers an open-in-new-tab link.</p>
         <div class="ui"><b>UI</b><span>URL · periodic reload · hide title bar.</span></div>
 <pre><code>- { id: emb-1, type: iframe, title: Grafana, config: { url: https://grafana.lan, refreshSec: 0 } }</code></pre></div>
       </details>
@@ -980,6 +1152,21 @@ make dev-web    <span class="cmt"># Vite dev server on :5173, proxies /api/* →
       var a=map[e.target.id]; if(a) a.classList.add('active');
     }});
   },{rootMargin:'-72px 0px -70% 0px',threshold:0});
+  // widget example screenshots — load lazily only when a widget is expanded,
+  // so an empty docs/widgets/ folder never floods the page with 404s.
+  [].slice.call(document.querySelectorAll('details.w')).forEach(function(d){
+    d.addEventListener('toggle', function(){
+      if(!d.open) return;
+      var fig=d.querySelector('figure.wshot[data-shot]');
+      if(!fig || fig.dataset.tried) return;
+      fig.dataset.tried='1';
+      var t=fig.getAttribute('data-shot'), img=fig.querySelector('img');
+      var probe=new Image();
+      probe.onload=function(){ img.src=probe.src; fig.hidden=false; };
+      probe.src='widgets/'+t+'.png';
+    });
+  });
+
   Object.keys(map).forEach(function(id){var el=document.getElementById(id); if(el) obs.observe(el);});
 })();
 </script>
