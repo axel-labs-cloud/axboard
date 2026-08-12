@@ -21,7 +21,7 @@ import { AddWidgetModal } from "./AddWidgetModal";
 import { ServicesEditor } from "./widgets/apps/ServicesEditor";
 import { Spotlight, type SpotlightAction } from "./Spotlight";
 import { ShortcutsOverlay } from "./ShortcutsOverlay";
-import { THEMES } from "../../hooks/themes";
+import { THEMES, DEFAULT_THEME } from "../../hooks/themes";
 import { ConfigEditorModal } from "./ConfigEditorModal";
 import { TemplatePickerModal } from "./TemplatePickerModal";
 import type { DashboardTemplate } from "./templates";
@@ -241,8 +241,10 @@ export function DashboardPage({ theme, setTheme }: DashboardPageProps) {
     if (!activeDashboardId) return;
     try {
       const map = JSON.parse(window.localStorage.getItem("axboard-dash-theme") || "{}");
-      const t = map[activeDashboardId];
-      if (t && t !== theme) setTheme(t);
+      // Fall back to the default so a dashboard without its own theme never
+      // inherits the previous tab's theme.
+      const t = map[activeDashboardId] || DEFAULT_THEME;
+      if (t !== theme) setTheme(t);
     } catch {
       // ignore
     }
