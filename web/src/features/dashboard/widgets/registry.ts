@@ -73,6 +73,11 @@ import habattery from "./habattery";
 import unifi from "./unifi";
 import speedtesttracker from "./speedtesttracker";
 import prometheus from "./prometheus";
+import reddit from "./reddit";
+import hackernews from "./hackernews";
+import lobsters from "./lobsters";
+import youtube from "./youtube";
+import xkcd from "./xkcd";
 
 export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   clock,
@@ -149,6 +154,11 @@ export const WIDGETS: Partial<Record<WidgetType, WidgetDefinition<any>>> = {
   unifi,
   speedtesttracker,
   prometheus,
+  reddit,
+  hackernews,
+  lobsters,
+  youtube,
+  xkcd,
 };
 
 export function getWidgetDefinition(type: WidgetType): WidgetDefinition<any> | undefined {

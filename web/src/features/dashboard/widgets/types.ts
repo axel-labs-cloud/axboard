@@ -74,7 +74,12 @@ export type WidgetType =
   | "habattery"
   | "unifi"
   | "speedtesttracker"
-  | "prometheus";
+  | "prometheus"
+  | "reddit"
+  | "hackernews"
+  | "lobsters"
+  | "youtube"
+  | "xkcd";
 
 export type WidgetCategory = "productivity" | "system" | "services" | "homeassistant" | "network" | "external";
 
@@ -681,6 +686,39 @@ export interface PrometheusConfig {
   title?: string;
 }
 
+/** Reddit widget — top posts from a subreddit. */
+export interface RedditConfig {
+  subreddit?: string; // e.g. "selfhosted"
+  sort?: string; // hot | new | top | rising
+  max?: number;
+  title?: string;
+}
+
+/** Hacker News widget — front page / ask / show. */
+export interface HackerNewsConfig {
+  kind?: "front_page" | "ask_hn" | "show_hn";
+  max?: number;
+  title?: string;
+}
+
+/** Lobsters widget — hottest stories. */
+export interface LobstersConfig {
+  max?: number;
+  title?: string;
+}
+
+/** YouTube channel widget — recent uploads (via the channel RSS feed). */
+export interface YouTubeConfig {
+  channelId?: string; // UC... channel id
+  max?: number;
+  title?: string;
+}
+
+/** XKCD widget — the latest comic. */
+export interface XkcdConfig {
+  title?: string;
+}
+
 export type WidgetConfigByType = {
   clock: ClockConfig;
   shortcut: ShortcutConfig;
@@ -756,6 +794,11 @@ export type WidgetConfigByType = {
   unifi: UnifiConfig;
   speedtesttracker: SpeedtestTrackerConfig;
   prometheus: PrometheusConfig;
+  reddit: RedditConfig;
+  hackernews: HackerNewsConfig;
+  lobsters: LobstersConfig;
+  youtube: YouTubeConfig;
+  xkcd: XkcdConfig;
 };
 
 export type AnyWidgetConfig = Partial<
