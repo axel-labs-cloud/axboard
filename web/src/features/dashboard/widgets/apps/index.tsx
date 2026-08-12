@@ -10,6 +10,7 @@ import type {
   WidgetProps,
 } from "../types";
 import { ServicesEditor } from "./ServicesEditor";
+import { AppFrame } from "./AppFrame";
 import { initials, hashColor, tileAlertClasses } from "./appVisual";
 import { StatusDot } from "../../../../components/widget";
 
@@ -77,12 +78,14 @@ function Tile({
   showName,
   onCheck,
   sameTab,
+  onPanel,
 }: {
   app: AppDef;
   status?: StatusMap[string];
   showName: boolean;
   onCheck?: () => void;
   sameTab?: boolean;
+  onPanel?: (app: AppDef) => void;
 }) {
   const showStatus = !!app.health && app.health.type !== "none";
   return (
@@ -90,6 +93,7 @@ function Tile({
       href={app.url}
       target={sameTab ? undefined : "_blank"}
       rel={sameTab ? undefined : "noreferrer noopener"}
+      onClick={onPanel ? (e) => { e.preventDefault(); onPanel(app); } : undefined}
       onContextMenu={
         showStatus && onCheck
           ? (e) => {
@@ -127,6 +131,8 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
   const qc = useQueryClient();
   const cfg = qc.getQueryData<{ apps?: AppDef[] }>(["config"]);
   const allApps = cfg?.apps ?? [];
+  const [frameApp, setFrameApp] = useState<AppDef | null>(null);
+  const onPanel = config?.openInPanel ? (a: AppDef) => setFrameApp(a) : undefined;
 
   // Resolve selected IDs to actual apps, preserving the user's chosen order.
   // Empty selection = nothing (the widget asks you to pick).
@@ -249,6 +255,7 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
                         showName={showNames}
                         onCheck={() => checkNow(app.id)}
                         sameTab={config?.openSameTab}
+                        onPanel={onPanel}
                       />
                     </div>
                   ))}
@@ -257,6 +264,7 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
             </div>
           );
         })}
+        {frameApp && <AppFrame url={frameApp.url} name={frameApp.name} onClose={() => setFrameApp(null)} />}
       </div>
     );
   }
@@ -272,8 +280,10 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
             showName={showNames || w * h >= 2}
             onCheck={() => checkNow(apps[0].id)}
             sameTab={config?.openSameTab}
+            onPanel={onPanel}
           />
         </div>
+        {frameApp && <AppFrame url={frameApp.url} name={frameApp.name} onClose={() => setFrameApp(null)} />}
       </div>
     );
   }
@@ -302,8 +312,10 @@ function AppsComponent({ config, w, h }: WidgetProps<AppsConfig>) {
           showName={showNames}
           onCheck={() => checkNow(app.id)}
           sameTab={config?.openSameTab}
+          onPanel={onPanel}
         />
       ))}
+      {frameApp && <AppFrame url={frameApp.url} name={frameApp.name} onClose={() => setFrameApp(null)} />}
     </div>
   );
 }
@@ -487,6 +499,15 @@ function AppsConfigPanel({ config, save }: WidgetConfigProps<AppsConfig>) {
             className="accent-accent"
           />
           Open links in the same tab
+        </label>
+        <label className="flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
+          <input
+            type="checkbox"
+            checked={config?.openInPanel ?? false}
+            onChange={(e) => save({ openInPanel: e.target.checked })}
+            className="accent-accent"
+          />
+          Open apps in-page (workspace)
         </label>
         <label className="flex items-center gap-2 text-[12px] text-text-secondary cursor-pointer">
           <input
