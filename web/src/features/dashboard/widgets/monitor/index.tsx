@@ -1,7 +1,8 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../../../api/client";
 import { useSize } from "../useSize";
-import { WidgetHeader, WIDGET_HEADER_H, StatusDot } from "../../../../components/widget";
+import { WidgetHeader, StatusDot } from "../../../../components/widget";
 import type {
   MonitorConfig,
   MonitorTarget,
@@ -11,10 +12,13 @@ import type {
 } from "../types";
 
 // ---------------------------------------------------------------------------
-// Uptime-monitor widget — pings a list of URLs (via the backend) and shows
-// up/down + latency. Size-responsive: a compact status pill when short, a full
-// adaptive list when there's room. Distinct from app health checks.
+// Uptime-monitor widget — pings a list of URLs (via the backend) and shows an
+// Uptime-Kuma-style heartbeat per target: a strip of latency-height bars
+// coloured by status, a live uptime %, and the current latency. History
+// accumulates client-side while the page is open. Distinct from app health.
 // ---------------------------------------------------------------------------
+
+const BARS = 30; // heartbeat slots per target
 
 function host(u: string): string {
   try {
@@ -28,6 +32,14 @@ type Ping = { ok: boolean; status?: number; ms?: number; error?: string };
 
 function dotClass(r: Ping | undefined): string {
   return r === undefined ? "bg-unknown/60" : r.ok ? "bg-up" : "bg-down";
+}
+
+// A heartbeat bar's height (%) and colour from a single ping. Up bars grow with
+// latency (a slow-but-up beat reads taller), down bars fill red, pending are low.
+function bar(h: Ping | undefined): { height: number; bg: string; op: number; title: string } {
+  if (!h) return { height: 22, bg: "var(--color-border)", op: 0.35, title: "pending" };
+  if (h.ok) return { height: Math.max(32, Math.min(100, 34 + ((h.ms ?? 0) / 500) * 66)), bg: "var(--color-up)", op: 1, title: `${h.ms ?? "?"} ms` };
+  return { height: 100, bg: "var(--color-down)", op: 1, title: `down${h.status ? ` · ${h.status}` : ""}` };
 }
 
 function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
@@ -46,6 +58,17 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
       ),
   });
 
+  // Rolling per-target history for the heartbeat, capped at BARS.
+  const [history, setHistory] = useState<Record<string, Ping[]>>({});
+  useEffect(() => {
+    if (!data) return;
+    setHistory((prev) => {
+      const next: Record<string, Ping[]> = { ...prev };
+      for (const { t, r } of data) next[t.url] = (prev[t.url] ?? []).concat(r).slice(-BARS);
+      return next;
+    });
+  }, [data]);
+
   if (targets.length === 0) {
     return (
       <div ref={box.ref} className="flex items-center justify-center h-full text-text-muted/60 text-[11px] px-3 text-center">
@@ -58,11 +81,9 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
   const up = rows.filter((x) => x.r?.ok).length;
   const down = rows.filter((x) => x.r && !x.r.ok).length;
 
-  // Size-driven layout. Very short → a summary pill; otherwise a fitted list.
-  const compact = box.h > 0 && box.h < 64;
-  const showWord = box.w >= 150; // "up" / "endpoints up" text
-  const showHost = box.w >= 232; // secondary host line under a named row
-  const showLatency = box.w >= 168;
+  // Size-driven layout. Very short → a summary pill; otherwise heartbeat cards.
+  const compact = box.h > 0 && box.h < 72;
+  const showWord = box.w >= 150;
 
   const Count = (
     <span className="flex items-baseline gap-1.5">
@@ -96,15 +117,9 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
     );
   }
 
-  // Fit-to-height: show down/unknown first, then as many rows as fit, and let
-  // them stretch to fill so there's no scrollbar and no big blank gap.
+  // Down / unknown first so problems surface at the top.
   const rank = (r: Ping | undefined) => (r === undefined ? 1 : r.ok ? 2 : 0);
   const sorted = [...rows].sort((a, b) => rank(a.r) - rank(b.r));
-  const HEADER_H = WIDGET_HEADER_H;
-  const ROW_H = 21;
-  const visible = Math.max(1, Math.floor((box.h - HEADER_H) / ROW_H));
-  const shown = sorted.slice(0, visible);
-  const hiddenDown = sorted.slice(visible).filter((x) => x.r && !x.r.ok).length;
 
   return (
     <div ref={box.ref} className="h-full flex flex-col overflow-hidden">
@@ -113,32 +128,35 @@ function MonitorComponent({ config, editing }: WidgetProps<MonitorConfig>) {
         title={Count}
         right={down > 0 ? <span className="text-[11px] font-mono text-down">{down} down</span> : undefined}
       />
-      <div className="flex-1 min-h-0 flex flex-col px-2 divide-y divide-border-subtle">
-        {shown.map(({ t, r }) => {
+      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 space-y-2">
+        {sorted.map(({ t, r }) => {
+          const hist = history[t.url] ?? [];
+          const uptime = hist.length ? Math.round((hist.filter((h) => h.ok).length / hist.length) * 100) : null;
+          const upColor = uptime == null ? "var(--color-text-muted)" : uptime >= 99 ? "var(--color-up)" : uptime >= 90 ? "var(--color-degraded)" : "var(--color-down)";
+          const pad = BARS - hist.length;
           const inner = (
-            <>
-              <StatusDot status={r === undefined ? undefined : r.ok ? "up" : "down"} size="md" />
-              <div className="min-w-0 flex-1">
-                <div className="text-[12px] text-text-secondary truncate leading-tight">{t.name || host(t.url)}</div>
-                {showHost && t.name && box.h / visible > 30 && (
-                  <div className="text-[10px] text-text-muted truncate font-mono leading-tight">{host(t.url)}</div>
-                )}
+            <div className="rounded-lg border border-border-subtle bg-bg-card/30 px-2.5 py-2">
+              <div className="flex items-center gap-2 mb-1.5">
+                <StatusDot status={r === undefined ? undefined : r.ok ? "up" : "down"} size="sm" />
+                <span className="text-[12px] text-text-secondary truncate flex-1 min-w-0">{t.name || host(t.url)}</span>
+                {r?.ok && r.ms != null && <span className="text-[10.5px] font-mono tabular-nums text-text-muted shrink-0">{r.ms} ms</span>}
+                {r && !r.ok && <span className="text-[10.5px] font-mono text-down shrink-0">down</span>}
+                {uptime != null && <span className="text-[10.5px] font-mono tabular-nums shrink-0" style={{ color: upColor }}>{uptime}%</span>}
               </div>
-              {showLatency && r?.ms != null && (
-                <span className="text-[11px] font-mono tabular-nums text-text-muted shrink-0">{r.ms} ms</span>
-              )}
-            </>
+              <div className="flex items-end gap-[2px] h-6">
+                {Array.from({ length: BARS }).map((_, i) => {
+                  const b = bar(i >= pad ? hist[i - pad] : undefined);
+                  return <div key={i} className="flex-1 rounded-sm min-w-[2px]" style={{ height: `${b.height}%`, background: b.bg, opacity: b.op }} title={b.title} />;
+                })}
+              </div>
+            </div>
           );
-          const cls = "flex-1 min-h-0 flex items-center gap-2 px-1.5";
           return editing ? (
-            <div key={t.url} className={cls}>{inner}</div>
+            <div key={t.url}>{inner}</div>
           ) : (
-            <a key={t.url} href={t.url} target="_blank" rel="noreferrer" className={`${cls} hover:bg-bg-hover transition-colors`}>{inner}</a>
+            <a key={t.url} href={t.url} target="_blank" rel="noreferrer" className="block hover:opacity-90 transition-opacity">{inner}</a>
           );
         })}
-        {hiddenDown > 0 && (
-          <div className="shrink-0 px-1.5 py-0.5 text-[10px] text-down font-mono">+{hiddenDown} more down</div>
-        )}
       </div>
     </div>
   );
@@ -223,7 +241,7 @@ const definition: WidgetDefinition<MonitorConfig> = {
   title: "Uptime monitor",
   icon: MonitorIcon,
   category: "network",
-  description: "Ping a list of URLs and show up/down + latency.",
+  description: "Ping URLs and show an Uptime-Kuma-style heartbeat with live uptime and latency.",
   minW: 2,
   minH: 1,
   maxW: 6,
