@@ -19,10 +19,11 @@ Drag-and-drop widgets, health-checked app cards, alerts, public status pages, an
 ## Highlights
 
 - **One binary.** Go server + embedded SPA. Drop it on a box, point it at a YAML file, done.
+- **80+ widgets, six categories.** Service panels (Proxmox, Sonarr/Radarr, Jellyfin/Plex, Immich, qBittorrent, Portainer, Paperless, Nextcloud…), a full **Home Assistant** suite (lights, fans, covers, climate, scenes, sensors, power, presence, locks, media, vacuum), host metrics, content feeds (Reddit, Hacker News, YouTube, RSS), and a **custom-API / template builder** for anything else. Most re-layout as you resize them.
 - **YAML you own.** Config is a human file the server only reads; layouts live separately, so dragging widgets never touches your comments.
 - **Live monitors.** HTTP / TCP / ping / DNS + push heartbeats, with 24h/7d/30d uptime, retries, and cert-expiry checks.
 - **Alerts & status pages.** Down/recover notifications (ntfy / Telegram / email / webhook) and themeable public status pages with criticality-aware severity.
-- **Genuinely themeable.** 13 themes, a custom-theme creator, per-dashboard backgrounds, glass widget styling, and a custom-CSS box.
+- **Genuinely themeable.** 13 themes, a custom-theme creator, per-dashboard backgrounds & appearance (density + corner rounding), glass widget styling, and a custom-CSS box.
 - **Keyboard-first & installable.** A ⌘K command palette, a `?` cheat sheet, and a PWA that works offline.
 
 ## Quick start
@@ -71,7 +72,7 @@ apps:
 
 ## Documentation
 
-**→ [Website](https://axel-labs-cloud.github.io/axboard/) · [Full documentation](https://axel-labs-cloud.github.io/axboard/docs.html)** — configuration, health checks & monitors, an expandable reference for every widget, alerts, status pages, authentication, appearance, and deployment.
+**→ [Website](https://axel-labs-cloud.github.io/axboard/) · [Full documentation](https://axel-labs-cloud.github.io/axboard/docs.html)** — configuration, health checks & monitors, an expandable reference for **all 80+ widgets** grouped by category (Productivity · System · Services · Home Assistant · Network · External), alerts, status pages, authentication, appearance, and deployment.
 
 A few pointers:
 
