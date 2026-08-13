@@ -1,6 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>axboard — the front door to your homelab</title>
 <style>
   :root{
@@ -46,7 +47,7 @@
   header.nav.scrolled{border-bottom-color:var(--line)}
   .nav .row{display:flex;align-items:center;gap:16px;height:60px}
   .brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.01em;font-size:16px}
-  .brand .mark{width:13px;height:13px;border-radius:3px;background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+  .brand .mark{width:17px;height:17px;flex:none}
   .nav .spacer{flex:1}
   .nav a.lnk{font-family:var(--font-mono);font-size:12.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.05em}
   .nav a.lnk:hover{color:var(--tx)}
@@ -179,7 +180,7 @@
 
 <header class="nav" id="nav">
   <div class="wrap row">
-    <span class="brand"><span class="mark"></span>axboard</span>
+    <span class="brand"><svg class="mark" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="axgm" x1="4" y1="20" x2="20" y2="4" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#22d3ee"/><stop offset=".5" stop-color="#6366f1"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs><rect x="3" y="11" width="9.2" height="9.2" rx="2.6" fill="url(#axgm)" opacity=".5"/><rect x="7.4" y="7.4" width="9.2" height="9.2" rx="2.6" fill="url(#axgm)" opacity=".72"/><rect x="11.8" y="3.8" width="9.2" height="9.2" rx="2.6" fill="url(#axgm)" opacity=".95"/></svg>axboard</span>
     <span class="spacer"></span>
     <a class="lnk" href="#features">Features</a>
     <a class="lnk" href="#status">Status pages</a>
@@ -347,7 +348,7 @@
 
 <footer>
   <div class="wrap row">
-    <span class="brand" style="font-size:15px"><span class="mark"></span>axboard</span>
+    <span class="brand" style="font-size:15px"><svg class="mark" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="axgm" x1="4" y1="20" x2="20" y2="4" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#22d3ee"/><stop offset=".5" stop-color="#6366f1"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs><rect x="3" y="11" width="9.2" height="9.2" rx="2.6" fill="url(#axgm)" opacity=".5"/><rect x="7.4" y="7.4" width="9.2" height="9.2" rx="2.6" fill="url(#axgm)" opacity=".72"/><rect x="11.8" y="3.8" width="9.2" height="9.2" rx="2.6" fill="url(#axgm)" opacity=".95"/></svg>axboard</span>
     <span class="mono" style="color:var(--tx-dim)">v0.2.0 · MIT</span>
     <span class="spacer"></span>
     <a href="#features">Features</a>

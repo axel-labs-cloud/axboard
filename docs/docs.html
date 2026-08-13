@@ -1,6 +1,7 @@
 <!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <title>axboard — Documentation</title>
 <style>
   :root{
@@ -54,7 +55,7 @@
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
   }
   .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:-.01em}
-  .brand .mark{width:12px;height:12px;border-radius:3px;background:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 24%,transparent)}
+  .brand .mark{width:16px;height:16px;flex:none}
   .brand b{font-size:15px}
   .brand .tag{font-family:var(--font-mono);font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:5px;padding:1px 6px;letter-spacing:.02em}
   .top .spacer{flex:1}
@@ -198,7 +199,7 @@
 
 <header class="top">
   <a class="brand" href="./" style="color:var(--tx)" title="Home">
-    <span class="mark"></span><b>axboard</b>
+    <svg class="mark" viewBox="0 0 24 24" fill="none"><defs><linearGradient id="axgm" x1="4" y1="20" x2="20" y2="4" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#22d3ee"/><stop offset=".5" stop-color="#6366f1"/><stop offset="1" stop-color="#ec4899"/></linearGradient></defs><rect x="3" y="11" width="9.2" height="9.2" rx="2.6" fill="url(#axgm)" opacity=".5"/><rect x="7.4" y="7.4" width="9.2" height="9.2" rx="2.6" fill="url(#axgm)" opacity=".72"/><rect x="11.8" y="3.8" width="9.2" height="9.2" rx="2.6" fill="url(#axgm)" opacity=".95"/></svg><b>axboard</b>
   </a>
   <span class="tag">docs</span>
   <span class="spacer"></span>
