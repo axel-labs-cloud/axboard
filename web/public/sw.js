@@ -6,7 +6,7 @@
 //   - navigations         : network-first, fall back to the cached shell.
 //   - other same-origin GET: stale-while-revalidate (fast, self-updating).
 
-const CACHE = "axboard-shell-v2";
+const CACHE = "axboard-shell-v3";
 const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/favicon.svg", "/icon-192.png"];
 
 self.addEventListener("install", (e) => {

@@ -148,18 +148,18 @@ export function DashboardTabBar({
               (header?.brandLogo ? (
                 <img src={header.brandLogo} alt="" className="w-5 h-5 rounded object-contain" />
               ) : (
-                <svg viewBox="0 0 64 64" className="w-5 h-5" aria-hidden>
+                <svg viewBox="0 0 64 64" className="w-7 h-7" aria-hidden>
                   <defs>
-                    <linearGradient id="axboard-logo-g" x1="14" y1="48" x2="50" y2="16" gradientUnits="userSpaceOnUse">
+                    <linearGradient id="axboard-logo-g" x1="10" y1="54" x2="54" y2="10" gradientUnits="userSpaceOnUse">
                       <stop offset="0" stopColor="#22d3ee" />
                       <stop offset="0.5" stopColor="#6366f1" />
                       <stop offset="1" stopColor="#ec4899" />
                     </linearGradient>
                   </defs>
                   <rect x="0.5" y="0.5" width="63" height="63" rx="14" fill="#13151f" stroke="rgba(255,255,255,0.07)" />
-                  <circle cx="18" cy="44" r="6.2" fill="url(#axboard-logo-g)" />
-                  <circle cx="32" cy="32" r="6.2" fill="url(#axboard-logo-g)" />
-                  <circle cx="46" cy="20" r="6.2" fill="url(#axboard-logo-g)" />
+                  <rect x="7" y="32" width="25" height="25" rx="7" fill="url(#axboard-logo-g)" opacity="0.5" />
+                  <rect x="19.5" y="19.5" width="25" height="25" rx="7" fill="url(#axboard-logo-g)" opacity="0.72" />
+                  <rect x="32" y="7" width="25" height="25" rx="7" fill="url(#axboard-logo-g)" opacity="0.95" />
                 </svg>
               ))}
             {!header?.hideName && (
