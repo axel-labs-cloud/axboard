@@ -23,7 +23,7 @@ Drag-and-drop widgets, health-checked app cards, alerts, public status pages, an
 
 ## Highlights
 
-- **One binary.** Go server + embedded SPA — drop it on a box and open the browser.
+- **No dependencies.** One container, no database, no accounts — config lives in a YAML file and a volume.
 - **80+ widgets.** Service panels, a full Home Assistant suite, host metrics, content feeds, and a custom-API/template builder.
 - **Click, don't config.** Build dashboards, alerts, status pages and themes in-app — or hand-edit the YAML; both stay in sync.
 - **Live monitors.** HTTP / TCP / ping / DNS + push heartbeats, with uptime history, retries and cert-expiry checks.
