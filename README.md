@@ -2,6 +2,11 @@
 
 # axboard
 
+[![Release](https://img.shields.io/github/v/tag/axel-labs-cloud/axboard?label=release&sort=semver&color=6366f1)](https://github.com/axel-labs-cloud/axboard/tags)
+[![Container](https://img.shields.io/badge/ghcr.io-axboard-6366f1?logo=github)](https://github.com/axel-labs-cloud/axboard/pkgs/container/axboard)
+[![Platforms](https://img.shields.io/badge/arch-amd64%20·%20arm64-06b6d4)](https://github.com/axel-labs-cloud/axboard/pkgs/container/axboard)
+[![License: MIT](https://img.shields.io/badge/license-MIT-22c55e)](LICENSE)
+
 **The front door to your homelab — a fast, self-hosted dashboard for every service you run.**
 
 Drag-and-drop widgets, health-checked app cards, alerts, public status pages, and per-dashboard theming — all from a single Go binary with an embedded React app. **Set it all up by clicking** — no database, no accounts, and no config files to write unless you want to (the YAML's there if you do).

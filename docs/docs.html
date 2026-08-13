@@ -347,14 +347,42 @@
     <section class="doc" id="quick-start">
       <p class="eyebrow">Getting started</p>
       <h2>Quick start</h2>
-      <h3>Podman / Docker Compose</h3>
+      <p>axboard ships as one <strong>multi-arch image</strong> (amd64 + arm64 — Raspberry-Pi ready), so there's nothing to build. All you need is Docker or Podman with the compose plugin.</p>
+
+      <h3>1 · Make a folder and grab a starter config</h3>
+<pre><code>mkdir -p axboard/config &amp;&amp; cd axboard
+curl -o config/config.yaml \
+  https://raw.githubusercontent.com/axel-labs-cloud/axboard/main/config.example.yaml</code></pre>
+      <p class="muted">The starter ships two themed dashboards, sample service cards, weather, feeds and host widgets. Edit it later or start from scratch — it's just YAML.</p>
+
+      <h3>2 · Create <code>docker-compose.yml</code></h3>
+<pre><code><span class="k">services:</span>
+  <span class="k">axboard:</span>
+    <span class="k">image:</span> ghcr.io/axel-labs-cloud/axboard:latest   <span class="cmt"># amd64 + arm64; pin :v0.2.0 in prod</span>
+    <span class="k">container_name:</span> axboard
+    <span class="k">restart:</span> unless-stopped
+    <span class="k">ports:</span>
+      - <span class="s">"8080:8080"</span>
+    <span class="k">volumes:</span>
+      - ./config:/etc/axboard:Z            <span class="cmt"># your config.yaml (bind the directory)</span>
+      - axboard-state:/var/lib/axboard:Z   <span class="cmt"># layouts, uptime history, icons</span>
+<span class="k">volumes:</span>
+  <span class="k">axboard-state:</span></code></pre>
+
+      <h3>3 · Bring it up</h3>
+<pre><code>docker compose up -d      <span class="cmt"># or: podman compose up -d</span></code></pre>
+
+      <h3>4 · Open it in a browser</h3>
+      <p>Go to <code>http://&lt;server-ip&gt;:8080</code> — or <code>http://localhost:8080</code> if it's the same machine. You'll land on the starter board, and the app cards' status dots fill in green/red as axboard health-checks each service.</p>
+
+      <h3>5 · Make it yours</h3>
+      <p>Two ways, both live and always in sync: click <b>⋯ → Add widget</b> / <b>Manage services</b> in the UI and drag tiles around, <em>or</em> edit <code>config/config.yaml</code> in your editor — the server hot-reloads on every save. Layouts persist automatically (in the state volume), so rearranging never touches your YAML.</p>
+
+      <div class="note"><span class="ic">i</span><div>Want the deeper host widgets — real network I/O, host processes, filesystems, Wake-on-LAN, container auto-discovery? Use the fully-annotated compose under <a href="#deploy">Deployment</a>; every host-access grant is optional and labelled with the widget it unlocks. And to require a login, see <a href="#auth">Authentication</a>.</div></div>
+
+      <h3>From source (optional)</h3>
 <pre><code>git clone https://github.com/axel-labs-cloud/axboard.git &amp;&amp; cd axboard
-mkdir -p config &amp;&amp; cp config.example.yaml config/config.yaml
-podman compose up -d      <span class="cmt"># or: docker compose up -d</span></code></pre>
-      <p>Open <code>http://localhost:8080</code>. Edit <code>config/config.yaml</code> in your editor — the server hot-reloads on save. The bundled <code>config.example.yaml</code> is a full, working starter with services, groups, a top bar, and two themed dashboards.</p>
-      <div class="note"><span class="ic">i</span><div>The compose file runs with <b>host networking</b> so the Host&nbsp;stats, Resource&nbsp;gauge and Network&nbsp;graph widgets can read real host network I/O, and so Wake-on-LAN can reach the LAN broadcast. It also mounts a read-only container socket for <b>auto-discovery</b>. All of it is optional and commented as removable.</div></div>
-      <h3>Single binary</h3>
-<pre><code>make build      <span class="cmt"># needs Go 1.26 + Node 22</span>
+make build      <span class="cmt"># needs Go 1.26 + Node 22</span>
 cp config.example.yaml config.yaml
 ./bin/axboard --config ./config.yaml --state ./state.yaml --addr :8080</code></pre>
     </section>

@@ -141,7 +141,11 @@ dashboards:
       - id: clock-1
         type: clock
         title: Clock
-        config: { use24h: true, dateFormat: full }
+        config: { use24h: true, dateFormat: long }
+      - id: status-1
+        type: status
+        title: Service health
+        config: { bars: true, byGroup: true }
       - id: apps-media
         type: apps
         title: Media
@@ -158,6 +162,14 @@ dashboards:
         type: sun
         title: Sun
         config: { city: Barcelona, lat: 41.39, lon: 2.16 }
+      # Content feeds — no accounts or keys needed, work on first boot.
+      - id: hn-1
+        type: hackernews
+        title: Hacker News
+        config: { feed: top }
+      - id: xkcd-1
+        type: xkcd
+        title: XKCD
       - id: search-1
         type: search
         title: Search
@@ -172,6 +184,18 @@ dashboards:
       - id: host-1
         type: host
         title: Host stats
+        config: { showLoad: true, showNet: true }
+      - id: gauge-cpu
+        type: gauge
+        title: CPU
+        config: { metric: cpu, style: ring, glow: true }
+      - id: percpu-1
+        type: percpu
+        title: Cores
+      - id: netgraph-1
+        type: netgraph
+        title: Network
+        config: { style: mirror, window: 5m }
       - id: containers-1
         type: containers
         title: Containers

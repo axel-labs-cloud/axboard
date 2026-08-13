@@ -1,4 +1,21 @@
-.PHONY: dev dev-go dev-web build build-go build-web container clean tidy
+.PHONY: dev dev-go dev-web build build-go build-web container publish clean tidy
+
+# Publish the multi-arch image to GHCR.
+#   make publish VERSION=v0.2.0
+# Needs: qemu for arm64 (once: sudo dnf install qemu-user-static, or
+#   `sudo podman run --rm --privileged docker.io/tonistiigi/binfmt --install arm64`)
+# and a ghcr login. arm64 emulation needs rootful podman, hence PODMAN=sudo podman.
+REGISTRY ?= ghcr.io/axel-labs-cloud/axboard
+VERSION  ?= latest
+PODMAN   ?= sudo podman
+PLATFORMS ?= linux/amd64,linux/arm64
+publish:
+	$(PODMAN) build --platform $(PLATFORMS) --manifest $(REGISTRY):$(VERSION) \
+	  --build-arg VERSION=$(VERSION) --build-arg BUILD_DATE=$$(date -u +%Y-%m-%dT%H:%M:%SZ) \
+	  -f Containerfile .
+	$(PODMAN) manifest push --all $(REGISTRY):$(VERSION) docker://$(REGISTRY):$(VERSION)
+	$(PODMAN) manifest push --all $(REGISTRY):$(VERSION) docker://$(REGISTRY):latest
+	@echo "Pushed $(REGISTRY):$(VERSION) and :latest (amd64 + arm64)."
 
 # Dev: run Go API on :8080 and Vite on :5173 (proxies /api/* and /healthz to :8080).
 dev:
