@@ -10,7 +10,10 @@ VERSION  ?= latest
 PODMAN   ?= sudo podman
 PLATFORMS ?= linux/amd64,linux/arm64
 publish:
-	$(PODMAN) build --platform $(PLATFORMS) --manifest $(REGISTRY):$(VERSION) \
+	# --manifest APPENDS to an existing list; wipe any stale one first so the
+	# push can't ship a mix of old + new per-arch images.
+	-$(PODMAN) manifest rm $(REGISTRY):$(VERSION) 2>/dev/null
+	$(PODMAN) build --no-cache --platform $(PLATFORMS) --manifest $(REGISTRY):$(VERSION) \
 	  --build-arg VERSION=$(VERSION) --build-arg BUILD_DATE=$$(date -u +%Y-%m-%dT%H:%M:%SZ) \
 	  -f Containerfile .
 	$(PODMAN) manifest push --all $(REGISTRY):$(VERSION) docker://$(REGISTRY):$(VERSION)
