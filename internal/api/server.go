@@ -524,6 +524,65 @@ func (s *Server) handlePublicIP(w http.ResponseWriter, r *http.Request) {
 // handleProxy fetches an http(s) URL server-side so browser widgets (RSS,
 // calendar) can read cross-origin feeds that would otherwise be CORS-blocked.
 // LAN-bound single-user posture; bounded by a timeout and a response cap.
+// ---- proxy response cache -------------------------------------------------
+// Feeds (releases, RSS, YouTube, calendar, custom-API) go through /api/proxy.
+// Caching per URL de-duplicates the many widgets/reloads that hit the same
+// endpoint, and serving a stale copy on an upstream error means a transient
+// rate limit (anonymous GitHub is 60/h) never blanks a widget.
+type proxyEntry struct {
+	body   []byte
+	ct     string
+	status int
+	at     time.Time
+}
+
+var (
+	proxyCache   = map[string]proxyEntry{}
+	proxyCacheMu sync.Mutex
+)
+
+const (
+	proxyFresh   = 15 * time.Minute // serve cached without re-fetching
+	proxyStale   = 24 * time.Hour   // max age to fall back to on upstream error
+	proxyMaxKeys = 256
+)
+
+func proxyCacheGet(key string) (proxyEntry, bool) {
+	proxyCacheMu.Lock()
+	defer proxyCacheMu.Unlock()
+	e, ok := proxyCache[key]
+	return e, ok
+}
+
+func proxyCachePut(key string, e proxyEntry) {
+	proxyCacheMu.Lock()
+	defer proxyCacheMu.Unlock()
+	if len(proxyCache) >= proxyMaxKeys {
+		for k, v := range proxyCache {
+			if time.Since(v.at) > proxyStale {
+				delete(proxyCache, k)
+			}
+		}
+		if len(proxyCache) >= proxyMaxKeys {
+			proxyCache = map[string]proxyEntry{}
+		}
+	}
+	proxyCache[key] = e
+}
+
+func writeProxyEntry(w http.ResponseWriter, e proxyEntry, stale bool) {
+	if e.ct != "" {
+		w.Header().Set("Content-Type", e.ct)
+	}
+	if stale {
+		w.Header().Set("X-Axboard-Cache", "stale")
+	} else {
+		w.Header().Set("X-Axboard-Cache", "hit")
+	}
+	w.WriteHeader(e.status)
+	_, _ = w.Write(e.body)
+}
+
 func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	target := r.URL.Query().Get("url")
 	u, err := url.Parse(target)
@@ -531,6 +590,19 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "url must be an http(s) URL")
 		return
 	}
+	// Key by URL + any auth so authed and anonymous responses never mix.
+	key := target
+	if a := r.Header.Get("Authorization"); a != "" {
+		key += "\x00" + a
+	}
+	if pt := r.Header.Get("X-Proxy-Private-Token"); pt != "" {
+		key += "\x01" + pt
+	}
+	if e, ok := proxyCacheGet(key); ok && time.Since(e.at) < proxyFresh {
+		writeProxyEntry(w, e, false)
+		return
+	}
+
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
@@ -549,15 +621,29 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := proxyClient.Do(req)
 	if err != nil {
+		if e, ok := proxyCacheGet(key); ok && time.Since(e.at) < proxyStale {
+			writeProxyEntry(w, e, true)
+			return
+		}
 		writeErr(w, http.StatusBadGateway, err.Error())
 		return
 	}
 	defer resp.Body.Close()
-	if ct := resp.Header.Get("Content-Type"); ct != "" {
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	ct := resp.Header.Get("Content-Type")
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		proxyCachePut(key, proxyEntry{body: body, ct: ct, status: resp.StatusCode, at: time.Now()})
+	} else if e, ok := proxyCacheGet(key); ok && time.Since(e.at) < proxyStale {
+		// Upstream error (e.g. 403 rate-limit) — serve the last good copy.
+		writeProxyEntry(w, e, true)
+		return
+	}
+	if ct != "" {
 		w.Header().Set("Content-Type", ct)
 	}
 	w.WriteHeader(resp.StatusCode)
-	_, _ = io.Copy(w, io.LimitReader(resp.Body, 4<<20)) // 4 MiB cap
+	_, _ = w.Write(body)
 }
 
 // iconExts maps accepted upload content types to file extensions.
