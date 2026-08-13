@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { DashboardPage } from "./features/dashboard/DashboardPage";
 import { LoginPage } from "./features/auth/LoginPage";
@@ -15,10 +16,27 @@ export function App() {
   });
   const needsLogin = auth?.enabled === true && auth?.authenticated !== true;
 
-  const { isLoading, isError } = useConfig();
+  const { data: config, isLoading, isError } = useConfig();
 
   const { error: configError, clearError } = useSSE();
   const [theme, setTheme] = useTheme();
+
+  // Apply a user-set favicon (topBar.header.favicon) at runtime; fall back to
+  // the bundled default so clearing it restores the shipped icon.
+  const favicon = config?.topBar?.header?.favicon;
+  useEffect(() => {
+    const href = favicon || "/favicon.svg";
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    // SVG default carries a type hint; uploaded icons may be png/ico/etc.
+    if (href.endsWith(".svg")) link.type = "image/svg+xml";
+    else link.removeAttribute("type");
+    link.href = href;
+  }, [favicon]);
 
   if (authLoading) {
     return (

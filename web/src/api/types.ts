@@ -71,6 +71,7 @@ export interface HeaderDef {
   hideName?: boolean;
   brandText?: string;
   brandLogo?: string;
+  favicon?: string;
   barFlush?: boolean;
 }
 

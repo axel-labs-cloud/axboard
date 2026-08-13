@@ -362,6 +362,17 @@ export function AppearancePanel(props: Props) {
       setLogoBusy(false);
     }
   };
+  const [faviconBusy, setFaviconBusy] = useState(false);
+  const uploadFavicon = async (file: File) => {
+    setFaviconBusy(true);
+    try {
+      patchHeader({ favicon: await api.uploadIcon(file) });
+    } catch (e) {
+      alert(`Upload failed: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setFaviconBusy(false);
+    }
+  };
 
   const links = hdr.links ?? [];
   const toggleLink = (id: string) =>
@@ -551,6 +562,22 @@ export function AppearancePanel(props: Props) {
                   )}
                 </div>
               )}
+              <div>
+                <Label>Browser favicon</Label>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded border border-border-subtle bg-bg-elevated flex items-center justify-center overflow-hidden shrink-0">
+                    <img src={hdr.favicon || "/favicon.svg"} alt="" className="w-full h-full object-contain" />
+                  </div>
+                  <label className={`px-3 py-1.5 text-[11px] rounded border border-border cursor-pointer ${faviconBusy ? "opacity-50" : "text-text-secondary hover:text-text"}`}>
+                    {faviconBusy ? "…" : hdr.favicon ? "Replace" : "Upload favicon"}
+                    <input type="file" accept="image/*,.ico" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFavicon(f); e.target.value = ""; }} />
+                  </label>
+                  {hdr.favicon && (
+                    <button onClick={() => patchHeader({ favicon: undefined })} className="text-[11px] text-text-muted hover:text-danger">Reset</button>
+                  )}
+                </div>
+                <p className="text-[10px] text-text-muted mt-1">The tab icon for this dashboard. SVG or PNG (square) works best.</p>
+              </div>
               <Check label="Show search bar" checked={!hdr.hideSearch} onChange={(v) => patchHeader({ hideSearch: !v })} />
             </div>
           </Section>
