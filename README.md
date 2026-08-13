@@ -11,7 +11,7 @@ Drag-and-drop widgets, health-checked app cards, alerts, public status pages, an
 </div>
 
 <div align="center">
-  <img src="docs/home.jpg" alt="An axboard dashboard — apps grid, host metrics, Home Assistant controls, weather and feeds" width="860">
+  <img src="docs/demo.jpg" alt="axboard — a live homelab dashboard: Proxmox, Home Assistant, media, feeds and more" width="860">
 </div>
 
 ---
