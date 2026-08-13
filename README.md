@@ -2,7 +2,7 @@
 
 # axboard
 
-[![Release](https://img.shields.io/github/v/tag/axel-labs-cloud/axboard?label=release&sort=semver&color=6366f1)](https://github.com/axel-labs-cloud/axboard/tags)
+[![Release](https://img.shields.io/github/v/tag/axel-labs-cloud/axboard?label=release&sort=semver&color=6366f1)](https://github.com/axel-labs-cloud/axboard/releases)
 [![Container](https://img.shields.io/badge/ghcr.io-axboard-6366f1?logo=github)](https://github.com/axel-labs-cloud/axboard/pkgs/container/axboard)
 [![Platforms](https://img.shields.io/badge/arch-amd64%20·%20arm64-06b6d4)](https://github.com/axel-labs-cloud/axboard/pkgs/container/axboard)
 [![License: MIT](https://img.shields.io/badge/license-MIT-22c55e)](LICENSE)
