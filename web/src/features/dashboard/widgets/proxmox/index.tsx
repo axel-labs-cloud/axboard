@@ -363,7 +363,20 @@ function ProxmoxComponent({ config }: WidgetProps<ProxmoxConfig>) {
               ) : (
                 nodes.map((n) => {
                   const worst = Math.max((n.cpu ?? 0) * 100, clampPct(n.mem, n.maxmem), clampPct(n.disk, n.maxdisk));
-                  const alert = n.status !== "online" || worst >= 90 ? "var(--color-down)" : worst >= 75 ? "var(--color-degraded)" : undefined;
+                  const warnAt = config?.alertWarn ?? 75;
+                  const critAt = config?.alertCrit ?? 90;
+                  // An offline node always borders red; resource % alarms honour
+                  // the configured thresholds and can be hidden entirely.
+                  const alert =
+                    n.status !== "online"
+                      ? "var(--color-down)"
+                      : config?.hideAlerts
+                        ? undefined
+                        : worst >= critAt
+                          ? "var(--color-down)"
+                          : worst >= warnAt
+                            ? "var(--color-degraded)"
+                            : undefined;
                   return (
                     <div
                       key={n.id}
@@ -566,6 +579,26 @@ function ProxmoxConfigPanel({ config, save }: WidgetConfigProps<ProxmoxConfig>) 
             );
           })}
         </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Resource alarms</label>
+        <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
+          <input type="checkbox" checked={config?.hideAlerts === true} onChange={(e) => save({ hideAlerts: e.target.checked })} className="accent-[color:var(--color-accent)]" />
+          Hide the alarm border
+        </label>
+        {!config?.hideAlerts && (
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-[11px] text-text-muted">
+              Warn % <span className="text-text-muted/60">(orange)</span>
+              <input type="number" min={1} max={100} value={config?.alertWarn ?? 75} onChange={(e) => save({ alertWarn: Math.max(1, Math.min(100, Number(e.target.value) || 75)) })} className="px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent" />
+            </label>
+            <label className="flex flex-col gap-1 text-[11px] text-text-muted">
+              Crit % <span className="text-text-muted/60">(red)</span>
+              <input type="number" min={1} max={100} value={config?.alertCrit ?? 90} onChange={(e) => save({ alertCrit: Math.max(1, Math.min(100, Number(e.target.value) || 90)) })} className="px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text font-mono focus:outline-none focus:border-accent" />
+            </label>
+          </div>
+        )}
       </div>
 
       <p className="text-[11px] text-text-muted leading-snug">

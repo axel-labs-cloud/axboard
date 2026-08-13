@@ -346,6 +346,7 @@ export interface GaugeConfig {
 export interface SpeedTestConfig {
   /** Auto-run on load. Default off (manual button). */
   auto?: boolean;
+  title?: string;
 }
 
 /** Camera widget — a Frigate NVR camera or any MJPEG / JPEG stream URL. */
@@ -460,6 +461,9 @@ export interface ProxmoxConfig {
   showBackups?: boolean; // last-backup age per guest (extra API calls) — default false
   compact?: boolean; // node-only slim overview — default false
   metricStyle?: "bar" | "pct" | "both"; // how CPU/RAM cells render — default "both"
+  alertWarn?: number; // resource % → orange node border (default 75)
+  alertCrit?: number; // resource % → red node border (default 90)
+  hideAlerts?: boolean; // hide the resource alarm borders entirely
   // Legacy single-server fields (pre-multi); still honoured as one server.
   baseUrl?: string;
   tokenId?: string;

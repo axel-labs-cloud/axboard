@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react";
 import { useSize } from "../useSize";
+import { WidgetHeader } from "../../../../components/widget";
 import { timeAgo } from "../../../../lib/time";
 import type {
   SpeedTestConfig,
@@ -151,12 +152,22 @@ function SpeedTestComponent({ config }: WidgetProps<SpeedTestConfig>) {
 
   const running = phase === "ping" || phase === "download" || phase === "upload";
   const compact = box.h > 0 && box.h < 120;
+  // Header appears once the tile is tall enough (~3 rows and up).
+  const showHeader = box.h >= 155;
 
   const phaseLabel =
     phase === "ping" ? "Measuring latency…" : phase === "download" ? "Testing download…" : phase === "upload" ? "Testing upload…" : "";
 
   return (
-    <div ref={box.ref} className="h-full flex flex-col items-center justify-center gap-3 px-3 py-3">
+    <div ref={box.ref} className="h-full flex flex-col">
+      {showHeader && (
+        <WidgetHeader
+          icon={SpeedIcon}
+          title={config?.title?.trim() || "Speed test"}
+          right={result?.t ? <span className="text-[10px] font-mono text-text-muted">{timeAgo(result.t)}</span> : undefined}
+        />
+      )}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center gap-3 px-3 py-3 overflow-auto">
       {result && (
         <div className={`grid grid-cols-3 w-full max-w-[300px] ${compact ? "gap-3" : "gap-5"}`}>
           <Metric label="Down" value={result.down.toFixed(result.down >= 100 ? 0 : 1)} unit="Mbps" tone="text-up" />
@@ -215,6 +226,7 @@ function SpeedTestComponent({ config }: WidgetProps<SpeedTestConfig>) {
           {result || phase === "error" ? "Run again" : "Run speed test"}
         </button>
       )}
+      </div>
     </div>
   );
 }
@@ -222,6 +234,15 @@ function SpeedTestComponent({ config }: WidgetProps<SpeedTestConfig>) {
 function SpeedTestConfigPanel({ config, save }: WidgetConfigProps<SpeedTestConfig>) {
   return (
     <div className="space-y-3">
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">Title <span className="normal-case tracking-normal text-text-muted/60">(shown as a header on taller tiles)</span></label>
+        <input
+          value={config?.title ?? ""}
+          onChange={(e) => save({ title: e.target.value })}
+          placeholder="Speed test"
+          className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text focus:outline-none focus:border-accent"
+        />
+      </div>
       <label className="flex items-center gap-2 text-[12px] text-text cursor-pointer">
         <input
           type="checkbox"

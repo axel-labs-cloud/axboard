@@ -95,7 +95,13 @@ function UnifiComponent({ config }: WidgetProps<UnifiConfig>) {
         title={title}
         right={<span className="flex items-center gap-1 text-[11px] text-text-muted"><StatusDot status={wanOk ? "up" : "down"} size="sm" />WAN</span>}
       />
-      <div className="flex-1 min-h-0 overflow-auto px-2.5 py-2 flex flex-col justify-center gap-2.5">
+      <a
+        href={b}
+        target="_blank"
+        rel="noreferrer noopener"
+        title="Open UniFi console"
+        className="flex-1 min-h-0 overflow-auto px-2.5 py-2 flex flex-col justify-center gap-2.5 hover:bg-bg-hover/40 transition-colors cursor-pointer"
+      >
         <StatTiles
           tiles={[
             { label: "Clients", value: String(clients) },
@@ -109,7 +115,7 @@ function UnifiComponent({ config }: WidgetProps<UnifiConfig>) {
           if (wan?.latency != null) parts.push(`${wan.latency}ms`);
           return parts.length ? <div className="text-[10px] font-mono text-text-muted">WAN {parts.join(" · ")}</div> : null;
         })()}
-      </div>
+      </a>
     </div>
   );
 }
