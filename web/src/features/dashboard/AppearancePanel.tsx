@@ -425,8 +425,15 @@ export function AppearancePanel(props: Props) {
                   className={`w-6 h-6 rounded-full border transition-transform hover:scale-110 ${accent === c ? "ring-2 ring-offset-1 ring-offset-bg-card ring-accent border-transparent" : "border-black/20"}`}
                 />
               ))}
-              <label className="w-6 h-6 rounded-full border border-border overflow-hidden cursor-pointer relative" title="Custom">
-                <input type="color" value={accent ?? "#818cf8"} onChange={(e) => onSetAccent(e.target.value)} className="absolute inset-0 w-[150%] h-[150%] -translate-x-2 -translate-y-2 cursor-pointer" />
+              <label
+                title="Custom color"
+                className={`w-6 h-6 rounded-full overflow-hidden cursor-pointer relative transition-transform hover:scale-110 ${accent && !ACCENT_PRESETS.includes(accent) ? "ring-2 ring-offset-1 ring-offset-bg-card ring-accent" : "border border-black/20"}`}
+                style={{ background: "conic-gradient(from 90deg, #ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #6366f1, #a855f7, #ec4899, #ef4444)" }}
+              >
+                {accent && !ACCENT_PRESETS.includes(accent) && (
+                  <span className="absolute inset-1.5 rounded-full border border-white/70" style={{ background: accent }} />
+                )}
+                <input type="color" value={accent ?? "#818cf8"} onChange={(e) => onSetAccent(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer" />
               </label>
               {accent && (
                 <button onClick={() => onSetAccent("")} className="text-[11px] text-text-muted hover:text-text ml-1">reset</button>
