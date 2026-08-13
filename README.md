@@ -23,13 +23,13 @@ Drag-and-drop widgets, health-checked app cards, alerts, public status pages, an
 
 ## Highlights
 
-- **One binary.** Go server + embedded SPA. Drop it on a box, open it in the browser, done.
-- **80+ widgets, six categories.** Service panels (Proxmox, Sonarr/Radarr, Jellyfin/Plex, Immich, qBittorrent, Portainer, Paperless, Nextcloud…), a full **Home Assistant** suite (lights, fans, covers, climate, scenes, sensors, power, presence, locks, media, vacuum), host metrics, content feeds (Reddit, Hacker News, YouTube, RSS), and a **custom-API / template builder** for anything else. Most re-layout as you resize them.
-- **Click, don't config.** Add services, build dashboards, and wire up alerts, status pages and themes from in-app panels — no file needed. Prefer text? Hand-edit the YAML; both stay in sync, and layouts live separately so dragging never touches your comments.
-- **Live monitors.** HTTP / TCP / ping / DNS + push heartbeats, with 24h/7d/30d uptime, retries, and cert-expiry checks.
-- **Alerts & status pages.** Down/recover notifications (ntfy / Telegram / email / webhook) and themeable public status pages with criticality-aware severity.
-- **Genuinely themeable.** 13 themes plus a custom-theme creator — and **every dashboard keeps its own theme**, accent, background and density, so a cozy home board and a dense ops board live one tab apart. Glass widget styling and a custom-CSS box too.
-- **Keyboard-first & installable.** A ⌘K command palette, a `?` cheat sheet, and a PWA that works offline.
+- **One binary.** Go server + embedded SPA — drop it on a box and open the browser.
+- **80+ widgets.** Service panels, a full Home Assistant suite, host metrics, content feeds, and a custom-API/template builder.
+- **Click, don't config.** Build dashboards, alerts, status pages and themes in-app — or hand-edit the YAML; both stay in sync.
+- **Live monitors.** HTTP / TCP / ping / DNS + push heartbeats, with uptime history, retries and cert-expiry checks.
+- **Alerts & status pages.** Down/recover notifications (ntfy / Telegram / email / webhook) and public, themeable status pages.
+- **Per-dashboard theming.** 13 themes plus a custom-theme creator — each dashboard keeps its own theme, accent and density.
+- **Keyboard-first & installable.** ⌘K command palette, `?` cheat sheet, and an offline-capable PWA.
 
 ## Quick start
 
