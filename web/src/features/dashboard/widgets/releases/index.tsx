@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { SkeletonLines } from "../../../../components/Skeleton";
 import { useSize } from "../useSize";
 import { timeAgo, isRecent } from "../../../../lib/time";
@@ -24,20 +24,35 @@ interface Rel {
   error?: boolean;
 }
 
+// Optional API tokens are shared across all Releases widgets (browser-local),
+// so you set one once. A token lifts GitHub from 60/h to 5000/h.
+function relToken(kind: "gh" | "gl"): string {
+  try {
+    return (window.localStorage.getItem(kind === "gl" ? "axboard-gl-token" : "axboard-gh-token") || "").trim();
+  } catch {
+    return "";
+  }
+}
+
 async function fetchOne(spec: string): Promise<Rel> {
   const gl = spec.startsWith("gl:");
   const path = spec.replace(/^(gh|gl):/, "");
+  const headers: Record<string, string> = {};
   try {
     if (gl) {
+      const t = relToken("gl");
+      if (t) headers["X-Proxy-Private-Token"] = t; // proxy → PRIVATE-TOKEN
       const api = `https://gitlab.com/api/v4/projects/${encodeURIComponent(path)}/releases?per_page=1`;
-      const r = await fetch(`/api/proxy?url=${encodeURIComponent(api)}`);
+      const r = await fetch(`/api/proxy?url=${encodeURIComponent(api)}`, { headers });
       const arr = await r.json();
       const rel = Array.isArray(arr) ? arr[0] : null;
       if (!rel) return { repo: path, error: true };
       return { repo: path, tag: rel.tag_name, date: rel.released_at, url: rel._links?.self };
     }
+    const t = relToken("gh");
+    if (t) headers["Authorization"] = `Bearer ${t}`;
     const api = `https://api.github.com/repos/${path}/releases/latest`;
-    const r = await fetch(`/api/proxy?url=${encodeURIComponent(api)}`);
+    const r = await fetch(`/api/proxy?url=${encodeURIComponent(api)}`, { headers });
     if (!r.ok) return { repo: path, error: true };
     const rel = await r.json();
     return { repo: path, tag: rel.tag_name, date: rel.published_at, url: rel.html_url };
@@ -115,6 +130,17 @@ function ReleasesConfigPanel({ config, save }: WidgetConfigProps<ReleasesConfig>
   const [hits, setHits] = useState<Hit[]>([]);
   const [busy, setBusy] = useState(false);
   const [manual, setManual] = useState("");
+  const qc = useQueryClient();
+  const [ghTok, setGhTok] = useState(() => relToken("gh"));
+  const [glTok, setGlTok] = useState(() => relToken("gl"));
+  const saveTok = (kind: "gh" | "gl", val: string) => {
+    try {
+      window.localStorage.setItem(kind === "gl" ? "axboard-gl-token" : "axboard-gh-token", val.trim());
+    } catch {
+      /* ignore */
+    }
+    qc.invalidateQueries({ queryKey: ["releases"] });
+  };
 
   const search = async () => {
     const term = q.trim();
@@ -236,6 +262,25 @@ function ReleasesConfigPanel({ config, save }: WidgetConfigProps<ReleasesConfig>
           <button onClick={addManual} disabled={!manual.trim()} className="px-3 py-1.5 text-[11px] rounded border border-border text-text-secondary hover:text-text disabled:opacity-40">Add</button>
         </div>
         <p className="text-[11px] text-text-muted">Adds under the selected source; a full GitHub/GitLab URL or a <span className="font-mono">gh:</span>/<span className="font-mono">gl:</span> prefix works too.</p>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[10px] uppercase tracking-[0.08em] text-text-muted font-semibold">API tokens <span className="normal-case tracking-normal text-text-muted/60">· optional, shared by all Releases widgets</span></label>
+        <input
+          type="password"
+          value={ghTok}
+          onChange={(e) => { setGhTok(e.target.value); saveTok("gh", e.target.value); }}
+          placeholder="GitHub token (raises 60/h → 5000/h)"
+          className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono"
+        />
+        <input
+          type="password"
+          value={glTok}
+          onChange={(e) => { setGlTok(e.target.value); saveTok("gl", e.target.value); }}
+          placeholder="GitLab token (optional)"
+          className="w-full px-2 py-1.5 rounded bg-bg-card border border-border text-[12px] text-text placeholder:text-text-muted focus:outline-none focus:border-accent font-mono"
+        />
+        <p className="text-[11px] text-text-muted leading-snug">Anonymous GitHub allows only 60 calls/hour, so many repos across widgets hit the limit and show nothing. A read-only classic PAT (no scopes needed for public repos) raises it to 5000/hour. Kept in this browser only.</p>
       </div>
     </div>
   );

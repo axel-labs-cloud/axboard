@@ -539,6 +539,14 @@ func (s *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	req.Header.Set("User-Agent", "axboard")
+	// Forward an optional auth header so widgets can raise API rate limits
+	// (e.g. a GitHub/GitLab token lifts releases from 60/h to 5000/h).
+	if a := r.Header.Get("Authorization"); a != "" {
+		req.Header.Set("Authorization", a)
+	}
+	if pt := r.Header.Get("X-Proxy-Private-Token"); pt != "" {
+		req.Header.Set("PRIVATE-TOKEN", pt)
+	}
 	resp, err := proxyClient.Do(req)
 	if err != nil {
 		writeErr(w, http.StatusBadGateway, err.Error())
